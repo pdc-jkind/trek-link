@@ -1,250 +1,254 @@
+// src/app/page.tsx
 import Image from "next/image";
 import Link from "next/link";
+import {
+  LayoutDashboard,
+  Users,
+  Package,
+  BarChart3,
+  Settings,
+  ArrowRight,
+  CheckCircle,
+} from "lucide-react";
 
 export default function Home() {
+  const features = [
+    {
+      icon: LayoutDashboard,
+      title: "Dashboard Analytics",
+      description:
+        "Real-time monitoring dan analytics untuk semua aktivitas inventory",
+      href: "/dashboard",
+      color: "bg-blue-500",
+    },
+    {
+      icon: Package,
+      title: "Inventory Management",
+      description:
+        "Kelola stock barang, penerimaan, dan distribusi dengan mudah",
+      href: "/inventory",
+      color: "bg-green-500",
+    },
+    {
+      icon: Users,
+      title: "User Management",
+      description: "Kontrol akses pengguna dengan role-based permissions",
+      href: "/users",
+      color: "bg-purple-500",
+    },
+    {
+      icon: BarChart3,
+      title: "Laporan & Analytics",
+      description: "Generate laporan komprehensif dan analisis disparitas",
+      href: "/reports",
+      color: "bg-orange-500",
+    },
+  ];
+
+  const apiEndpoints = [
+    { method: "GET", path: "/api/v1/dashboard", status: "active" },
+    { method: "GET", path: "/api/v1/users", status: "active" },
+    { method: "POST", path: "/api/v1/users", status: "active" },
+    { method: "GET", path: "/api/v1/inventory", status: "active" },
+    { method: "POST", path: "/api/v1/inventory", status: "active" },
+    { method: "GET", path: "/api/v1/reports", status: "active" },
+  ];
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start max-w-4xl">
-        <div className="text-center sm:text-left">
-          <Image
-            className="dark:invert mb-8"
-            src="/next.svg"
-            alt="Next.js logo"
-            width={180}
-            height={38}
-            priority
-          />
-          <h1 className="text-3xl sm:text-4xl font-bold mb-4">
-            Welcome to Your App
-          </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">
-            A modern web application with separated frontend and API structure.
-          </p>
+    <div
+      className="min-h-screen"
+      style={{
+        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+      }}
+    >
+      <div className="relative min-h-screen">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: `radial-gradient(circle at 1px 1px, white 1px, transparent 0)`,
+              backgroundSize: "20px 20px",
+            }}
+          ></div>
         </div>
 
-        {/* Quick Navigation */}
-        <div className="w-full">
-          <h2 className="text-xl font-semibold mb-4 text-center sm:text-left">
-            Quick Navigation
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+        <div className="relative z-10 container mx-auto px-4 py-12 lg:py-20">
+          {/* Header Section */}
+          <div className="text-center mb-16">
+            <div className="flex items-center justify-center mb-6">
+              <div className="w-16 h-16 bg-white bg-opacity-20 backdrop-blur-lg rounded-2xl flex items-center justify-center shadow-xl border border-white border-opacity-30">
+                <div className="w-8 h-8 bg-white rounded-lg"></div>
+              </div>
+            </div>
+
+            <h1 className="text-5xl lg:text-6xl font-bold text-white mb-4">
+              Trek Link
+            </h1>
+            <p className="text-xl lg:text-2xl text-white text-opacity-90 mb-2 font-medium">
+              Link the Route
+            </p>
+            <p className="text-lg text-white text-opacity-70 max-w-2xl mx-auto">
+              Modern inventory management and tracking system dengan interface
+              yang intuitif dan fitur analytics yang powerful
+            </p>
+          </div>
+
+          {/* Quick Access Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+            {features.map((feature, index) => (
+              <Link
+                key={index}
+                href={feature.href}
+                className="group bg-white bg-opacity-10 backdrop-blur-lg rounded-2xl p-6 border border-white border-opacity-20 hover:bg-opacity-20 hover:scale-105 transition-all duration-300 shadow-xl"
+              >
+                <div className="flex flex-col items-center text-center">
+                  <div
+                    className={`w-12 h-12 ${feature.color} rounded-xl flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300`}
+                  >
+                    <feature.icon className="w-6 h-6 text-white" />
+                  </div>
+                  <h3 className="text-white font-semibold text-lg mb-2 group-hover:text-opacity-100 text-opacity-90">
+                    {feature.title}
+                  </h3>
+                  <p className="text-white text-opacity-70 text-sm mb-4 group-hover:text-opacity-90">
+                    {feature.description}
+                  </p>
+                  <div className="flex items-center text-white text-opacity-80 group-hover:text-opacity-100 text-sm font-medium">
+                    Akses{" "}
+                    <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {/* Main Dashboard Link */}
+          <div className="text-center mb-16">
             <Link
               href="/dashboard"
-              className="group block p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors"
+              className="inline-flex items-center gap-3 bg-white bg-opacity-20 backdrop-blur-lg text-white px-8 py-4 rounded-2xl font-semibold text-lg hover:bg-opacity-30 transition-all duration-300 shadow-xl border border-white border-opacity-30 hover:scale-105"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                  <svg
-                    className="w-5 h-5 text-blue-600 dark:text-blue-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-medium text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400">
-                    Dashboard
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    View analytics and metrics
-                  </p>
-                </div>
-              </div>
-            </Link>
-
-            <Link
-              href="/profile"
-              className="group block p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-green-500 dark:hover:border-green-400 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                  <svg
-                    className="w-5 h-5 text-green-600 dark:text-green-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-medium text-gray-900 dark:text-white group-hover:text-green-600 dark:group-hover:text-green-400">
-                    Profile
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Manage your account settings
-                  </p>
-                </div>
-              </div>
+              <LayoutDashboard className="w-6 h-6" />
+              Masuk ke Dashboard
+              <ArrowRight className="w-5 h-5" />
             </Link>
           </div>
-        </div>
 
-        {/* API Information */}
-        <div className="w-full">
-          <h2 className="text-xl font-semibold mb-4 text-center sm:text-left">
-            API Endpoints
-          </h2>
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div>
-                <h3 className="font-medium text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
-                    V1
-                  </span>
-                  API Version 1
-                </h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <code className="text-gray-600 dark:text-gray-400">
-                      GET /api/v2/users
-                    </code>
-                    <span className="text-green-600 dark:text-green-400">
-                      ✓
-                    </span>
+          {/* System Information */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
+            {/* API Status */}
+            <div className="bg-white bg-opacity-10 backdrop-blur-lg rounded-2xl p-6 border border-white border-opacity-20 shadow-xl">
+              <h3 className="text-white text-xl font-semibold mb-4 flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                API Status
+              </h3>
+              <div className="space-y-3">
+                {apiEndpoints.map((endpoint, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between py-2 px-3 bg-white bg-opacity-5 rounded-lg"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-mono bg-white bg-opacity-20 text-white px-2 py-1 rounded">
+                        {endpoint.method}
+                      </span>
+                      <code className="text-white text-opacity-80 text-sm">
+                        {endpoint.path}
+                      </code>
+                    </div>
+                    <CheckCircle className="w-4 h-4 text-green-400" />
                   </div>
-                  <div className="flex justify-between">
-                    <code className="text-gray-600 dark:text-gray-400">
-                      POST /api/v2/users
-                    </code>
-                    <span className="text-green-600 dark:text-green-400">
-                      ✓
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <code className="text-gray-600 dark:text-gray-400">
-                      POST /api/v2/dashboard
-                    </code>
-                    <span className="text-green-600 dark:text-green-400">
-                      ✓
-                    </span>
-                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* System Features */}
+            <div className="bg-white bg-opacity-10 backdrop-blur-lg rounded-2xl p-6 border border-white border-opacity-20 shadow-xl">
+              <h3 className="text-white text-xl font-semibold mb-4">
+                Fitur Sistem
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 text-white text-opacity-80">
+                  <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
+                  <span>Real-time inventory tracking</span>
+                </div>
+                <div className="flex items-center gap-3 text-white text-opacity-80">
+                  <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
+                  <span>Multi-office support</span>
+                </div>
+                <div className="flex items-center gap-3 text-white text-opacity-80">
+                  <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
+                  <span>Role-based access control</span>
+                </div>
+                <div className="flex items-center gap-3 text-white text-opacity-80">
+                  <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
+                  <span>Automated reporting</span>
+                </div>
+                <div className="flex items-center gap-3 text-white text-opacity-80">
+                  <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
+                  <span>Push notifications</span>
+                </div>
+                <div className="flex items-center gap-3 text-white text-opacity-80">
+                  <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
+                  <span>Analytics dashboard</span>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Getting Started */}
-        <div className="w-full">
-          <h2 className="text-xl font-semibold mb-4 text-center sm:text-left">
-            Getting Started
-          </h2>
-          <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left space-y-2">
-            <li className="tracking-[-.01em]">
-              Frontend pages are organized in{" "}
-              <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-                src/app/(frontend)/
-              </code>
-              directory.
-            </li>
-            <li className="tracking-[-.01em]">
-              API routes are separated into{" "}
-              <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-                src/app/api/v1/
-              </code>{" "}
-              and{" "}
-              <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-                src/app/api/v2/
-              </code>
-              .
-            </li>
-            <li className="tracking-[-.01em]">
-              Edit pages in the frontend directory to customize your app.
-            </li>
-            <li className="tracking-[-.01em]">
-              API versioning allows for backward compatibility and gradual
-              migration.
-            </li>
-          </ol>
-        </div>
+          {/* Technical Information */}
+          <div className="bg-white bg-opacity-10 backdrop-blur-lg rounded-2xl p-6 border border-white border-opacity-20 shadow-xl">
+            <h3 className="text-white text-xl font-semibold mb-4">
+              Architecture Overview
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="text-center">
+                <div className="bg-white bg-opacity-20 rounded-lg p-4 mb-3">
+                  <h4 className="text-white font-medium mb-2">Frontend</h4>
+                  <p className="text-white text-opacity-70 text-sm">
+                    Next.js 14 dengan TypeScript dan Tailwind CSS
+                  </p>
+                </div>
+                <code className="text-xs text-white text-opacity-60">
+                  src/app/(frontend)/
+                </code>
+              </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
+              <div className="text-center">
+                <div className="bg-white bg-opacity-20 rounded-lg p-4 mb-3">
+                  <h4 className="text-white font-medium mb-2">API Routes</h4>
+                  <p className="text-white text-opacity-70 text-sm">
+                    RESTful API dengan versioning support
+                  </p>
+                </div>
+                <code className="text-xs text-white text-opacity-60">
+                  src/app/api/v1/ & v2/
+                </code>
+              </div>
 
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+              <div className="text-center">
+                <div className="bg-white bg-opacity-20 rounded-lg p-4 mb-3">
+                  <h4 className="text-white font-medium mb-2">Database</h4>
+                  <p className="text-white text-opacity-70 text-sm">
+                    Supabase PostgreSQL dengan real-time features
+                  </p>
+                </div>
+                <code className="text-xs text-white text-opacity-60">
+                  lib/supabase/
+                </code>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="text-center mt-16 pt-8 border-t border-white border-opacity-20">
+            <p className="text-white text-opacity-60 text-sm">
+              © 2025 Trek Link. Built with Next.js, TypeScript, and Supabase.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
