@@ -29,7 +29,7 @@ export interface AuthState {
   error: AuthError | null;
 }
 
-export type AuthProvider = 'google' | 'github' | 'facebook';
+export type AuthProvider = 'google';
 
 export interface AuthCallbackParams {
   access_token?: string;

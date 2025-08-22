@@ -1,14 +1,14 @@
 // src/app/layout.tsx
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { AuthProvider } from "@/hooks/useAuth";
+import { AuthProvider } from "@/app/(auth)/components/AuthProvider";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Your App Name",
-  description: "Your App Description",
+  title: "Trek Link - Link the Route",
+  description: "Modern inventory management and tracking system",
 };
 
 export default function RootLayout({
