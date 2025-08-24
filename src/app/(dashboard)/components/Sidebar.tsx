@@ -198,8 +198,8 @@ const Sidebar = ({
               isCollapsed ? "justify-center" : ""
             }`}
           >
-            <div className="w-8 h-8 bg-white bg-opacity-90 rounded-lg flex items-center justify-center shadow-md overflow-hidden">
-              <div className="w-4 h-4 bg-purple-600 rounded"></div>
+            <div className="w-12 h-10 rounded-lg flex items-center justify-center shadow-md overflow-hidden p-1">
+              <img src="img/icon.png" alt="icon" />
             </div>
             {!isCollapsed && (
               <div className="ml-2.5">

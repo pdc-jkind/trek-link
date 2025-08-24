@@ -1,13 +1,21 @@
 // src/services/auth.service.ts
-import { supabase } from "@/lib/supabase/supabase";
+import { createClient } from "@/lib/supabase/client";
 import type { AuthUser, AuthProvider } from "@/types/auth.types";
 
 export class AuthService {
+  /**
+   * Get supabase client instance
+   */
+  private static getClient() {
+    return createClient();
+  }
+
   /**
    * Checks if user is currently authenticated
    */
   static async isAuthenticated(): Promise<boolean> {
     try {
+      const supabase = this.getClient();
       const { data: { session }, error } = await supabase.auth.getSession();
       if (error) {
         console.error("Error checking authentication:", error);
@@ -25,6 +33,7 @@ export class AuthService {
    */
   static async getCurrentUser(): Promise<AuthUser | null> {
     try {
+      const supabase = this.getClient();
       const { data: { session }, error } = await supabase.auth.getSession();
 
       if (error) {
@@ -61,6 +70,7 @@ export class AuthService {
    */
   static async getSession() {
     try {
+      const supabase = this.getClient();
       const { data: { session }, error } = await supabase.auth.getSession();
 
       if (error) {
@@ -80,6 +90,7 @@ export class AuthService {
    */
   static async logout(): Promise<void> {
     try {
+      const supabase = this.getClient();
       const { error } = await supabase.auth.signOut();
 
       if (error) {
@@ -97,6 +108,7 @@ export class AuthService {
    */
   static async initiateOAuthLogin(provider: AuthProvider = 'google'): Promise<void> {
     try {
+      const supabase = this.getClient();
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
@@ -122,6 +134,7 @@ export class AuthService {
    * Listen to auth state changes
    */
   static onAuthStateChange(callback: (event: string, session: any) => void) {
+    const supabase = this.getClient();
     return supabase.auth.onAuthStateChange(callback);
   }
 }

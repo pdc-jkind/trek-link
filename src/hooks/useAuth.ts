@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/supabase';
+import { createClient } from '@/lib/supabase/client';
 import { AuthService } from '@/services/auth.service';
 import type { AuthUser, AuthState, AuthProvider as AuthProviderType } from '@/types/auth.types';
 
@@ -52,6 +52,8 @@ export const useAuthState = () => {
       authInitialized = true;
 
       try {
+        const supabase = createClient();
+        
         // Get initial session with timeout for faster failure
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise((_, reject) => 
@@ -118,6 +120,7 @@ export const useAuthState = () => {
     initAuth();
 
     // Listen to auth changes with optimized handling
+    const supabase = createClient();
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
@@ -238,6 +241,7 @@ export const useAuthState = () => {
       
       while (attempts < maxAttempts) {
         // Check if there's a session after OAuth callback
+        const supabase = createClient();
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
