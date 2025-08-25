@@ -2,16 +2,11 @@
 "use client";
 
 import { Menu, LogOut, User, Building, Lock, Bell } from "lucide-react";
-
-type SectionKey =
-  | "dashboard"
-  | "users"
-  | "inventory"
-  | "orders"
-  | "items"
-  | "disparity"
-  | "settings"
-  | "help";
+import {
+  SectionKey,
+  MenuConfigUtils,
+  UserRole,
+} from "@/app/(dashboard)/types/menuConfig";
 
 type Office = {
   id: string;
@@ -24,7 +19,7 @@ export interface TopBarProps {
 
   // User data
   userName: string;
-  userRole: string;
+  userRole: UserRole;
 
   // Office data
   offices: Office[];
@@ -62,34 +57,8 @@ const TopBar = ({
   onCloseAllDropdowns,
   onOfficeSelect,
 }: TopBarProps) => {
-  const sectionTitles: Record<SectionKey, { title: string; subtitle: string }> =
-    {
-      dashboard: {
-        title: "Dashboard",
-        subtitle: "Selamat datang di sistem inventory",
-      },
-      users: { title: "Data User", subtitle: "Kelola data pengguna sistem" },
-      inventory: {
-        title: "Penerimaan Barang",
-        subtitle: "Kelola data penerimaan barang",
-      },
-      orders: {
-        title: "Order Barang",
-        subtitle: "Kelola pesanan dan pembelian barang",
-      },
-      items: {
-        title: "Data Barang",
-        subtitle: "Master data barang dan kategori",
-      },
-      disparity: {
-        title: "Laporan Disparitas",
-        subtitle: "Pantau selisih penerimaan barang",
-      },
-      settings: { title: "Pengaturan", subtitle: "Konfigurasi sistem" },
-      help: { title: "Bantuan", subtitle: "Panduan penggunaan sistem" },
-    };
-
-  const currentTitle = sectionTitles[currentSection] || sectionTitles.dashboard;
+  // Get current title info from menu config
+  const currentTitle = MenuConfigUtils.getSectionTitleInfo(currentSection);
   const currentOffice = selectedOffice || offices[0];
 
   // Office Toggle Switch Component

@@ -1,4 +1,6 @@
 // src/lib/supabase/server.ts
+export const runtime = "nodejs";
+
 import { createServerClient } from '@supabase/ssr'
 import { type NextRequest, type NextResponse } from 'next/server'
 import { cookies } from 'next/headers'

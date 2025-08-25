@@ -1,35 +1,21 @@
 // src\app\(dashboard)\components\Sidebar.tsx
 "use client";
 
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
-  Home,
-  Users,
-  Package,
-  ShoppingCart,
-  Database,
-  BarChart3,
-  Settings,
-  HelpCircle,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
-
-type SectionKey =
-  | "dashboard"
-  | "users"
-  | "inventory"
-  | "orders"
-  | "items"
-  | "disparity"
-  | "settings"
-  | "help";
+  SectionKey,
+  MenuConfigUtils,
+  MenuItemConfig,
+  UserRole,
+  MenuCategory,
+} from "@/app/(dashboard)/types/menuConfig";
 
 export interface SidebarProps {
   // State
   isOpen: boolean;
   isCollapsed: boolean;
   activeSection: SectionKey;
-  userRole: string;
+  userRole: UserRole;
 
   // Event handlers
   onClose: () => void;
@@ -46,80 +32,10 @@ const Sidebar = ({
   onSectionChange,
   onToggleCollapse,
 }: SidebarProps) => {
-  const menuItems = [
-    {
-      id: "dashboard" as SectionKey,
-      label: "Dashboard",
-      icon: Home,
-      category: "main",
-    },
-    {
-      id: "users" as SectionKey,
-      label: "Data User",
-      icon: Users,
-      roles: ["admin"],
-      category: "main",
-    },
-    // Inventory Management Group
-    {
-      id: "items" as SectionKey,
-      label: "Data Barang",
-      icon: Database,
-      roles: ["admin", "contributor"],
-      category: "inventory",
-    },
-    {
-      id: "orders" as SectionKey,
-      label: "Order Barang",
-      icon: ShoppingCart,
-      roles: ["admin", "contributor"],
-      category: "inventory",
-    },
-    {
-      id: "inventory" as SectionKey,
-      label: "Penerimaan Barang",
-      icon: Package,
-      roles: ["admin", "contributor"],
-      category: "inventory",
-    },
-    // Reports Group
-    {
-      id: "disparity" as SectionKey,
-      label: "Laporan Disparitas",
-      icon: BarChart3,
-      roles: ["monitor", "admin"],
-      category: "reports",
-    },
-    // Settings Group
-    {
-      id: "settings" as SectionKey,
-      label: "Pengaturan",
-      icon: Settings,
-      category: "settings",
-    },
-    {
-      id: "help" as SectionKey,
-      label: "Bantuan",
-      icon: HelpCircle,
-      category: "settings",
-    },
-  ];
+  // Get grouped menu items filtered by user role
+  const groupedMenus = MenuConfigUtils.getGroupedMenuItems(userRole);
 
-  const filteredMenuItems = menuItems.filter(
-    (item) => !item.roles || item.roles.includes(userRole)
-  );
-
-  // Group menu items by category
-  const groupedMenus = {
-    main: filteredMenuItems.filter((item) => item.category === "main"),
-    inventory: filteredMenuItems.filter(
-      (item) => item.category === "inventory"
-    ),
-    reports: filteredMenuItems.filter((item) => item.category === "reports"),
-    settings: filteredMenuItems.filter((item) => item.category === "settings"),
-  };
-
-  const renderMenuGroup = (items: typeof filteredMenuItems, title?: string) => (
+  const renderMenuGroup = (items: MenuItemConfig[], title?: string) => (
     <div className="mb-5">
       {!isCollapsed && title && (
         <h3 className="px-3 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
@@ -214,7 +130,7 @@ const Sidebar = ({
         <nav className="flex-1 p-2 overflow-y-auto overflow-x-clip scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 hover:scrollbar-thumb-gray-400">
           <div className="pb-2">
             {/* Main Menu */}
-            {renderMenuGroup(groupedMenus.main)}
+            {groupedMenus.main.length > 0 && renderMenuGroup(groupedMenus.main)}
 
             {/* Inventory Management */}
             {groupedMenus.inventory.length > 0 &&

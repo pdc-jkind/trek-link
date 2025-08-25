@@ -6,18 +6,13 @@ import { usePathname, useRouter } from "next/navigation";
 import TopBar from "@/app/(dashboard)/components/TopBar";
 import Sidebar from "@/app/(dashboard)/components/Sidebar";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  SectionKey,
+  MenuConfigUtils,
+  UserRole,
+} from "@/app/(dashboard)/types/menuConfig";
 
-// Dummy data and types
-type SectionKey =
-  | "dashboard"
-  | "users"
-  | "inventory"
-  | "orders"
-  | "items"
-  | "disparity"
-  | "settings"
-  | "help";
-
+// Office type
 type Office = {
   id: string;
   name: string;
@@ -64,23 +59,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   const userData = {
     userName: "John Doe",
-    userRole: "admin",
+    userRole: "admin" as UserRole,
   };
 
-  // URL to SectionKey mapping
-  const urlToSectionMap: Record<string, SectionKey> = {
-    "/dashboard": "dashboard",
-    "/users": "users",
-    "/inventory": "inventory",
-    "/orders": "orders",
-    "/items": "items",
-    "/disparity": "disparity",
-    "/settings": "settings",
-    "/help": "help",
-  };
-
-  // Get current section based on URL
-  const currentSection = urlToSectionMap[pathname] || "dashboard";
+  // Get current section based on URL using MenuConfigUtils
+  const currentSection = MenuConfigUtils.getSectionFromUrl(pathname);
 
   // Event handlers
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
@@ -115,20 +98,17 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     }
   };
 
-  // Handler for navigation from sidebar
+  // Handler for navigation from sidebar using MenuConfigUtils
   const handleSectionChange = (section: SectionKey) => {
-    const sectionToUrlMap: Record<SectionKey, string> = {
-      dashboard: "/dashboard",
-      users: "/users",
-      inventory: "/inventory",
-      orders: "/orders",
-      items: "/items",
-      disparity: "/disparity",
-      settings: "/settings",
-      help: "/help",
-    };
+    // Validate user has access to this section
+    if (!MenuConfigUtils.validateSectionAccess(section, userData.userRole)) {
+      console.warn(
+        `User ${userData.userRole} does not have access to section: ${section}`
+      );
+      return;
+    }
 
-    const url = sectionToUrlMap[section] || "/dashboard";
+    const url = MenuConfigUtils.getUrlFromSection(section);
     router.push(url);
 
     // Close sidebar on mobile after navigation
