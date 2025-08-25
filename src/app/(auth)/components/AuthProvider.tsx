@@ -1,14 +1,14 @@
-// src/components/auth/AuthProvider.tsx
+// src/providers/AuthProvider.tsx
 "use client";
 
-import React from "react";
+import { ReactNode } from "react";
 import { AuthContext, useAuthState } from "@/hooks/useAuth";
 
 interface AuthProviderProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+export const AuthProvider = ({ children }: AuthProviderProps) => {
   const authState = useAuthState();
 
   return (

@@ -5,11 +5,13 @@ import { useState, useEffect, useCallback, createContext, useContext } from 'rea
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { AuthService } from '@/services/auth.service';
-import type { AuthUser, AuthState, AuthProvider as AuthProviderType } from '@/types/auth.types';
+import { useUserStore, setupUserAutoRefresh } from '@/store/userStore';
+import type { AuthUser, AuthProvider as AuthProviderType } from '@/types/auth.types';
 
 // Create Auth Context
 interface AuthContextType {
   user: AuthUser | null;
+  fullUserProfile: any; // From Zustand store
   isLoading: boolean;
   isAuthenticated: boolean;
   error: string | null;
@@ -17,6 +19,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   clearError: () => void;
   handleAuthCallback: () => Promise<boolean>;
+  refreshProfile: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -32,158 +35,133 @@ export const useAuth = () => {
 
 // Custom hook untuk auth logic (bisa dipanggil dari AuthProvider)
 export const useAuthState = () => {
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    session: null,
+  // Auth state for session management
+  const [authState, setAuthState] = useState({
+    user: null as AuthUser | null,
     isLoading: true,
-    isAuthenticated: false,
-    error: null,
+    error: null as string | null,
   });
 
+  // Get user store state
+  const userStore = useUserStore();
   const router = useRouter();
 
-  // Initialize auth state with optimized performance
+  // Initialize auth state dengan session check
   useEffect(() => {
     let mounted = true;
-    let authInitialized = false;
+    let cleanup: (() => void) | null = null;
 
     const initAuth = async () => {
-      if (authInitialized) return;
-      authInitialized = true;
-
       try {
+        console.log('Initializing auth state...');
+        
         const supabase = createClient();
         
-        // Get initial session with timeout for faster failure
-        const sessionPromise = supabase.auth.getSession();
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session timeout')), 5000)
-        );
-
-        const { data: { session }, error } = await Promise.race([
-          sessionPromise,
-          timeoutPromise
-        ]) as any;
+        // Get initial session
+        const { data: { session }, error } = await supabase.auth.getSession();
         
         if (!mounted) return;
 
-        if (error && error.message !== 'Session timeout') {
+        if (error) {
           console.error('Session error:', error);
-          setState(prev => ({
-            ...prev,
-            error: { message: 'Gagal mendapatkan sesi' },
+          setAuthState({
+            user: null,
             isLoading: false,
-          }));
+            error: 'Gagal mendapatkan sesi',
+          });
           return;
         }
 
-        if (session) {
-          // Parallel user fetch for faster loading
-          const userPromise = AuthService.getCurrentUser();
-          const user = await Promise.race([
-            userPromise,
-            new Promise((resolve) => setTimeout(() => resolve(null), 3000))
-          ]) as AuthUser | null;
-
+        if (session?.user) {
+          // Set basic auth user
+          const authUser = await AuthService.getCurrentUser();
+          
           if (mounted) {
-            setState(prev => ({
-              ...prev,
-              user,
-              session: session as any,
-              isAuthenticated: !!user,
+            setAuthState({
+              user: authUser,
               isLoading: false,
               error: null,
-            }));
+            });
+
+            // Initialize/refresh user profile if needed
+            // REMOVED: Don't call this here as it causes infinite loop
+            // await AuthService.refreshUserProfileIfNeeded();
           }
         } else {
-          setState(prev => ({
-            ...prev,
+          // No session
+          setAuthState({
             user: null,
-            session: null,
-            isAuthenticated: false,
             isLoading: false,
             error: null,
-          }));
+          });
+          
+          // Clear user store if no session
+          if (userStore.user) {
+            userStore.clearUser();
+          }
         }
-      } catch (error) {
+
+        // Setup auto-refresh for user profile data
+        cleanup = setupUserAutoRefresh();
+
+      } catch (error: any) {
         console.error('Auth initialization error:', error);
         if (mounted) {
-          setState(prev => ({
-            ...prev,
-            error: { message: 'Gagal menginisialisasi autentikasi' },
+          setAuthState({
+            user: null,
             isLoading: false,
-          }));
+            error: 'Gagal menginisialisasi autentikasi',
+          });
         }
       }
     };
 
     initAuth();
 
-    // Listen to auth changes with optimized handling
+    // Listen to auth changes
     const supabase = createClient();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    const { data: { subscription } } = AuthService.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
 
-        console.log('Auth state changed:', event, session);
+        console.log('Auth state changed:', event, !!session);
 
         try {
-          if (session) {
-            // Set session immediately for faster UI updates
-            setState(prev => ({
-              ...prev,
-              session: session as any,
-              isLoading: true,
-              error: null,
-            }));
-
-            // Fetch user data with timeout for faster processing
-            const userPromise = AuthService.getCurrentUser();
-            const timeoutPromise = new Promise((resolve) => 
-              setTimeout(() => resolve(null), 2000)
-            );
-
-            const user = await Promise.race([userPromise, timeoutPromise]) as AuthUser | null;
-
-            if (mounted) {
-              setState(prev => ({
-                ...prev,
-                user,
-                isAuthenticated: !!user,
-                isLoading: false,
-              }));
-
-              // Optimized redirect handling - no delay for better UX
-              if (event === 'SIGNED_IN' && user) {
-                // Use setTimeout to avoid blocking the current execution
-                setTimeout(() => {
-                  router.push('/dashboard');
-                }, 0);
-              }
-            }
-          } else {
-            setState(prev => ({
-              ...prev,
-              user: null,
-              session: null,
-              isAuthenticated: false,
+          if (session?.user) {
+            const authUser = await AuthService.getCurrentUser();
+            
+            setAuthState({
+              user: authUser,
               isLoading: false,
               error: null,
-            }));
+            });
 
-            // Immediate redirect on sign out
+            // Redirect to dashboard on sign in
+            if (event === 'SIGNED_IN') {
+              setTimeout(() => {
+                router.push('/dashboard');
+              }, 100);
+            }
+          } else {
+            setAuthState({
+              user: null,
+              isLoading: false,
+              error: null,
+            });
+
+            // Redirect to login on sign out
             if (event === 'SIGNED_OUT') {
               setTimeout(() => {
                 router.push('/login');
-              }, 0);
+              }, 100);
             }
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('Auth state change error:', error);
           if (mounted) {
-            setState(prev => ({
+            setAuthState(prev => ({
               ...prev,
-              error: { message: 'Terjadi kesalahan saat perubahan status auth' },
+              error: 'Terjadi kesalahan saat perubahan status auth',
               isLoading: false,
             }));
           }
@@ -194,120 +172,101 @@ export const useAuthState = () => {
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      if (cleanup) cleanup();
     };
-  }, [router]);
+  }, [router]); // FIXED: Removed userStore.user from dependencies
 
   const login = useCallback(async (provider: AuthProviderType = 'google') => {
-    setState(prev => ({ ...prev, isLoading: true, error: null }));
+    setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
+    userStore.setError(null);
     
     try {
       await AuthService.initiateOAuthLogin(provider);
     } catch (error: any) {
       console.error('Login error:', error);
-      setState(prev => ({
+      setAuthState(prev => ({
         ...prev,
-        error: { message: error.message || 'Gagal melakukan login' },
+        error: error.message || 'Gagal melakukan login',
         isLoading: false,
       }));
     }
-  }, []);
+  }, [userStore]);
 
   const logout = useCallback(async () => {
-    setState(prev => ({ ...prev, isLoading: true, error: null }));
+    setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
     
     try {
+      console.log("AuthService.logout called");
       await AuthService.logout();
+      // State akan di-clear oleh auth state change listener
     } catch (error: any) {
       console.error('Logout error:', error);
-      setState(prev => ({
+      setAuthState(prev => ({
         ...prev,
-        error: { message: error.message || 'Gagal melakukan logout' },
+        error: error.message || 'Gagal melakukan logout',
         isLoading: false,
       }));
     }
   }, []);
 
   const clearError = useCallback(() => {
-    setState(prev => ({ ...prev, error: null }));
-  }, []);
+    setAuthState(prev => ({ ...prev, error: null }));
+    userStore.setError(null);
+  }, [userStore]);
 
   const handleAuthCallback = useCallback(async (): Promise<boolean> => {
-    setState(prev => ({ ...prev, isLoading: true, error: null }));
+    setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
+    userStore.setError(null);
 
     try {
-      // Optimized callback handling with reduced waiting time
-      let attempts = 0;
-      const maxAttempts = 5;
+      const success = await AuthService.handleAuthCallback();
       
-      while (attempts < maxAttempts) {
-        // Check if there's a session after OAuth callback
-        const supabase = createClient();
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.warn(`Session check attempt ${attempts + 1} failed:`, error);
-          attempts++;
-          if (attempts < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 500)); // Reduced from 1000ms
-            continue;
-          }
-          throw error;
-        }
-
-        if (session) {
-          // Fetch user with timeout for faster processing
-          const userPromise = AuthService.getCurrentUser();
-          const timeoutPromise = new Promise((resolve) => 
-            setTimeout(() => resolve(null), 2000)
-          );
-
-          const user = await Promise.race([userPromise, timeoutPromise]) as AuthUser | null;
-          
-          setState(prev => ({
-            ...prev,
-            user,
-            session: session as any,
-            isAuthenticated: !!user,
-            isLoading: false,
-            error: null,
-          }));
-          
-          return true;
-        }
-
-        attempts++;
-        if (attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 300)); // Reduced waiting time
-        }
+      if (success) {
+        // Auth user akan di-set oleh auth state change listener
+        setAuthState(prev => ({
+          ...prev,
+          isLoading: false,
+          error: null,
+        }));
+        return true;
+      } else {
+        setAuthState(prev => ({
+          ...prev,
+          error: 'Gagal memproses callback',
+          isLoading: false,
+        }));
+        return false;
       }
-
-      // No session found after all attempts
-      setState(prev => ({
-        ...prev,
-        error: { message: 'Tidak ada sesi yang ditemukan setelah beberapa percobaan' },
-        isLoading: false,
-      }));
-      return false;
-
     } catch (error: any) {
       console.error('Auth callback error:', error);
-      setState(prev => ({
+      setAuthState(prev => ({
         ...prev,
-        error: { message: error.message || 'Gagal memproses callback' },
+        error: error.message || 'Gagal memproses callback',
         isLoading: false,
       }));
       return false;
     }
-  }, []);
+  }, [userStore]);
+
+  const refreshProfile = useCallback(async () => {
+    try {
+      await AuthService.refreshUserProfileIfNeeded();
+    } catch (error: any) {
+      console.error('Refresh profile error:', error);
+      userStore.setError(error.message || 'Gagal merefresh profil');
+    }
+  }, [userStore]);
 
   return {
-    user: state.user,
-    isLoading: state.isLoading,
-    isAuthenticated: state.isAuthenticated,
-    error: state.error?.message || null,
+    user: authState.user,
+    fullUserProfile: userStore.user, // Complete user profile from Zustand
+    isLoading: authState.isLoading || userStore.isLoading,
+    isAuthenticated: !!authState.user && userStore.isAuthenticated,
+    error: authState.error || userStore.error,
     login,
     logout,
     clearError,
     handleAuthCallback,
+    refreshProfile,
   };
 };

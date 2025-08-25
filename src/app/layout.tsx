@@ -1,10 +1,14 @@
 // src/app/layout.tsx
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Poppins } from "next/font/google";
 import { AuthProvider } from "@/app/(auth)/components/AuthProvider";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
+  variable: "--font-poppins",
+});
 
 export const metadata: Metadata = {
   title: "Trek Link - Link the Route",
@@ -23,7 +27,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="id">
-      <body className={inter.className}>
+      <body className={`${poppins.variable} ${poppins.className}`}>
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
