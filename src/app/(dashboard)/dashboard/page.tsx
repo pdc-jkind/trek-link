@@ -2,6 +2,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { AuthService } from "@/services/auth.service";
+import { useUserStore } from "@/store/userStore";
 import {
   Package,
   TrendingUp,
@@ -13,7 +16,82 @@ import {
   FileText,
   Bell,
   X,
+  LogOut,
 } from "lucide-react";
+
+// Auth Guard Hook
+const useAuthGuard = () => {
+  const router = useRouter();
+  const userStore = useUserStore();
+
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const initializeDashboard = async () => {
+      try {
+        console.log("Initializing dashboard...");
+
+        // Check authentication status
+        const authStatus = await AuthService.checkAuthStatus();
+        console.log("Auth status:", authStatus);
+
+        if (!mounted) return;
+
+        if (!authStatus.isAuthenticated) {
+          console.log("User not authenticated, redirecting to login...");
+          router.replace("/login");
+          return;
+        }
+
+        // If user is authenticated but profile not loaded, load it
+        if (!authStatus.hasProfile) {
+          console.log("Loading user profile to store...");
+          userStore.setLoading(true);
+
+          const profileLoaded = await AuthService.loadUserProfileToStore();
+
+          if (!mounted) return;
+
+          if (!profileLoaded) {
+            console.error("Failed to load user profile");
+            setError("Gagal memuat profil pengguna");
+            userStore.setLoading(false);
+            return;
+          }
+        }
+
+        // Success - user is authenticated and profile is loaded
+        console.log("Dashboard initialization complete");
+        setIsInitializing(false);
+        userStore.setLoading(false);
+      } catch (err: any) {
+        console.error("Dashboard initialization error:", err);
+        if (mounted) {
+          setError(
+            err.message || "Terjadi kesalahan saat menginisialisasi dashboard"
+          );
+          setIsInitializing(false);
+          userStore.setLoading(false);
+        }
+      }
+    };
+
+    initializeDashboard();
+
+    return () => {
+      mounted = false;
+    };
+  }, [router, userStore]);
+
+  return {
+    isInitializing: isInitializing || userStore.isLoading,
+    error: error || userStore.error,
+    user: userStore.user,
+  };
+};
 
 // Dashboard Stats Card Component
 type StatsCardProps = {
@@ -153,284 +231,254 @@ const QuickActions = () => {
   );
 };
 
-// Notification Toast Component
-interface NotificationToastProps {
-  title: string;
-  body: string;
-  onClose: () => void;
-}
-
-const NotificationToast: React.FC<NotificationToastProps> = ({
-  title,
-  body,
-  onClose,
+// Header Component
+const DashboardHeader = ({
+  user,
+  onLogout,
+}: {
+  user: any;
+  onLogout: () => void;
 }) => (
-  <div className="fixed top-4 right-4 bg-white rounded-lg shadow-lg border border-gray-200 p-4 max-w-sm z-50 animate-pulse">
-    <div className="flex items-start space-x-3">
-      <div className="bg-blue-500 rounded-full p-2 flex-shrink-0">
-        <Bell className="w-4 h-4 text-white" />
+  <header className="bg-white/90 backdrop-blur-lg shadow-sm border-b sticky top-0 z-40">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="flex justify-between items-center py-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          {user && (
+            <p className="text-sm text-gray-600">
+              Selamat datang di {user.office_name}
+            </p>
+          )}
+        </div>
+        <div className="flex items-center space-x-4">
+          {user && (
+            <div className="text-right">
+              <p className="text-sm font-medium text-gray-900">
+                {user.office_name}
+              </p>
+              <p className="text-xs text-gray-600">{user.role_name}</p>
+            </div>
+          )}
+          <button
+            onClick={onLogout}
+            className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors flex items-center space-x-2"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Logout</span>
+          </button>
+        </div>
       </div>
-      <div className="flex-1">
-        <h4 className="font-semibold text-gray-900">{title}</h4>
-        <p className="text-gray-600 text-sm mt-1">{body}</p>
+    </div>
+  </header>
+);
+
+// Loading Component
+const DashboardLoading = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+      <h2 className="text-xl font-semibold text-gray-700 mb-2">
+        Memuat Dashboard
+      </h2>
+      <p className="text-gray-500">Mengambil data profil pengguna...</p>
+    </div>
+  </div>
+);
+
+// Error Component
+const DashboardError = ({
+  error,
+  onRetry,
+  onBackToLogin,
+}: {
+  error: string;
+  onRetry: () => void;
+  onBackToLogin: () => void;
+}) => (
+  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
+    <div className="text-center max-w-md mx-auto">
+      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <h3 className="font-medium mb-2">Terjadi Kesalahan</h3>
+        <p className="text-sm">{error}</p>
       </div>
       <button
-        onClick={onClose}
-        className="text-gray-400 hover:text-gray-600 transition-colors"
+        onClick={onRetry}
+        className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded mr-2 transition-colors"
       >
-        <X className="w-4 h-4" />
+        Coba Lagi
+      </button>
+      <button
+        onClick={onBackToLogin}
+        className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded transition-colors"
+      >
+        Kembali ke Login
       </button>
     </div>
   </div>
 );
 
-// FCM Status Component (Mock for now)
-const FCMStatus = ({ className }: { className?: string }) => (
-  <div
-    className={`bg-green-50 border border-green-200 rounded-lg p-4 ${className}`}
-  >
-    <div className="flex items-center space-x-2">
-      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-      <p className="text-green-700 text-sm">Notifikasi push aktif</p>
-    </div>
-  </div>
-);
-
-// Notification Permission Component (Mock for now)
-const NotificationPermission = ({
-  onClose,
-  showCloseButton,
-}: {
-  onClose: () => void;
-  showCloseButton: boolean;
-}) => (
-  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-    <div className="flex items-center justify-between">
-      <div className="flex items-center space-x-2">
-        <Bell className="w-5 h-5 text-blue-500" />
-        <p className="text-blue-700 text-sm">
-          Aktifkan notifikasi push untuk mendapatkan update terbaru
-        </p>
-      </div>
-      {showCloseButton && (
-        <button
-          onClick={onClose}
-          className="text-blue-400 hover:text-blue-600 transition-colors ml-2"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      )}
-    </div>
-  </div>
-);
-
-// Custom hook for dashboard logic (simplified for Next.js)
-const useDashboard = ({
-  autoInitializeFCM,
-}: {
-  autoInitializeFCM: boolean;
-}) => {
-  const [isInitializing, setIsInitializing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [notificationToast, setNotificationToast] = useState<{
-    title: string;
-    body: string;
-  } | null>(null);
-  const [showPermissionBanner, setShowPermissionBanner] = useState(true);
-  const [showFCMStatus, setShowFCMStatus] = useState(false);
-
-  useEffect(() => {
-    if (autoInitializeFCM) {
-      setIsInitializing(true);
-
-      // Simulate FCM initialization
-      setTimeout(() => {
-        setIsInitializing(false);
-        setShowFCMStatus(true);
-        setShowPermissionBanner(false);
-
-        // Show a demo notification
-        setNotificationToast({
-          title: "Selamat datang!",
-          body: "Dashboard berhasil dimuat dengan fitur notifikasi aktif.",
-        });
-      }, 2000);
-    }
-  }, [autoInitializeFCM]);
-
-  const handleClosePermissionBanner = () => {
-    setShowPermissionBanner(false);
-  };
-
-  const closeNotificationToast = () => {
-    setNotificationToast(null);
-  };
-
-  return {
-    isInitializing,
-    error,
-    notificationToast,
-    handleClosePermissionBanner,
-    closeNotificationToast,
-    shouldShowFCMStatus: showFCMStatus,
-    shouldShowPermissionBanner: showPermissionBanner,
-  };
-};
-
 // Main Dashboard Page Component
 export default function Dashboard() {
-  // Use dashboard hook for all logic
-  const {
-    isInitializing,
-    error,
-    notificationToast,
-    handleClosePermissionBanner,
-    closeNotificationToast,
-    shouldShowFCMStatus,
-    shouldShowPermissionBanner,
-  } = useDashboard({
-    autoInitializeFCM: true,
-  });
-
-  // Dummy data for stats
+  const router = useRouter();
+  const { isInitializing, error, user } = useAuthGuard();
   const [loading, setLoading] = useState(true);
 
+  // Simulate data loading
   useEffect(() => {
-    // Simulate data loading
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 1000);
+    if (!isInitializing && !error && user) {
+      const timer = setTimeout(() => {
+        setLoading(false);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [isInitializing, error, user]);
 
-    return () => clearTimeout(timer);
-  }, []);
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      await AuthService.logout();
+      router.push("/login");
+    } catch (err: any) {
+      console.error("Logout error:", err);
+      // Force redirect even if logout fails
+      router.push("/login");
+    }
+  };
 
+  // Loading state
+  if (isInitializing) {
+    return <DashboardLoading />;
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <DashboardError
+        error={error}
+        onRetry={() => window.location.reload()}
+        onBackToLogin={() => router.push("/login")}
+      />
+    );
+  }
+
+  // Main dashboard content
   return (
-    <div className="space-y-6">
-      {/* FCM Permission Banner - Only show if permission not granted */}
-      {shouldShowPermissionBanner && (
-        <div className="mb-6">
-          <NotificationPermission
-            onClose={handleClosePermissionBanner}
-            showCloseButton={true}
-          />
-        </div>
-      )}
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
+      <DashboardHeader user={user} onLogout={handleLogout} />
 
-      {/* FCM Status - Only show when enabled */}
-      {shouldShowFCMStatus && (
-        <div className="mb-6">
-          <FCMStatus className="" />
-        </div>
-      )}
-
-      {/* Error Display */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <div className="flex items-center space-x-2">
-            <AlertCircle className="w-5 h-5 text-red-500" />
-            <p className="text-red-700">Error FCM: {error}</p>
+      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <div className="space-y-6">
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <StatsCard
+              title="Total Barang"
+              value={loading ? "..." : "1,234"}
+              icon={Package}
+              color="bg-blue-500"
+              trend="+12%"
+            />
+            <StatsCard
+              title="Barang Masuk Hari Ini"
+              value={loading ? "..." : "23"}
+              icon={TrendingUp}
+              color="bg-green-500"
+              trend="+5%"
+            />
+            <StatsCard
+              title="Total User"
+              value={loading ? "..." : "45"}
+              icon={Users}
+              color="bg-purple-500"
+              trend="+3%"
+            />
+            <StatsCard
+              title="Laporan Pending"
+              value={loading ? "..." : "7"}
+              icon={AlertCircle}
+              color="bg-orange-500"
+              trend="-2%"
+            />
           </div>
-        </div>
-      )}
 
-      {/* Loading State */}
-      {isInitializing && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <div className="flex items-center space-x-2">
-            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-blue-700">Menginisialisasi notifikasi push...</p>
-          </div>
-        </div>
-      )}
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatsCard
-          title="Total Barang"
-          value={loading ? "..." : "1,234"}
-          icon={Package}
-          color="bg-blue-500"
-          trend="+12%"
-        />
-        <StatsCard
-          title="Barang Masuk Hari Ini"
-          value={loading ? "..." : "23"}
-          icon={TrendingUp}
-          color="bg-green-500"
-          trend="+5%"
-        />
-        <StatsCard
-          title="Total User"
-          value={loading ? "..." : "45"}
-          icon={Users}
-          color="bg-purple-500"
-          trend="+3%"
-        />
-        <StatsCard
-          title="Laporan Pending"
-          value={loading ? "..." : "7"}
-          icon={AlertCircle}
-          color="bg-orange-500"
-          trend="-2%"
-        />
-      </div>
-
-      {/* Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <RecentActivity />
-        </div>
-        <div>
-          <QuickActions />
-        </div>
-      </div>
-
-      {/* Chart Section */}
-      <div className="bg-white bg-opacity-80 backdrop-blur-lg rounded-2xl p-6 border border-white border-opacity-40 shadow-lg">
-        <h3 className="text-gray-900 text-lg font-semibold mb-4">
-          Grafik Penerimaan Barang
-        </h3>
-        <div className="h-64 flex items-center justify-center">
-          {loading ? (
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-gray-600">Memuat grafik...</p>
-            </div>
-          ) : (
-            <div className="text-gray-600 text-center">
-              <BarChart3 className="w-16 h-16 mx-auto mb-2 text-gray-400" />
-              <p className="text-lg font-medium">
-                Grafik akan ditampilkan di sini
-              </p>
-              <p className="text-sm text-gray-500 mt-1">
-                Integrasi dengan library chart akan dilakukan selanjutnya
-              </p>
+          {/* User Info Card */}
+          {user && (
+            <div className="bg-white/80 backdrop-blur-lg overflow-hidden shadow-lg rounded-2xl border border-white/40">
+              <div className="p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Informasi Pengguna
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">
+                      Kantor
+                    </dt>
+                    <dd className="text-sm text-gray-900 mt-1">
+                      {user.office_name}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">
+                      Tipe Kantor
+                    </dt>
+                    <dd className="text-sm text-gray-900 mt-1">
+                      {user.office_type}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">
+                      Lokasi
+                    </dt>
+                    <dd className="text-sm text-gray-900 mt-1">
+                      {user.office_location}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Role</dt>
+                    <dd className="text-sm text-gray-900 mt-1">
+                      {user.role_name}
+                    </dd>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
-        </div>
-      </div>
 
-      {/* Legacy Connection Test Section - Hidden but preserved */}
-      <div className="hidden">
-        {/* Keep the original connection test functionality for reference */}
-        <div className="bg-white bg-opacity-80 backdrop-blur-lg rounded-2xl p-6 border border-white border-opacity-40 shadow-lg">
-          <h3 className="text-gray-900 text-lg font-semibold mb-4">
-            Database Connection Test
-          </h3>
-          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-            Test Supabase Connection
-          </button>
-        </div>
-      </div>
+          {/* Content Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <RecentActivity />
+            </div>
+            <div>
+              <QuickActions />
+            </div>
+          </div>
 
-      {/* Notification Toast */}
-      {notificationToast && (
-        <NotificationToast
-          title={notificationToast.title}
-          body={notificationToast.body}
-          onClose={closeNotificationToast}
-        />
-      )}
+          {/* Chart Section */}
+          <div className="bg-white bg-opacity-80 backdrop-blur-lg rounded-2xl p-6 border border-white border-opacity-40 shadow-lg">
+            <h3 className="text-gray-900 text-lg font-semibold mb-4">
+              Grafik Penerimaan Barang
+            </h3>
+            <div className="h-64 flex items-center justify-center">
+              {loading ? (
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-gray-600">Memuat grafik...</p>
+                </div>
+              ) : (
+                <div className="text-gray-600 text-center">
+                  <BarChart3 className="w-16 h-16 mx-auto mb-2 text-gray-400" />
+                  <p className="text-lg font-medium">
+                    Grafik akan ditampilkan di sini
+                  </p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Integrasi dengan library chart akan dilakukan selanjutnya
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

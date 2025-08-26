@@ -1,40 +1,14 @@
 // src/hooks/useAuth.ts
 "use client";
 
-import { useState, useEffect, useCallback, createContext, useContext } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import { AuthService } from '@/services/auth.service';
 import { useUserStore, setupUserAutoRefresh } from '@/store/userStore';
 import type { AuthUser, AuthProvider as AuthProviderType } from '@/types/auth.types';
 
-// Create Auth Context
-interface AuthContextType {
-  user: AuthUser | null;
-  fullUserProfile: any; // From Zustand store
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  error: string | null;
-  login: (provider: AuthProviderType) => Promise<void>;
-  logout: () => Promise<void>;
-  clearError: () => void;
-  handleAuthCallback: () => Promise<boolean>;
-  refreshProfile: () => Promise<void>;
-}
-
-export const AuthContext = createContext<AuthContextType | null>(null);
-
-// Custom hook untuk menggunakan auth context
+// Main auth hook for internal use and AuthProvider
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
-
-// Custom hook untuk auth logic (bisa dipanggil dari AuthProvider)
-export const useAuthState = () => {
   // Auth state for session management
   const [authState, setAuthState] = useState({
     user: null as AuthUser | null,
@@ -46,7 +20,7 @@ export const useAuthState = () => {
   const userStore = useUserStore();
   const router = useRouter();
 
-  // Initialize auth state dengan session check
+  // Initialize auth state
   useEffect(() => {
     let mounted = true;
     let cleanup: (() => void) | null = null;
@@ -55,38 +29,17 @@ export const useAuthState = () => {
       try {
         console.log('Initializing auth state...');
         
-        const supabase = createClient();
-        
-        // Get initial session
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // Get current session and user
+        const authUser = await AuthService.getCurrentUser();
         
         if (!mounted) return;
 
-        if (error) {
-          console.error('Session error:', error);
+        if (authUser) {
           setAuthState({
-            user: null,
+            user: authUser,
             isLoading: false,
-            error: 'Gagal mendapatkan sesi',
+            error: null,
           });
-          return;
-        }
-
-        if (session?.user) {
-          // Set basic auth user
-          const authUser = await AuthService.getCurrentUser();
-          
-          if (mounted) {
-            setAuthState({
-              user: authUser,
-              isLoading: false,
-              error: null,
-            });
-
-            // Initialize/refresh user profile if needed
-            // REMOVED: Don't call this here as it causes infinite loop
-            // await AuthService.refreshUserProfileIfNeeded();
-          }
         } else {
           // No session
           setAuthState({
@@ -119,7 +72,6 @@ export const useAuthState = () => {
     initAuth();
 
     // Listen to auth changes
-    const supabase = createClient();
     const { data: { subscription } } = AuthService.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
@@ -136,18 +88,15 @@ export const useAuthState = () => {
               error: null,
             });
 
-            // Redirect to dashboard on sign in
-            if (event === 'SIGNED_IN') {
-              setTimeout(() => {
-                router.push('/dashboard');
-              }, 100);
-            }
           } else {
             setAuthState({
               user: null,
               isLoading: false,
               error: null,
             });
+
+            // Clear user store
+            userStore.clearUser();
 
             // Redirect to login on sign out
             if (event === 'SIGNED_OUT') {
@@ -174,7 +123,7 @@ export const useAuthState = () => {
       subscription.unsubscribe();
       if (cleanup) cleanup();
     };
-  }, [router]); // FIXED: Removed userStore.user from dependencies
+  }, [router]);
 
   const login = useCallback(async (provider: AuthProviderType = 'google') => {
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
@@ -214,39 +163,29 @@ export const useAuthState = () => {
     userStore.setError(null);
   }, [userStore]);
 
-  const handleAuthCallback = useCallback(async (): Promise<boolean> => {
-    setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
-    userStore.setError(null);
-
+  // Check auth status helper
+  const checkAuthStatus = useCallback(async (): Promise<boolean> => {
     try {
-      const success = await AuthService.handleAuthCallback();
+      const authStatus = await AuthService.checkAuthStatus();
       
-      if (success) {
-        // Auth user akan di-set oleh auth state change listener
-        setAuthState(prev => ({
-          ...prev,
-          isLoading: false,
-          error: null,
-        }));
-        return true;
-      } else {
-        setAuthState(prev => ({
-          ...prev,
-          error: 'Gagal memproses callback',
-          isLoading: false,
-        }));
-        return false;
-      }
-    } catch (error: any) {
-      console.error('Auth callback error:', error);
       setAuthState(prev => ({
         ...prev,
-        error: error.message || 'Gagal memproses callback',
+        user: authStatus.user,
+        isLoading: false,
+        error: null,
+      }));
+
+      return authStatus.isAuthenticated;
+    } catch (error: any) {
+      console.error('Check auth status error:', error);
+      setAuthState(prev => ({
+        ...prev,
+        error: error.message || 'Gagal memeriksa status autentikasi',
         isLoading: false,
       }));
       return false;
     }
-  }, [userStore]);
+  }, []);
 
   const refreshProfile = useCallback(async () => {
     try {
@@ -266,7 +205,7 @@ export const useAuthState = () => {
     login,
     logout,
     clearError,
-    handleAuthCallback,
+    checkAuthStatus,
     refreshProfile,
   };
 };

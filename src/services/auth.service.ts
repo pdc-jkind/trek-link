@@ -1,6 +1,5 @@
 // src/services/auth.service.ts
 import { createClient } from "@/lib/supabase/client";
-import { useUserStore } from "@/store/userStore";
 import { UserService } from "@/services/user.service";
 import type { AuthUser, AuthProvider } from "@/types/auth.types";
 
@@ -13,20 +12,14 @@ export class AuthService {
   }
 
   /**
-   * Get redirect URL based on environment configuration
+   * Get redirect URL for OAuth callback
    */
   private static getRedirectUrl(): string {
-    const envRedirectUrl = process.env.NEXT_PUBLIC_REDIRECT_URL;
-    
-    if (envRedirectUrl) {
-      return envRedirectUrl;
-    }
-
     const baseUrl = typeof window !== 'undefined' 
       ? window.location.origin 
-      : 'http://localhost:3000';
+      : process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
     
-    return `${baseUrl}/auth/callback`;
+    return `${baseUrl}/callback`;
   }
 
   /**
@@ -36,11 +29,13 @@ export class AuthService {
     try {
       const supabase = this.getClient();
       const { data: { session }, error } = await supabase.auth.getSession();
+      
       if (error) {
         console.error("Error checking authentication:", error);
         return false;
       }
-      return session !== null;
+      
+      return !!session;
     } catch (error) {
       console.error("Error checking authentication:", error);
       return false;
@@ -105,29 +100,76 @@ export class AuthService {
   }
 
   /**
-   * Fetch and store complete user profile setelah login
+   * Load user profile to Zustand store (client-side only)
    */
-  static async initializeUserProfile(authUserId: string): Promise<boolean> {
+  static async loadUserProfileToStore(): Promise<boolean> {
     try {
-      console.log('Initializing user profile for:', authUserId);
+      console.log('Loading user profile to Zustand store...');
       
-      // Fetch full user profile dari database
-      const userProfile = await UserService.getUserProfile(authUserId);
-      
-      if (userProfile) {
-        // Store di Zustand
-        useUserStore.getState().setUser(userProfile);
-        console.log('User profile initialized and stored:', userProfile);
-        return true;
-      } else {
-        console.error('User profile not found in database');
-        useUserStore.getState().setError('Profil pengguna tidak ditemukan');
+      // Get current session first
+      const session = await this.getSession();
+      if (!session?.user) {
+        console.log('No active session found');
         return false;
       }
+
+      // Get user profile from database
+      const userProfile = await UserService.getUserProfile(session.user.id);
+      
+      if (!userProfile) {
+        console.error('User profile not found in database');
+        return false;
+      }
+
+      // Import store dynamically to avoid SSR issues
+      const { useUserStore } = await import('@/store/userStore');
+      const store = useUserStore.getState();
+      
+      // Set user in store
+      store.setUser(userProfile);
+      
+      console.log('User profile loaded to store successfully:', userProfile.office_name);
+      return true;
+      
     } catch (error: any) {
-      console.error('Error initializing user profile:', error);
-      useUserStore.getState().setError(error.message || 'Gagal menginisialisasi profil pengguna');
+      console.error('Error loading user profile to store:', error);
       return false;
+    }
+  }
+
+  /**
+   * Check auth status and profile status
+   */
+  static async checkAuthStatus(): Promise<{
+    isAuthenticated: boolean;
+    user: AuthUser | null;
+    hasProfile: boolean;
+  }> {
+    try {
+      const session = await this.getSession();
+      const user = await this.getCurrentUser();
+      
+      const isAuthenticated = !!session && !!user;
+      
+      // Check if user profile exists in store (client-side only)
+      let hasProfile = false;
+      if (typeof window !== 'undefined') {
+        const { useUserStore } = await import('@/store/userStore');
+        hasProfile = !!useUserStore.getState().user;
+      }
+      
+      return {
+        isAuthenticated,
+        user,
+        hasProfile
+      };
+    } catch (error: any) {
+      console.error('Check auth status error:', error);
+      return {
+        isAuthenticated: false,
+        user: null,
+        hasProfile: false
+      };
     }
   }
 
@@ -138,8 +180,11 @@ export class AuthService {
     try {
       const supabase = this.getClient();
       
-      // Clear Zustand store first
-      useUserStore.getState().clearUser();
+      // Clear Zustand store first (client-side only)
+      if (typeof window !== 'undefined') {
+        const { useUserStore } = await import('@/store/userStore');
+        useUserStore.getState().clearUser();
+      }
       
       // Then clear Supabase session (ini akan menghapus HTTP-only cookie)
       const { error } = await supabase.auth.signOut();
@@ -152,8 +197,13 @@ export class AuthService {
       console.log('Logout successful');
     } catch (error: any) {
       console.error("Error logging out:", error);
+      
       // Even if logout fails, ensure local state is cleared
-      useUserStore.getState().clearUser();
+      if (typeof window !== 'undefined') {
+        const { useUserStore } = await import('@/store/userStore');
+        useUserStore.getState().clearUser();
+      }
+      
       throw new Error(error.message || 'Gagal logout');
     }
   }
@@ -190,74 +240,39 @@ export class AuthService {
   }
 
   /**
-   * Handle auth callback - verify session and initialize user profile
-   */
-  static async handleAuthCallback(): Promise<boolean> {
-    try {
-      console.log('Handling auth callback...');
-      
-      // Get session from Supabase (yang sudah ada dari cookie)
-      const session = await this.getSession();
-      
-      if (!session?.user) {
-        console.error('No session found after callback');
-        return false;
-      }
-
-      console.log('Session found, initializing user profile...');
-      
-      // Initialize complete user profile
-      const success = await this.initializeUserProfile(session.user.id);
-      
-      if (success) {
-        console.log('Auth callback handled successfully');
-        return true;
-      } else {
-        console.error('Failed to initialize user profile');
-        return false;
-      }
-    } catch (error: any) {
-      console.error('Error handling auth callback:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Refresh user profile if needed
+   * Refresh user profile if needed (client-side only)
    */
   static async refreshUserProfileIfNeeded(): Promise<void> {
-    const userStore = useUserStore.getState();
-    
-    // Check if we have authenticated session but no user profile
-    const isAuthenticated = await this.isAuthenticated();
-    
-    if (isAuthenticated && !userStore.user) {
-      console.log('Authenticated but no user profile, fetching...');
-      const session = await this.getSession();
-      if (session?.user) {
-        await this.initializeUserProfile(session.user.id);
+    if (typeof window === 'undefined') return;
+
+    try {
+      const { useUserStore } = await import('@/store/userStore');
+      const store = useUserStore.getState();
+      
+      // Check if data is stale or user is not loaded
+      if (!store.user || store.isDataStale(30)) { // 30 minutes
+        console.log('User profile data is stale or missing, refreshing...');
+        await this.loadUserProfileToStore();
       }
-    } else if (isAuthenticated && userStore.isDataStale(30)) {
-      // Refresh if data is stale (older than 30 minutes)
-      console.log('User data is stale, refreshing...');
-      await userStore.refreshUserProfile();
+    } catch (error: any) {
+      console.error('Error refreshing user profile:', error);
     }
   }
 
   /**
-   * Listen to auth state changes
+   * Listen to auth state changes (client-side only)
    */
   static onAuthStateChange(callback: (event: string, session: any) => void) {
     const supabase = this.getClient();
     return supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, !!session);
       
-      if (event === 'SIGNED_IN' && session?.user) {
-        // Initialize user profile when signed in
-        await this.initializeUserProfile(session.user.id);
-      } else if (event === 'SIGNED_OUT') {
-        // Clear user store when signed out
-        useUserStore.getState().clearUser();
+      if (event === 'SIGNED_OUT') {
+        // Clear user store when signed out (client-side only)
+        if (typeof window !== 'undefined') {
+          const { useUserStore } = await import('@/store/userStore');
+          useUserStore.getState().clearUser();
+        }
       }
       
       // Call the original callback
