@@ -6,14 +6,16 @@ import { UserService } from '../services/user.service';
 
 interface UserState {
   // State
-  user: User | null;
+  allUserOffices: User[]; // semua office untuk user ini
+  currentUser: User | null; // office yang sedang aktif (default: pertama)
   isAuthenticated: boolean;
   isLoading: boolean;
   lastFetched: string | null; // untuk cache management
   error: string | null;
 
   // Actions
-  setUser: (user: User) => void;
+  setUsers: (users: User[]) => void;
+  switchOffice: (officeId: string) => void;
   fetchUserProfile: (userId: string) => Promise<void>;
   updateUser: (updates: Partial<User>) => Promise<void>;
   clearUser: () => void;
@@ -30,32 +32,45 @@ export const useUserStore = create<UserState>()(
   persist(
     (set, get) => ({
       // Initial state
-      user: null,
+      allUserOffices: [],
+      currentUser: null,
       isAuthenticated: false,
       isLoading: false,
       lastFetched: null,
       error: null,
 
       // Actions
-      setUser: (user: User) => {
+      setUsers: (users: User[]) => {
+        const currentUser = users.length > 0 ? users[0] : null; // Default ke office pertama
         set({
-          user,
-          isAuthenticated: true,
+          allUserOffices: users,
+          currentUser,
+          isAuthenticated: !!currentUser,
           isLoading: false,
           lastFetched: new Date().toISOString(),
           error: null,
         });
       },
 
+      switchOffice: (officeId: string) => {
+        const users = get().allUserOffices;
+        const selectedUser = users.find(user => user.office_id === officeId);
+        
+        if (selectedUser) {
+          set({ currentUser: selectedUser });
+        }
+      },
+
       fetchUserProfile: async (userId: string) => {
         set({ isLoading: true, error: null });
         
         try {
-          const userProfile = await UserService.getUserProfile(userId);
+          const userProfiles = await UserService.getUserProfile(userId);
           
-          if (userProfile) {
+          if (userProfiles && userProfiles.length > 0) {
             set({
-              user: userProfile,
+              allUserOffices: userProfiles,
+              currentUser: userProfiles[0], // Default ke office pertama
               isAuthenticated: true,
               isLoading: false,
               lastFetched: new Date().toISOString(),
@@ -63,7 +78,8 @@ export const useUserStore = create<UserState>()(
             });
           } else {
             set({
-              user: null,
+              allUserOffices: [],
+              currentUser: null,
               isAuthenticated: false,
               isLoading: false,
               error: 'Gagal mengambil profil user',
@@ -79,7 +95,7 @@ export const useUserStore = create<UserState>()(
       },
 
       updateUser: async (updates: Partial<User>) => {
-        const currentUser = get().user;
+        const currentUser = get().currentUser;
         if (!currentUser) {
           set({ error: 'No user to update' });
           return;
@@ -91,8 +107,15 @@ export const useUserStore = create<UserState>()(
           const updatedUser = await UserService.updateUserProfile(currentUser.id, updates);
           
           if (updatedUser) {
+            // Update both arrays
+            const allUsers = get().allUserOffices;
+            const updatedAllUsers = allUsers.map(user => 
+              user.office_id === updatedUser.office_id ? updatedUser : user
+            );
+            
             set({
-              user: updatedUser,
+              allUserOffices: updatedAllUsers,
+              currentUser: updatedUser,
               isLoading: false,
               lastFetched: new Date().toISOString(),
               error: null,
@@ -113,7 +136,7 @@ export const useUserStore = create<UserState>()(
       },
 
       refreshUserProfile: async () => {
-        const currentUser = get().user;
+        const currentUser = get().currentUser;
         if (!currentUser) return;
         
         await get().fetchUserProfile(currentUser.id);
@@ -121,7 +144,8 @@ export const useUserStore = create<UserState>()(
 
       clearUser: () => {
         set({
-          user: null,
+          allUserOffices: [],
+          currentUser: null,
           isAuthenticated: false,
           isLoading: false,
           lastFetched: null,
@@ -139,7 +163,7 @@ export const useUserStore = create<UserState>()(
 
       // Helper functions
       hasPermission: (permission: string) => {
-        const user = get().user;
+        const user = get().currentUser;
         if (!user || !user.role_permissions) return false;
         return user.role_permissions.includes(permission);
       },
@@ -174,7 +198,8 @@ export const useUserStore = create<UserState>()(
       },
       // Hanya persist data yang diperlukan, tidak persist isLoading
       partialize: (state) => ({
-        user: state.user,
+        allUserOffices: state.allUserOffices,
+        currentUser: state.currentUser,
         isAuthenticated: state.isAuthenticated,
         lastFetched: state.lastFetched,
       }),
@@ -183,14 +208,15 @@ export const useUserStore = create<UserState>()(
 );
 
 // Selector hooks untuk kemudahan penggunaan
-export const useUser = () => useUserStore((state) => state.user);
+export const useUser = () => useUserStore((state) => state.currentUser);
+export const useAllUserOffices = () => useUserStore((state) => state.allUserOffices);
 export const useIsAuthenticated = () => useUserStore((state) => state.isAuthenticated);
 export const useUserLoading = () => useUserStore((state) => state.isLoading);
 export const useUserError = () => useUserStore((state) => state.error);
 
 // Helper functions
 export const getUserOfficeInfo = () => {
-  const user = useUserStore.getState().user;
+  const user = useUserStore.getState().currentUser;
   if (!user) return null;
   
   return {
@@ -202,7 +228,7 @@ export const getUserOfficeInfo = () => {
 };
 
 export const getUserRole = () => {
-  const user = useUserStore.getState().user;
+  const user = useUserStore.getState().currentUser;
   if (!user) return null;
   
   return {

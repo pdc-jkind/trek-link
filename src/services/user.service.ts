@@ -7,22 +7,21 @@ export class UserService {
   /**
    * Fetch user profile (untuk client components)
    */
-  static async getUserProfile(userId: string): Promise<User | null> {
+  static async getUserProfile(userId: string): Promise<User[] | null> {
     try {
       const supabase = createClient();
       
       const { data, error } = await supabase
         .from('users_with_office_assignment')
         .select('*')
-        .eq('id', userId)
-        .single();
+        .eq('id', userId);
 
       if (error) {
         console.error('Error fetching user profile from client:', error);
         return null;
       }
 
-      return data as User;
+      return data as User[];
     } catch (error) {
       console.error('Error in getUserProfileClient:', error);
       return null;

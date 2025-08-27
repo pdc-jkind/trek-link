@@ -10,10 +10,13 @@ import {
   Settings,
   Palette,
 } from "lucide-react";
-// Note: You'll need to create this component or replace with your actual StatusPage component
-// import StatusPage, { type StatusType } from "@/components/ui/StatusPage";
+import {
+  Card,
+  ActionButton,
+  PageHeader,
+} from "@/app/(dashboard)/components/ui";
 
-// Temporary StatusType definition - replace with your actual type
+// Status types for demo
 type StatusType =
   | "loading"
   | "404"
@@ -22,7 +25,7 @@ type StatusType =
   | "network-error"
   | "maintenance";
 
-// Dummy StatusPage component - replace with your actual component
+// Mock StatusPage component - replace with your actual StatusPage component
 const StatusPage = ({
   type,
   customConfig,
@@ -30,18 +33,55 @@ const StatusPage = ({
   type: StatusType;
   customConfig?: { actionButton?: { text: string; onClick: () => void } };
 }) => {
+  const statusConfig = {
+    loading: {
+      title: "Loading...",
+      description: "Memuat data, mohon tunggu sebentar",
+      gradient: "from-blue-500 to-purple-700",
+    },
+    "404": {
+      title: "404 - Halaman Tidak Ditemukan",
+      description: "Halaman yang Anda cari tidak dapat ditemukan",
+      gradient: "from-orange-500 to-yellow-600",
+    },
+    "500": {
+      title: "500 - Server Error",
+      description: "Terjadi kesalahan pada server, coba lagi nanti",
+      gradient: "from-red-500 to-pink-700",
+    },
+    "403": {
+      title: "403 - Akses Ditolak",
+      description: "Anda tidak memiliki izin untuk mengakses halaman ini",
+      gradient: "from-gray-600 to-gray-800",
+    },
+    "network-error": {
+      title: "Network Error",
+      description: "Koneksi internet bermasalah, periksa koneksi Anda",
+      gradient: "from-cyan-500 to-indigo-700",
+    },
+    maintenance: {
+      title: "Sistem Dalam Pemeliharaan",
+      description: "Sistem sedang dalam pemeliharaan, coba lagi nanti",
+      gradient: "from-emerald-500 to-cyan-700",
+    },
+  };
+
+  const config = statusConfig[type];
+
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-blue-500 to-purple-700 flex items-center justify-center">
-      <div className="text-center text-white">
-        <h2 className="text-4xl font-bold mb-4">Status: {type}</h2>
-        <p className="mb-6">This is a preview of the {type} status page</p>
+    <div
+      className={`fixed inset-0 bg-gradient-to-br ${config.gradient} flex items-center justify-center`}
+    >
+      <div className="text-center text-white max-w-md mx-auto px-4">
+        <h2 className="text-4xl font-bold mb-4">{config.title}</h2>
+        <p className="mb-6 text-lg opacity-90">{config.description}</p>
         {customConfig?.actionButton && (
-          <button
+          <ActionButton
             onClick={customConfig.actionButton.onClick}
-            className="bg-white text-blue-600 px-6 py-3 rounded-lg font-medium hover:bg-gray-100 transition-colors"
+            variant="blue"
           >
             {customConfig.actionButton.text}
-          </button>
+          </ActionButton>
         )}
       </div>
     </div>
@@ -51,50 +91,44 @@ const StatusPage = ({
 const HelpPage: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<StatusType | null>(null);
 
-  const statusTypes: {
-    type: StatusType;
-    label: string;
-    description: string;
-    gradient: string;
-    color: string;
-  }[] = [
+  const statusTypes = [
     {
-      type: "loading",
+      type: "loading" as StatusType,
       label: "Loading",
       description: "Loading umum dengan spinner animasi",
       gradient: "from-blue-500 to-purple-700",
       color: "bg-blue-500",
     },
     {
-      type: "404",
+      type: "404" as StatusType,
       label: "404 Error",
       description: "Halaman tidak ditemukan",
       gradient: "from-orange-500 to-yellow-600",
       color: "bg-orange-500",
     },
     {
-      type: "500",
+      type: "500" as StatusType,
       label: "500 Error",
       description: "Server internal error",
       gradient: "from-red-500 to-pink-700",
       color: "bg-red-500",
     },
     {
-      type: "403",
+      type: "403" as StatusType,
       label: "403 Error",
       description: "Access denied / forbidden",
       gradient: "from-gray-600 to-gray-800",
       color: "bg-gray-600",
     },
     {
-      type: "network-error",
+      type: "network-error" as StatusType,
       label: "Network Error",
       description: "Koneksi internet bermasalah",
       gradient: "from-cyan-500 to-indigo-700",
       color: "bg-cyan-500",
     },
     {
-      type: "maintenance",
+      type: "maintenance" as StatusType,
       label: "Maintenance",
       description: "Sistem dalam pemeliharaan",
       gradient: "from-emerald-500 to-cyan-700",
@@ -110,41 +144,54 @@ const HelpPage: React.FC = () => {
     setSelectedStatus(null);
   };
 
+  // Help sections data
+  const helpSections = [
+    {
+      icon: Book,
+      title: "Panduan Pengguna",
+      description: "Pelajari cara menggunakan sistem",
+      color: "text-blue-600",
+    },
+    {
+      icon: MessageCircle,
+      title: "Live Chat",
+      description: "Hubungi support langsung",
+      color: "text-green-600",
+    },
+    {
+      icon: Mail,
+      title: "Email Support",
+      description: "Kirim pertanyaan via email",
+      color: "text-purple-600",
+    },
+  ];
+
   return (
     <>
       <div className="space-y-6">
-        <div className="bg-white bg-opacity-80 backdrop-blur-lg rounded-2xl p-6 border border-white border-opacity-40 shadow-lg">
-          <h2 className="text-gray-900 text-xl font-semibold mb-6">Bantuan</h2>
+        <Card>
+          <PageHeader title="Bantuan" />
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="text-center p-6 bg-gray-50 rounded-lg">
-              <Book className="w-12 h-12 mx-auto mb-4 text-blue-600" />
-              <h3 className="font-medium text-gray-900 mb-2">
-                Panduan Pengguna
-              </h3>
-              <p className="text-sm text-gray-600">
-                Pelajari cara menggunakan sistem
-              </p>
-            </div>
-
-            <div className="text-center p-6 bg-gray-50 rounded-lg">
-              <MessageCircle className="w-12 h-12 mx-auto mb-4 text-green-600" />
-              <h3 className="font-medium text-gray-900 mb-2">Live Chat</h3>
-              <p className="text-sm text-gray-600">Hubungi support langsung</p>
-            </div>
-
-            <div className="text-center p-6 bg-gray-50 rounded-lg">
-              <Mail className="w-12 h-12 mx-auto mb-4 text-purple-600" />
-              <h3 className="font-medium text-gray-900 mb-2">Email Support</h3>
-              <p className="text-sm text-gray-600">
-                Kirim pertanyaan via email
-              </p>
-            </div>
+            {helpSections.map((section, index) => (
+              <div
+                key={index}
+                className="text-center p-6 bg-gray-50 rounded-lg"
+              >
+                <section.icon
+                  className={`w-12 h-12 mx-auto mb-4 ${section.color}`}
+                />
+                <h3 className="font-medium text-gray-900 mb-2">
+                  {section.title}
+                </h3>
+                <p className="text-sm text-gray-600">{section.description}</p>
+              </div>
+            ))}
           </div>
-        </div>
+        </Card>
 
-        {/* Development Only - Enhanced Status Page Testing */}
-        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-2xl p-6">
+        {/* Development Status Page Testing */}
+        <Card className="bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-200">
           <div className="flex items-center gap-2 mb-4">
             <Palette className="w-5 h-5 text-indigo-600" />
             <h3 className="text-indigo-800 text-lg font-semibold">
@@ -157,18 +204,17 @@ const HelpPage: React.FC = () => {
 
           <div className="bg-indigo-100/50 rounded-lg p-4 mb-6">
             <p className="text-indigo-700 text-sm mb-2">
-              <strong>✨ Fitur Terbaru:</strong>
+              <strong>Fitur Preview:</strong>
             </p>
             <ul className="text-indigo-600 text-sm space-y-1 ml-4">
               <li>• Dynamic gradient backgrounds untuk setiap status</li>
               <li>• Enhanced glassmorphism design</li>
               <li>• Improved animations dan micro-interactions</li>
               <li>• Larger card size dengan better spacing</li>
-              <li>• Removed auth-loading dan success variants</li>
             </ul>
           </div>
 
-          {/* Status Type Grid dengan Preview */}
+          {/* Status Type Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             {statusTypes.map(
               ({ type, label, description, gradient, color }) => (
@@ -181,7 +227,6 @@ const HelpPage: React.FC = () => {
                     <h4 className="font-semibold text-gray-900">{label}</h4>
                   </div>
 
-                  {/* Gradient Preview */}
                   <div
                     className={`h-3 bg-gradient-to-r ${gradient} rounded-full mb-3 opacity-80`}
                   ></div>
@@ -190,21 +235,20 @@ const HelpPage: React.FC = () => {
                     {description}
                   </p>
 
-                  <button
+                  <ActionButton
                     onClick={() => handleStatusTest(type)}
-                    className="w-full bg-indigo-500 hover:bg-indigo-600 text-white py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-sm hover:shadow-md"
+                    variant="purple"
+                    className="text-xs"
                   >
-                    <div className="flex items-center justify-center gap-2">
-                      <Eye className="w-4 h-4" />
-                      <span>Preview {label}</span>
-                    </div>
-                  </button>
+                    <Eye className="w-4 h-4" />
+                    <span>Preview {label}</span>
+                  </ActionButton>
                 </div>
               )
             )}
           </div>
 
-          {/* Quick Actions dengan Helper Components */}
+          {/* Quick Actions */}
           <div className="bg-white/70 rounded-xl p-5 border border-indigo-200">
             <h4 className="text-indigo-800 font-semibold mb-4 flex items-center gap-2">
               <Settings className="w-4 h-4" />
@@ -212,88 +256,37 @@ const HelpPage: React.FC = () => {
             </h4>
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-              <button
-                onClick={() => setSelectedStatus("loading")}
-                className="group bg-blue-500 hover:bg-blue-600 text-white py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95"
-              >
-                <div className="flex flex-col items-center">
+              {statusTypes.map(({ type, label, color }) => (
+                <button
+                  key={type}
+                  onClick={() => setSelectedStatus(type)}
+                  className={`group ${color.replace(
+                    "bg-",
+                    "bg-"
+                  )} hover:opacity-90 text-white py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95`}
+                >
                   <span className="text-xs opacity-75 group-hover:opacity-100">
-                    LoadingPage
+                    {label}
                   </span>
-                </div>
-              </button>
-
-              <button
-                onClick={() => setSelectedStatus("404")}
-                className="group bg-orange-500 hover:bg-orange-600 text-white py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95"
-              >
-                <div className="flex flex-col items-center">
-                  <span className="text-xs opacity-75 group-hover:opacity-100">
-                    PageNotFound
-                  </span>
-                </div>
-              </button>
-
-              <button
-                onClick={() => setSelectedStatus("500")}
-                className="group bg-red-500 hover:bg-red-600 text-white py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95"
-              >
-                <div className="flex flex-col items-center">
-                  <span className="text-xs opacity-75 group-hover:opacity-100">
-                    ServerError
-                  </span>
-                </div>
-              </button>
-
-              <button
-                onClick={() => setSelectedStatus("403")}
-                className="group bg-gray-500 hover:bg-gray-600 text-white py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95"
-              >
-                <div className="flex flex-col items-center">
-                  <span className="text-xs opacity-75 group-hover:opacity-100">
-                    AccessDenied
-                  </span>
-                </div>
-              </button>
-
-              <button
-                onClick={() => setSelectedStatus("network-error")}
-                className="group bg-cyan-500 hover:bg-cyan-600 text-white py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95"
-              >
-                <div className="flex flex-col items-center">
-                  <span className="text-xs opacity-75 group-hover:opacity-100">
-                    NetworkError
-                  </span>
-                </div>
-              </button>
-
-              <button
-                onClick={() => setSelectedStatus("maintenance")}
-                className="group bg-emerald-500 hover:bg-emerald-600 text-white py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95"
-              >
-                <div className="flex flex-col items-center">
-                  <span className="text-xs opacity-75 group-hover:opacity-100">
-                    MaintenancePage
-                  </span>
-                </div>
-              </button>
+                </button>
+              ))}
             </div>
           </div>
 
           {/* Info Footer */}
           <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
             <p className="text-amber-700 text-xs text-center">
-              💡 <strong>Note:</strong> Hapus section ini pada environment
+              <strong>Note:</strong> Hapus section ini pada environment
               production. Preview ini hanya untuk development testing.
             </p>
           </div>
-        </div>
+        </Card>
       </div>
 
-      {/* Enhanced Status Page Overlay */}
+      {/* Status Page Overlay */}
       {selectedStatus && (
         <div className="fixed inset-0 z-50">
-          {/* Enhanced Close button */}
+          {/* Close button */}
           <button
             onClick={closeStatusTest}
             className="absolute top-6 right-6 z-60 group bg-black/20 backdrop-blur-md text-white rounded-full p-3 hover:bg-black/30 transition-all duration-300 border border-white/20 hover:scale-110"
@@ -322,7 +315,6 @@ const HelpPage: React.FC = () => {
             </span>
           </div>
 
-          {/* Status Page */}
           <StatusPage
             type={selectedStatus}
             customConfig={{
