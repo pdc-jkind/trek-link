@@ -1,7 +1,15 @@
-// src\app\(frontend)\components\layout\TopBar.tsx
+// src\app\(dashboard)\components\TopBar.tsx
 "use client";
 
-import { Menu, LogOut, User, Building, Lock, Bell } from "lucide-react";
+import {
+  Menu,
+  LogOut,
+  User,
+  Building,
+  Lock,
+  Bell,
+  Loader2,
+} from "lucide-react";
 import {
   SectionKey,
   MenuConfigUtils,
@@ -29,6 +37,7 @@ export interface TopBarProps {
   // Modal states
   showLogoutModal: boolean;
   showUserDropdown: boolean;
+  isLoggingOut?: boolean; // Add loading state for logout
 
   // Event handlers
   onMenuToggle: () => void;
@@ -50,6 +59,7 @@ const TopBar = ({
   selectedOffice,
   showLogoutModal,
   showUserDropdown,
+  isLoggingOut = false,
   onMenuToggle,
   onLogout,
   onChangePassword,
@@ -158,7 +168,10 @@ const TopBar = ({
               <div className="relative">
                 <button
                   onClick={onToggleUserDropdown}
-                  className="flex items-center gap-2 bg-white/40 hover:bg-white/70 text-gray-600 hover:text-gray-800 font-medium py-1.5 px-2.5 lg:px-3 rounded-lg shadow-sm hover:shadow-md transition-all duration-300"
+                  disabled={isLoggingOut}
+                  className={`flex items-center gap-2 bg-white/40 hover:bg-white/70 text-gray-600 hover:text-gray-800 font-medium py-1.5 px-2.5 lg:px-3 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 ${
+                    isLoggingOut ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
                 >
                   <div className="w-5 lg:w-7 h-5 lg:h-7 rounded-full overflow-hidden flex items-center justify-center">
                     {userImage ? (
@@ -188,8 +201,8 @@ const TopBar = ({
                 </button>
 
                 {/* User Dropdown - reduced sizes */}
-                {showUserDropdown && (
-                  <div className="absolute right-0 mt-2 w-50 bg-white rounded-lg shadow-xl border border-gray-200 py-1.5 z-50">
+                {showUserDropdown && !isLoggingOut && (
+                  <div className="absolute right-0 mt-2 w-50 bg-white rounded-lg shadow-xl border border-gray-200 py-1.5 z-50 animate-in slide-in-from-top-2 duration-200">
                     <div className="px-3 py-2.5 border-b border-gray-100">
                       <div className="font-medium text-gray-900 text-sm">
                         {userName}
@@ -214,7 +227,7 @@ const TopBar = ({
 
                     <button
                       onClick={onShowLogoutModal}
-                      className="w-full text-left px-3 py-2.5 hover:bg-gray-50 transition-colors flex items-center gap-2.5 text-rose-600"
+                      className="w-full text-left px-3 py-2.5 transition-colors flex items-center gap-2.5 text-rose-600 hover:bg-rose-50"
                     >
                       <LogOut className="w-3.5 h-3.5" />
                       <span className="text-sm">Logout</span>
@@ -228,33 +241,76 @@ const TopBar = ({
       </header>
 
       {/* Click outside handlers */}
-      {showUserDropdown && (
+      {showUserDropdown && !isLoggingOut && (
         <div className="fixed inset-0 z-20" onClick={onCloseAllDropdowns} />
       )}
 
-      {/* Logout Modal - reduced sizes */}
+      {/* Enhanced Logout Modal with blur background and loading animation */}
       {showLogoutModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white rounded-lg shadow-xl p-5 w-72 text-center transform transition-all duration-300">
-            <h2 className="text-base font-semibold text-gray-800 mb-3">
-              Konfirmasi Logout
-            </h2>
-            <p className="text-sm text-gray-600 mb-5">
-              Apakah kamu yakin ingin logout?
-            </p>
-            <div className="flex justify-center gap-3">
-              <button
-                onClick={onLogout}
-                className="bg-rose-500 text-white font-medium px-5 py-1.5 rounded-md hover:bg-rose-600 transition-colors duration-300 text-sm"
-              >
-                Ya
-              </button>
-              <button
-                onClick={onHideLogoutModal}
-                className="bg-gray-300 text-gray-700 font-medium px-5 py-1.5 rounded-md hover:bg-gray-400 transition-colors duration-300 text-sm"
-              >
-                Batal
-              </button>
+        <div className="fixed inset-0 flex items-center justify-center z-50 animate-in fade-in duration-200">
+          {/* Blur Background Overlay */}
+          <div
+            className="absolute inset-0 bg-black/20 backdrop-blur-sm"
+            onClick={isLoggingOut ? undefined : onHideLogoutModal}
+          />
+
+          {/* Modal Content */}
+          <div className="relative bg-white rounded-xl shadow-2xl p-6 w-80 max-w-sm mx-4 transform animate-in zoom-in-95 duration-200">
+            <div className="text-center">
+              {/* Modal Icon */}
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-rose-100 mb-4">
+                {isLoggingOut ? (
+                  <Loader2 className="h-6 w-6 text-rose-600 animate-spin" />
+                ) : (
+                  <LogOut className="h-6 w-6 text-rose-600" />
+                )}
+              </div>
+
+              {/* Modal Title */}
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">
+                {isLoggingOut ? "Sedang Logout..." : "Konfirmasi Logout"}
+              </h2>
+
+              {/* Modal Message */}
+              <p className="text-sm text-gray-600 mb-6">
+                {isLoggingOut
+                  ? "Mohon tunggu, sedang memproses logout Anda."
+                  : "Apakah Anda yakin ingin keluar dari sistem?"}
+              </p>
+
+              {/* Modal Actions */}
+              <div className="flex justify-center gap-3">
+                <button
+                  onClick={onLogout}
+                  disabled={isLoggingOut}
+                  className={`
+                    flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg font-medium text-sm transition-all duration-200
+                    ${
+                      isLoggingOut
+                        ? "bg-rose-400 text-white cursor-not-allowed"
+                        : "bg-rose-500 text-white hover:bg-rose-600 hover:shadow-lg active:scale-95"
+                    }
+                  `}
+                >
+                  {isLoggingOut && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {isLoggingOut ? "Memproses..." : "Ya, Logout"}
+                </button>
+
+                <button
+                  onClick={onHideLogoutModal}
+                  disabled={isLoggingOut}
+                  className={`
+                    px-6 py-2.5 rounded-lg font-medium text-sm transition-all duration-200
+                    ${
+                      isLoggingOut
+                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                        : "bg-gray-200 text-gray-700 hover:bg-gray-300 hover:shadow-lg active:scale-95"
+                    }
+                  `}
+                >
+                  Batal
+                </button>
+              </div>
             </div>
           </div>
         </div>

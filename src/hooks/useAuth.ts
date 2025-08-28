@@ -27,18 +27,26 @@ export const useAuth = () => {
     isAuthenticated: userStoreAuthenticated,
     setUsers,
     clearUser,
-    isDataStale,
     setLastFetched
   } = useUserStore();
 
   const router = useRouter();
   
-  // Ref to track if auth is being initialized
+  // Ref to track initialization and prevent loops
   const initializingRef = useRef(false);
   const authListenerRef = useRef<{ unsubscribe: () => void } | null>(null);
+  const profileLoadingRef = useRef(false);
 
   // Load user profile after authentication
   const loadUserProfile = useCallback(async (userId: string) => {
+    // Prevent concurrent profile loading
+    if (profileLoadingRef.current) {
+      console.log('Profile already loading, skipping...');
+      return;
+    }
+
+    profileLoadingRef.current = true;
+    
     try {
       console.log('Loading user profile for:', userId);
       
@@ -46,6 +54,7 @@ export const useAuth = () => {
       
       if (userProfiles && userProfiles.length > 0) {
         setUsers(userProfiles);
+        setLastFetched();
         console.log('User profiles loaded and stored');
       } else {
         console.warn('No user profiles found');
@@ -55,8 +64,10 @@ export const useAuth = () => {
       console.error('Error loading user profile:', error);
       // Don't clear auth state, just log the error
       // The user is still authenticated, just couldn't load profile
+    } finally {
+      profileLoadingRef.current = false;
     }
-  }, []); // Remove dependencies to prevent re-creation
+  }, [setUsers, clearUser, setLastFetched]);
 
   // Setup auth state listener (extracted to separate function)
   const setupAuthListener = useCallback(() => {
@@ -80,16 +91,17 @@ export const useAuth = () => {
                 error: null,
               });
 
-              // Get fresh store values inside the listener
-            const storeState = useUserStore.getState();
-            const shouldLoadProfile = !storeState.currentUser || storeState.isDataStale();
-            
-            if (shouldLoadProfile) {
-              console.log('Auth listener: Loading profile - currentUser exists:', !!storeState.currentUser, 'isStale:', storeState.isDataStale());
-              await loadUserProfile(authUser.id);
-            } else {
-              console.log('Auth listener: Skipping profile load - already exists and fresh');
-            }
+              // Only load profile on specific events to prevent loops
+              // Don't load profile on every SIGNED_IN event
+              if (event === 'SIGNED_IN' && !currentUser) {
+                console.log('Auth listener: Loading profile for new sign in');
+                await loadUserProfile(authUser.id);
+              } else if (event === 'TOKEN_REFRESHED') {
+                // Don't reload profile on token refresh, user data should persist
+                console.log('Auth listener: Token refreshed, keeping existing profile');
+              } else {
+                console.log('Auth listener: Auth state updated, profile already exists');
+              }
             }
 
           } else {
@@ -101,8 +113,7 @@ export const useAuth = () => {
             });
 
             // Clear user store
-            const { clearUser: clearUserAction } = useUserStore.getState();
-            clearUserAction();
+            clearUser();
 
             // Redirect to login on sign out
             if (event === 'SIGNED_OUT') {
@@ -124,7 +135,7 @@ export const useAuth = () => {
 
     authListenerRef.current = subscription;
     return subscription;
-  }, [router]); // Only depend on router to minimize re-creation
+  }, [router, currentUser, loadUserProfile, clearUser]);
 
   // Initialize auth state (only once)
   useEffect(() => {
@@ -155,14 +166,13 @@ export const useAuth = () => {
             error: null,
           });
 
-          // Load user profile if not exists or stale
-          // Add additional check to prevent unnecessary API calls during init
-          const shouldLoadProfile = !currentUser || isDataStale();
-          if (shouldLoadProfile) {
-            console.log('Init: Loading profile - currentUser exists:', !!currentUser, 'isStale:', isDataStale());
+          // Load user profile only if it doesn't exist
+          // This prevents unnecessary API calls during dashboard navigation
+          if (!currentUser) {
+            console.log('Init: Loading profile - no current user');
             await loadUserProfile(authUser.id);
           } else {
-            console.log('Init: Skipping profile load - already exists and fresh');
+            console.log('Init: Profile already exists, skipping load');
           }
         } else {
           // No session
@@ -203,10 +213,11 @@ export const useAuth = () => {
         authListenerRef.current.unsubscribe();
         authListenerRef.current = null;
       }
+      // Reset refs on cleanup
+      initializingRef.current = false;
+      profileLoadingRef.current = false;
     };
-  }, []); // Remove all dependencies to prevent re-initialization
-
-  // Don't auto-update listener to prevent loops - only on manual refresh
+  }, []); // Empty dependency to prevent re-initialization
 
   // Login function
   const login = useCallback(async (provider: AuthProviderType = 'google') => {
@@ -258,7 +269,6 @@ export const useAuth = () => {
     try {
       console.log('Refreshing user profile...');
       await loadUserProfile(authState.user.id);
-      setLastFetched();
     } catch (error: any) {
       console.error('Refresh profile error:', error);
       setAuthState(prev => ({
@@ -266,7 +276,7 @@ export const useAuth = () => {
         error: error.message || 'Gagal merefresh profil',
       }));
     }
-  }, [authState.user, loadUserProfile, setLastFetched]);
+  }, [authState.user, loadUserProfile]);
 
   // Check if user is fully authenticated (has auth session and user profile)
   const isFullyAuthenticated = !!authState.user && userStoreAuthenticated;

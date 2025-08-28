@@ -19,14 +19,28 @@ export const useItems = (initialFilters: ItemFilters = {}) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
-  const [filters, setFilters] = useState<ItemFilters>(initialFilters);
+  const [filters, setFilters] = useState<ItemFilters>({
+    page: 1,
+    limit: 50,
+    ...initialFilters
+  });
   
   // Use ref to track if component is mounted to prevent state updates after unmount
   const mountedRef = useRef(true);
+  // Track if initial load is done
+  const initialLoadDoneRef = useRef(false);
   
-  // Separate the actual fetch logic from the callback
+  console.log('🔧 useItems hook initialized with filters:', filters);
+  
+  // Stable fetch function that doesn't depend on filters state
   const fetchItems = useCallback(async (filtersToUse: ItemFilters) => {
-    if (!mountedRef.current) return;
+    if (!mountedRef.current) {
+      console.log('⚠️ Component unmounted, skipping fetch');
+      return;
+    }
+    
+    console.log('🔄 fetchItems called with filters:', filtersToUse);
+    console.log('🔄 Current loading state before fetch:', loading);
     
     setLoading(true);
     setError(null);
@@ -34,23 +48,42 @@ export const useItems = (initialFilters: ItemFilters = {}) => {
     try {
       const response = await itemService.getItems(filtersToUse);
       
-      if (!mountedRef.current) return;
+      console.log('📦 API Response:', response);
+      
+      if (!mountedRef.current) {
+        console.log('⚠️ Component unmounted during fetch, skipping state update');
+        return;
+      }
       
       if (response.error) {
+        console.error('❌ API Error:', response.error);
         setError(response.error);
+        setItems([]);
+        setTotalCount(0);
       } else {
+        console.log('✅ Items fetched successfully:', response.data.length, 'items');
+        console.log('✅ Total count:', response.count);
         setItems(response.data);
         setTotalCount(response.count);
+        setError(null);
       }
     } catch (err) {
-      if (!mountedRef.current) return;
+      console.error('❌ Fetch error:', err);
+      if (!mountedRef.current) {
+        console.log('⚠️ Component unmounted during error handling');
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Failed to fetch items');
+      setItems([]);
+      setTotalCount(0);
     } finally {
       if (mountedRef.current) {
+        console.log('🏁 fetchItems completed, setting loading to false');
         setLoading(false);
+        initialLoadDoneRef.current = true;
       }
     }
-  }, []); // No dependencies to prevent infinite loops
+  }, []); // Empty dependency array for stable reference
 
   const createItem = useCallback(async (payload: CreateItemPayload) => {
     try {
@@ -94,7 +127,7 @@ export const useItems = (initialFilters: ItemFilters = {}) => {
       const success = await itemService.deleteItem(id);
       if (success && mountedRef.current) {
         setItems(prev => prev.filter(item => item.id !== id));
-        setTotalCount(prev => prev - 1);
+        setTotalCount(prev => Math.max(0, prev - 1));
         return { success: true };
       }
       return { success: false, error: 'Failed to delete item' };
@@ -127,31 +160,98 @@ export const useItems = (initialFilters: ItemFilters = {}) => {
     return await itemService.generateItemCode(prefix);
   }, []);
 
+  // Fixed updateFilters function - handle empty values properly
   const updateFilters = useCallback((newFilters: Partial<ItemFilters>) => {
-    const updatedFilters = { ...filters, ...newFilters, page: 1 }; // Reset to page 1 when filtering
-    setFilters(updatedFilters);
-  }, [filters]);
+    console.log('🎯 updateFilters called with:', newFilters);
+    
+    setFilters(prev => {
+      console.log('🎯 Previous filters:', prev);
+      
+      const updated = { ...prev };
+      
+      // Process each filter - remove if empty, otherwise update
+      Object.keys(newFilters).forEach(key => {
+        const newValue = newFilters[key as keyof ItemFilters];
+        
+        if (newValue === '' || newValue === null || newValue === undefined) {
+          // Remove empty filters
+          delete updated[key as keyof ItemFilters];
+          console.log('🗑️ Removed empty filter:', key);
+        } else {
+          // Update with new value
+          (updated as any)[key] = newValue;
+          console.log('✏️ Updated filter:', key, '=', newValue);
+        }
+      });
+      
+      // Always maintain page and limit defaults
+      updated.page = updated.page || 1;
+      updated.limit = updated.limit || 50;
+      
+      // Check if filters actually changed by comparing objects
+      const hasChanged = JSON.stringify(prev) !== JSON.stringify(updated);
+      
+      console.log('📊 Filter comparison:', {
+        previous: prev,
+        updated: updated,
+        hasChanged: hasChanged
+      });
+      
+      if (!hasChanged) {
+        console.log('📊 No filter changes detected, returning previous state');
+        return prev; // Return same reference if no change
+      }
+      
+      // Reset to page 1 when filtering (except when only page changes)
+      if (Object.keys(newFilters).some(key => key !== 'page' && newFilters[key as keyof ItemFilters] !== prev[key as keyof ItemFilters])) {
+        updated.page = 1;
+        console.log('📄 Reset page to 1 due to filter change');
+      }
+      
+      console.log('🎯 Returning updated filters:', updated);
+      return updated;
+    });
+  }, []);
 
   const resetFilters = useCallback(() => {
-    const defaultFilters: ItemFilters = {};
+    console.log('🔄 resetFilters called');
+    const defaultFilters: ItemFilters = { page: 1, limit: 50 };
     setFilters(defaultFilters);
   }, []);
 
+  // Stable refetch function that uses current filters
   const refetch = useCallback(() => {
+    console.log('🔄 refetch called');
     fetchItems(filters);
-  }, [fetchItems, filters]);
+  }, [filters, fetchItems]);
 
-  // Effect to fetch items when filters change
+  // Main effect to fetch items when filters change
   useEffect(() => {
-    fetchItems(filters);
-  }, [fetchItems, filters]);
+    console.log('🎯 useEffect triggered - filters:', filters);
+    console.log('🎯 initialLoadDoneRef.current:', initialLoadDoneRef.current);
+    console.log('🎯 mountedRef.current:', mountedRef.current);
+    
+    if (mountedRef.current) {
+      fetchItems(filters);
+    }
+  }, [filters, fetchItems]);
 
   // Cleanup effect
   useEffect(() => {
     return () => {
+      console.log('🧹 useItems cleanup - component unmounting');
       mountedRef.current = false;
     };
   }, []);
+
+  console.log('🔍 useItems current state:', {
+    loading,
+    error,
+    itemsCount: items.length,
+    totalCount,
+    filters,
+    initialLoadDone: initialLoadDoneRef.current
+  });
 
   return {
     items,
@@ -177,12 +277,24 @@ export const useItemMasters = (initialFilters: ItemMasterFilters = {}) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
-  const [filters, setFilters] = useState<ItemMasterFilters>(initialFilters);
+  const [filters, setFilters] = useState<ItemMasterFilters>({
+    page: 1,
+    limit: 50,
+    ...initialFilters
+  });
   
   const mountedRef = useRef(true);
-
+  const initialLoadDoneRef = useRef(false);
+  
+  console.log('🔧 useItemMasters hook initialized with filters:', filters);
+  
   const fetchItemMasters = useCallback(async (filtersToUse: ItemMasterFilters) => {
-    if (!mountedRef.current) return;
+    if (!mountedRef.current) {
+      console.log('⚠️ ItemMasters component unmounted, skipping fetch');
+      return;
+    }
+    
+    console.log('🔄 fetchItemMasters called with filters:', filtersToUse);
     
     setLoading(true);
     setError(null);
@@ -190,20 +302,35 @@ export const useItemMasters = (initialFilters: ItemMasterFilters = {}) => {
     try {
       const response = await itemService.getItemMasters(filtersToUse);
       
-      if (!mountedRef.current) return;
+      console.log('📦 ItemMasters API Response:', response);
+      
+      if (!mountedRef.current) {
+        console.log('⚠️ ItemMasters component unmounted during fetch');
+        return;
+      }
       
       if (response.error) {
+        console.error('❌ ItemMasters API Error:', response.error);
         setError(response.error);
+        setItemMasters([]);
+        setTotalCount(0);
       } else {
+        console.log('✅ ItemMasters fetched successfully:', response.data.length, 'masters');
         setItemMasters(response.data);
         setTotalCount(response.count);
+        setError(null);
       }
     } catch (err) {
+      console.error('❌ ItemMasters fetch error:', err);
       if (!mountedRef.current) return;
       setError(err instanceof Error ? err.message : 'Failed to fetch item masters');
+      setItemMasters([]);
+      setTotalCount(0);
     } finally {
       if (mountedRef.current) {
+        console.log('🏁 fetchItemMasters completed, setting loading to false');
         setLoading(false);
+        initialLoadDoneRef.current = true;
       }
     }
   }, []);
@@ -250,7 +377,7 @@ export const useItemMasters = (initialFilters: ItemMasterFilters = {}) => {
       const success = await itemService.deleteItemMaster(id);
       if (success && mountedRef.current) {
         setItemMasters(prev => prev.filter(master => master.id !== id));
-        setTotalCount(prev => prev - 1);
+        setTotalCount(prev => Math.max(0, prev - 1));
         return { success: true };
       }
       return { success: false, error: 'Failed to delete item master' };
@@ -283,31 +410,78 @@ export const useItemMasters = (initialFilters: ItemMasterFilters = {}) => {
     return await itemService.getItemsByMaster(itemMasterId);
   }, []);
 
+  // Fixed updateFilters for ItemMasters too
   const updateFilters = useCallback((newFilters: Partial<ItemMasterFilters>) => {
-    const updatedFilters = { ...filters, ...newFilters, page: 1 };
-    setFilters(updatedFilters);
-  }, [filters]);
+    console.log('🎯 updateFilters (ItemMasters) called with:', newFilters);
+    
+    setFilters(prev => {
+      const updated = { ...prev };
+      
+      // Process each filter - remove if empty, otherwise update
+      Object.keys(newFilters).forEach(key => {
+        const newValue = newFilters[key as keyof ItemMasterFilters];
+        
+        if (newValue === '' || newValue === null || newValue === undefined) {
+          delete updated[key as keyof ItemMasterFilters];
+        } else {
+          (updated as any)[key] = newValue;
+        }
+      });
+      
+      // Always maintain page and limit defaults
+      updated.page = updated.page || 1;
+      updated.limit = updated.limit || 50;
+      
+      const hasChanged = JSON.stringify(prev) !== JSON.stringify(updated);
+      
+      if (!hasChanged) {
+        return prev;
+      }
+      
+      if (Object.keys(newFilters).some(key => key !== 'page' && newFilters[key as keyof ItemMasterFilters] !== prev[key as keyof ItemMasterFilters])) {
+        updated.page = 1;
+      }
+      
+      return updated;
+    });
+  }, []);
 
   const resetFilters = useCallback(() => {
-    const defaultFilters: ItemMasterFilters = {};
+    console.log('🔄 resetFilters (ItemMasters) called');
+    const defaultFilters: ItemMasterFilters = { page: 1, limit: 50 };
     setFilters(defaultFilters);
   }, []);
 
   const refetch = useCallback(() => {
+    console.log('🔄 refetch (ItemMasters) called');
     fetchItemMasters(filters);
-  }, [fetchItemMasters, filters]);
+  }, [filters, fetchItemMasters]);
 
-  // Effect to fetch item masters when filters change
+  // Main effect to fetch item masters when filters change
   useEffect(() => {
-    fetchItemMasters(filters);
-  }, [fetchItemMasters, filters]);
+    console.log('🎯 useEffect (ItemMasters) triggered - filters:', filters);
+    
+    if (mountedRef.current) {
+      fetchItemMasters(filters);
+    }
+  }, [filters, fetchItemMasters]);
 
   // Cleanup effect
   useEffect(() => {
     return () => {
+      console.log('🧹 useItemMasters cleanup - component unmounting');
       mountedRef.current = false;
     };
   }, []);
+
+  console.log('🔍 useItemMasters current state:', {
+    loading,
+    error,
+    itemMastersCount: itemMasters.length,
+    totalCount,
+    filters,
+    initialLoadDone: initialLoadDoneRef.current
+  });
 
   return {
     itemMasters,

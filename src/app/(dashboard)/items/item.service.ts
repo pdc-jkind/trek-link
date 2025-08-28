@@ -19,22 +19,29 @@ class ItemService {
 
   // Item Masters CRUD
   async getItemMasters(filters: ItemMasterFilters = {}): Promise<ItemMastersResponse> {
+    console.log('🔍 ItemService.getItemMasters called with filters:', filters);
+    
     try {
       let query = this.supabase
         .from('item_masters')
-        .select('*')
+        .select('*', { count: 'exact' })
         .order('created_at', { ascending: false });
+
+      console.log('📝 Base query created for item_masters');
 
       // Apply filters
       if (filters.search) {
+        console.log('🔍 Applying search filter:', filters.search);
         query = query.ilike('name', `%${filters.search}%`);
       }
 
       if (filters.type) {
+        console.log('🏷️ Applying type filter:', filters.type);
         query = query.eq('type', filters.type);
       }
 
       if (filters.office_id) {
+        console.log('🏢 Applying office_id filter:', filters.office_id);
         query = query.eq('office_id', filters.office_id);
       }
 
@@ -44,18 +51,29 @@ class ItemService {
       const from = (page - 1) * limit;
       const to = from + limit - 1;
 
+      console.log('📄 Applying pagination:', { page, limit, from, to });
       query = query.range(from, to);
 
+      console.log('🚀 Executing item_masters query...');
       const { data, error, count } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Item masters query error:', error);
+        throw error;
+      }
+
+      console.log('✅ Item masters query successful:', {
+        dataLength: data?.length || 0,
+        count: count || 0,
+        data: data
+      });
 
       return {
         data: data || [],
         count: count || 0,
       };
     } catch (error) {
-      console.error('Error fetching item masters:', error);
+      console.error('💥 Error in getItemMasters:', error);
       return {
         data: [],
         count: 0,
@@ -134,27 +152,34 @@ class ItemService {
 
   // Items CRUD
   async getItems(filters: ItemFilters = {}): Promise<ItemsResponse> {
+    console.log('🔍 ItemService.getItems called with filters:', filters);
+    
     try {
       let query = this.supabase
         .from('items')
         .select(`
           *,
           item_master:item_masters(*)
-        `)
+        `, { count: 'exact' })
         .order('created_at', { ascending: false });
+
+      console.log('📝 Base query created for items');
 
       // Apply filters
       if (filters.search) {
+        console.log('🔍 Applying search filter:', filters.search);
         query = query.or(
           `item_name.ilike.%${filters.search}%,item_code.ilike.%${filters.search}%`
         );
       }
 
       if (filters.item_master_id) {
+        console.log('🏷️ Applying item_master_id filter:', filters.item_master_id);
         query = query.eq('item_master_id', filters.item_master_id);
       }
 
       if (filters.unit) {
+        console.log('📏 Applying unit filter:', filters.unit);
         query = query.eq('unit', filters.unit);
       }
 
@@ -164,18 +189,29 @@ class ItemService {
       const from = (page - 1) * limit;
       const to = from + limit - 1;
 
+      console.log('📄 Applying pagination:', { page, limit, from, to });
       query = query.range(from, to);
 
+      console.log('🚀 Executing items query...');
       const { data, error, count } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Items query error:', error);
+        throw error;
+      }
+
+      console.log('✅ Items query successful:', {
+        dataLength: data?.length || 0,
+        count: count || 0,
+        sampleData: data?.[0] || 'No data'
+      });
 
       return {
         data: data || [],
         count: count || 0,
       };
     } catch (error) {
-      console.error('Error fetching items:', error);
+      console.error('💥 Error in getItems:', error);
       return {
         data: [],
         count: 0,

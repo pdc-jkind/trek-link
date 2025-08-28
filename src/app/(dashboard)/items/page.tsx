@@ -1,7 +1,13 @@
 // src/app/(dashboard)/items/page.tsx
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
 import { Package, Plus, Filter, Eye, Edit, Trash2 } from "lucide-react";
 import {
   Card,
@@ -29,13 +35,13 @@ const ItemsPage: React.FC = () => {
   const [editingMaster, setEditingMaster] = useState<ItemMaster | null>(null);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
 
-  // Initialize filters for the hook
-  const initialFilters: ItemFilters = {
-    search: searchTerm || undefined,
-    item_master_id: selectedCategory || undefined,
+  // Initialize with default filters only
+  const defaultFilters: ItemFilters = {
     page: 1,
     limit: 50,
   };
+
+  console.log("🎬 ItemsPage component rendering");
 
   // Use the custom hooks for items and masters management
   const {
@@ -53,7 +59,7 @@ const ItemsPage: React.FC = () => {
     refetch,
     checkItemCodeExists,
     generateItemCode,
-  } = useItems(initialFilters);
+  } = useItems(defaultFilters);
 
   const {
     itemMasters,
@@ -65,46 +71,88 @@ const ItemsPage: React.FC = () => {
     refetch: refetchMasters,
   } = useItemMasters();
 
-  // Debounced update function
-  const debouncedUpdateFilters = useCallback(
+  // Use refs to track filter updates and prevent unnecessary calls
+  const isUpdatingFiltersRef = useRef(false);
+
+  console.log("🔍 ItemsPage current state:", {
+    loading,
+    error,
+    itemsCount: items.length,
+    totalCount,
+    searchTerm,
+    selectedCategory,
+    currentFilters: filters,
+    mastersLoading,
+    mastersCount: itemMasters.length,
+  });
+
+  // Debounced filter update function
+  const updateFiltersDebounced = useCallback(
     (() => {
       let timeoutId: NodeJS.Timeout;
+
       return (newFilters: Partial<ItemFilters>) => {
+        if (isUpdatingFiltersRef.current) {
+          console.log("🚫 Filter update already in progress, skipping");
+          return;
+        }
+
         clearTimeout(timeoutId);
         timeoutId = setTimeout(() => {
+          console.log("⏰ Debounced filter update executing:", newFilters);
+          isUpdatingFiltersRef.current = true;
+
           updateFilters(newFilters);
+
+          // Reset flag after a short delay
+          setTimeout(() => {
+            isUpdatingFiltersRef.current = false;
+          }, 100);
         }, 300);
       };
     })(),
     [updateFilters]
   );
 
-  // Update filters when local state changes
+  // Effect to handle search term changes
   useEffect(() => {
-    const newFilters: Partial<ItemFilters> = {};
+    console.log("🔍 Search term effect triggered:", searchTerm);
 
-    if (searchTerm !== (filters.search || "")) {
-      newFilters.search = searchTerm || undefined;
+    const trimmedSearch = searchTerm.trim();
+    const filterUpdate: Partial<ItemFilters> = {};
+
+    if (trimmedSearch) {
+      filterUpdate.search = trimmedSearch;
+    } else {
+      // Remove search filter if empty
+      filterUpdate.search = undefined;
     }
 
-    if (selectedCategory !== (filters.item_master_id || "")) {
-      newFilters.item_master_id = selectedCategory || undefined;
+    updateFiltersDebounced(filterUpdate);
+  }, [searchTerm, updateFiltersDebounced]);
+
+  // Effect to handle category changes
+  useEffect(() => {
+    console.log("🏷️ Category effect triggered:", selectedCategory);
+
+    const filterUpdate: Partial<ItemFilters> = {};
+
+    if (selectedCategory) {
+      filterUpdate.item_master_id = selectedCategory;
+    } else {
+      // Remove category filter if empty
+      filterUpdate.item_master_id = undefined;
     }
 
-    // Only update if there are actual changes
-    if (Object.keys(newFilters).length > 0) {
-      debouncedUpdateFilters(newFilters);
-    }
-  }, [
-    searchTerm,
-    selectedCategory,
-    filters.search,
-    filters.item_master_id,
-    debouncedUpdateFilters,
-  ]);
+    updateFiltersDebounced(filterUpdate);
+  }, [selectedCategory, updateFiltersDebounced]);
 
   // Categories options from item masters
   const categories = useMemo(() => {
+    console.log(
+      "🏷️ Rebuilding categories options from masters:",
+      itemMasters.length
+    );
     return [
       { value: "", label: "Semua Kategori" },
       ...itemMasters.map((master) => ({
@@ -123,6 +171,7 @@ const ItemsPage: React.FC = () => {
 
   // Memoized stats calculation
   const statsData = useMemo(() => {
+    console.log("📊 Calculating stats from items:", items.length);
     return [
       {
         title: "Total Items",
@@ -153,28 +202,31 @@ const ItemsPage: React.FC = () => {
 
   // Modal handlers
   const handleAddItem = useCallback(() => {
+    console.log("➕ Adding new item");
     setEditingItem(null);
     setModalMode("create");
     setIsItemModalOpen(true);
   }, []);
 
   const handleAddMaster = useCallback(() => {
+    console.log("➕ Adding new master");
     setEditingMaster(null);
     setModalMode("create");
     setIsMasterModalOpen(true);
   }, []);
 
   const handleCreateMasterFromItemModal = useCallback(() => {
+    console.log("🔄 Creating master from item modal");
     setIsItemModalOpen(false);
     handleAddMaster();
   }, [handleAddMaster]);
 
   const handleViewItem = useCallback(
     async (id: string) => {
-      console.log("Viewing item:", id);
+      console.log("👁️ Viewing item:", id);
       const item = await getItem(id);
       if (item) {
-        console.log("Item details:", item);
+        console.log("📋 Item details:", item);
       }
     },
     [getItem]
@@ -182,6 +234,7 @@ const ItemsPage: React.FC = () => {
 
   const handleEditItem = useCallback(
     async (id: string) => {
+      console.log("✏️ Editing item:", id);
       const item = await getItem(id);
       if (item) {
         setEditingItem(item);
@@ -194,12 +247,13 @@ const ItemsPage: React.FC = () => {
 
   const handleDeleteItem = useCallback(
     async (id: string) => {
+      console.log("🗑️ Attempting to delete item:", id);
       if (window.confirm("Apakah Anda yakin ingin menghapus barang ini?")) {
         const result = await deleteItem(id);
         if (result.success) {
-          console.log("Item deleted successfully");
+          console.log("✅ Item deleted successfully");
         } else {
-          console.error("Failed to delete item:", result.error);
+          console.error("❌ Failed to delete item:", result.error);
         }
       }
     },
@@ -209,6 +263,7 @@ const ItemsPage: React.FC = () => {
   // Save handlers
   const handleSaveItem = useCallback(
     async (data: any) => {
+      console.log("💾 Saving item:", modalMode, data);
       if (modalMode === "create") {
         const result = await createItem(data);
         return result;
@@ -222,6 +277,7 @@ const ItemsPage: React.FC = () => {
 
   const handleSaveMaster = useCallback(
     async (data: any) => {
+      console.log("💾 Saving master:", modalMode, data);
       if (modalMode === "create") {
         const result = await createItemMaster(data);
         if (result.success) {
@@ -248,6 +304,7 @@ const ItemsPage: React.FC = () => {
   }, []);
 
   const handleResetFilters = useCallback(() => {
+    console.log("🔄 Resetting all filters");
     setSearchTerm("");
     setSelectedCategory("");
     setSelectedStatus("");
@@ -392,8 +449,16 @@ const ItemsPage: React.FC = () => {
     },
   ];
 
+  console.log("🎭 About to render - Final state check:", {
+    loading,
+    error,
+    itemsLength: items.length,
+    showLoadingSpinner: loading,
+  });
+
   // Show error state if there's an error
   if (error) {
+    console.log("❌ Rendering error state:", error);
     return (
       <div className="space-y-6">
         <Card>
@@ -430,18 +495,27 @@ const ItemsPage: React.FC = () => {
           <div className="text-center py-10">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
             <p className="mt-2 text-gray-600">Loading items...</p>
+            <p className="mt-1 text-xs text-gray-500">
+              Debug: Loading state = {loading.toString()}
+            </p>
           </div>
         ) : (
-          <Table
-            columns={columns}
-            data={items}
-            emptyMessage={
-              searchTerm || selectedCategory
-                ? "Tidak ada barang yang sesuai dengan filter."
-                : "Belum ada data barang."
-            }
-            emptyIcon={Package}
-          />
+          <>
+            <Table
+              columns={columns}
+              data={items}
+              emptyMessage={
+                searchTerm || selectedCategory
+                  ? "Tidak ada barang yang sesuai dengan filter."
+                  : "Belum ada data barang."
+              }
+              emptyIcon={Package}
+            />
+            <div className="text-xs text-gray-400 text-center mt-2">
+              Debug: Showing table with {items.length} items (loading ={" "}
+              {loading.toString()})
+            </div>
+          </>
         )}
 
         {items.length === 0 && !loading && (searchTerm || selectedCategory) && (

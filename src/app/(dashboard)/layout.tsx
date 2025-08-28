@@ -46,6 +46,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
 
+  // Add logout loading state
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
   // Check if we're on desktop
   useEffect(() => {
     const checkScreenSize = () => {
@@ -76,7 +79,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     setShowLogoutModal(true);
     setShowUserDropdown(false);
   };
-  const hideLogoutModal = () => setShowLogoutModal(false);
+
+  const hideLogoutModal = () => {
+    if (!isLoggingOut) {
+      setShowLogoutModal(false);
+    }
+  };
 
   const toggleUserDropdown = () => setShowUserDropdown(!showUserDropdown);
   const closeAllDropdowns = () => setShowUserDropdown(false);
@@ -86,14 +94,26 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     switchOffice(office.id);
   };
 
+  // Enhanced logout handler with loading state
   const handleLogout = async () => {
     try {
+      setIsLoggingOut(true);
+
+      // Add a small delay to show the loading state
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
       await logout();
-      hideLogoutModal();
+
+      // Close modal and redirect
+      setShowLogoutModal(false);
+      setIsLoggingOut(false);
       router.push("/login");
     } catch (error) {
       console.error("Logout error:", error);
-      // Optionally show error message to user
+      setIsLoggingOut(false);
+
+      // Show error to user (you can enhance this with a toast notification)
+      alert("Terjadi kesalahan saat logout. Silakan coba lagi.");
     }
   };
 
@@ -205,7 +225,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             marginLeft: getMainContentMargin(),
           }}
         >
-          {/* Fixed TopBar */}
+          {/* Fixed TopBar with enhanced props */}
           <TopBar
             currentSection={currentSection}
             userName={user.name}
@@ -215,6 +235,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             selectedOffice={selectedOffice}
             showUserDropdown={showUserDropdown}
             showLogoutModal={showLogoutModal}
+            isLoggingOut={isLoggingOut}
             onMenuToggle={toggleSidebar}
             onLogout={handleLogout}
             onChangePassword={openChangePasswordModal}
@@ -234,43 +255,97 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         </div>
       </div>
 
-      {/* Change Password Modal */}
+      {/* Enhanced Change Password Modal with blur background */}
       {showChangePasswordModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-96 text-center transform transition-all duration-300 mx-4">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">
-              Ganti Password
-            </h2>
-            <p className="text-gray-600 mb-6">
-              Fitur ganti password akan segera tersedia.
-            </p>
-            <div className="flex justify-center gap-4">
-              <button
-                onClick={hideChangePasswordModal}
-                className="bg-gray-300 text-gray-700 font-semibold px-6 py-2 rounded-lg hover:bg-gray-400 transition-colors duration-300"
-              >
-                Tutup
-              </button>
+        <div className="fixed inset-0 flex items-center justify-center z-50 animate-in fade-in duration-200">
+          {/* Blur Background Overlay */}
+          <div
+            className="absolute inset-0 bg-black/20 backdrop-blur-sm"
+            onClick={hideChangePasswordModal}
+          />
+
+          {/* Modal Content */}
+          <div className="relative bg-white rounded-xl shadow-2xl p-6 w-96 max-w-sm mx-4 transform animate-in zoom-in-95 duration-200">
+            <div className="text-center">
+              {/* Modal Icon */}
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
+                <svg
+                  className="h-6 w-6 text-blue-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                  />
+                </svg>
+              </div>
+
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">
+                Ganti Password
+              </h2>
+              <p className="text-sm text-gray-600 mb-6">
+                Fitur ganti password akan segera tersedia.
+              </p>
+              <div className="flex justify-center">
+                <button
+                  onClick={hideChangePasswordModal}
+                  className="bg-gray-200 text-gray-700 font-medium px-6 py-2.5 rounded-lg hover:bg-gray-300 hover:shadow-lg transition-all duration-200 active:scale-95"
+                >
+                  Tutup
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Error Toast - Show errors that don't block the dashboard */}
+      {/* Enhanced Error Toast - Show errors that don't block the dashboard */}
       {dashboardError && isReady && (
-        <div className="fixed top-4 right-4 z-50">
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow-lg max-w-sm">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-sm font-medium">Peringatan</p>
-                <p className="text-sm">{dashboardError}</p>
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-right duration-300">
+          <div className="bg-white border-l-4 border-red-400 rounded-lg shadow-lg overflow-hidden max-w-sm">
+            <div className="p-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg
+                    className="h-5 w-5 text-red-400"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div className="ml-3 flex-1">
+                  <p className="text-sm font-medium text-red-800">Peringatan</p>
+                  <p className="text-sm text-red-700 mt-1">{dashboardError}</p>
+                </div>
+                <div className="ml-4 flex-shrink-0 flex">
+                  <button
+                    onClick={clearError}
+                    className="inline-flex text-red-400 hover:text-red-600 focus:outline-none transition-colors duration-200"
+                  >
+                    <span className="sr-only">Tutup</span>
+                    <svg
+                      className="h-5 w-5"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={clearError}
-                className="ml-2 text-red-400 hover:text-red-600"
-              >
-                ×
-              </button>
             </div>
           </div>
         </div>
