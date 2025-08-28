@@ -2,7 +2,15 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { Plus, Edit, Trash2, Search } from "lucide-react";
+import { Plus, Edit, Trash2, Users } from "lucide-react";
+import {
+  Card,
+  PageHeader,
+  SearchFilter,
+  Table,
+  StatusBadge,
+  ActionButton,
+} from "../components/ui";
 
 // Types
 interface User {
@@ -13,44 +21,120 @@ interface User {
   status: "active" | "inactive";
 }
 
+// Dummy data
+const dummyUsers: User[] = [
+  {
+    id: "1",
+    name: "John Doe",
+    email: "john@example.com",
+    role: "Admin",
+    status: "active",
+  },
+  {
+    id: "2",
+    name: "Jane Smith",
+    email: "jane@example.com",
+    role: "Manager",
+    status: "active",
+  },
+  {
+    id: "3",
+    name: "Bob Johnson",
+    email: "bob@example.com",
+    role: "Staff",
+    status: "inactive",
+  },
+];
+
 const UsersPage: React.FC = () => {
-  // State management
   const [searchTerm, setSearchTerm] = useState("");
-  const [users] = useState<User[]>([
-    {
-      id: "1",
-      name: "John Doe",
-      email: "john@example.com",
-      role: "Admin",
-      status: "active",
-    },
-    {
-      id: "2",
-      name: "Jane Smith",
-      email: "jane@example.com",
-      role: "Manager",
-      status: "active",
-    },
-    {
-      id: "3",
-      name: "Bob Johnson",
-      email: "bob@example.com",
-      role: "Staff",
-      status: "inactive",
-    },
-  ]);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [users] = useState<User[]>(dummyUsers);
 
-  // Filtered users based on search
+  // Filter options
+  const statusOptions = [
+    { value: "all", label: "Semua Status" },
+    { value: "active", label: "Aktif" },
+    { value: "inactive", label: "Tidak Aktif" },
+  ];
+
+  const roleOptions = [
+    { value: "all", label: "Semua Role" },
+    { value: "Admin", label: "Admin" },
+    { value: "Manager", label: "Manager" },
+    { value: "Staff", label: "Staff" },
+  ];
+
+  // Filtered users
   const filteredUsers = useMemo(() => {
-    if (!searchTerm.trim()) return users;
-
-    return users.filter(
-      (user) =>
+    return users.filter((user) => {
+      const matchesSearch =
         user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.role.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [users, searchTerm]);
+        user.role.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesStatus =
+        statusFilter === "all" || user.status === statusFilter;
+      const matchesRole = roleFilter === "all" || user.role === roleFilter;
+
+      return matchesSearch && matchesStatus && matchesRole;
+    });
+  }, [users, searchTerm, statusFilter, roleFilter]);
+
+  // Table columns
+  const columns = [
+    {
+      key: "name",
+      label: "Nama",
+      render: (value: string) => (
+        <span className="font-medium text-gray-900">{value}</span>
+      ),
+    },
+    {
+      key: "email",
+      label: "Email",
+      render: (value: string) => <span className="text-gray-600">{value}</span>,
+    },
+    {
+      key: "role",
+      label: "Role",
+      render: (value: string) => <span className="text-gray-600">{value}</span>,
+    },
+    {
+      key: "status",
+      label: "Status",
+      render: (value: string) => (
+        <StatusBadge
+          status={value === "active" ? "Aktif" : "Tidak Aktif"}
+          variant={value === "active" ? "success" : "error"}
+        />
+      ),
+    },
+    {
+      key: "actions",
+      label: "Aksi",
+      render: (_: any, row: User) => (
+        <ActionButton
+          mode="multiple"
+          actions={[
+            {
+              label: "Edit User",
+              onClick: () => handleEditUser(row.id),
+              icon: Edit,
+              variant: "edit",
+            },
+            {
+              label: "Delete User",
+              onClick: () => handleDeleteUser(row.id),
+              icon: Trash2,
+              variant: "delete",
+            },
+          ]}
+        />
+      ),
+    },
+  ];
 
   // Event handlers
   const handleAddUser = () => {
@@ -68,128 +152,55 @@ const UsersPage: React.FC = () => {
     // TODO: Implement delete user functionality
   };
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-  };
-
   return (
     <div className="space-y-6">
-      {/* Main Content Card */}
-      <div className="bg-white bg-opacity-80 backdrop-blur-lg rounded-2xl p-6 border border-white border-opacity-40 shadow-lg">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
-          <h2 className="text-gray-900 text-xl font-semibold">Data User</h2>
-          <button
-            onClick={handleAddUser}
-            className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white px-4 py-2 rounded-xl hover:from-purple-600 hover:to-indigo-600 transition-all duration-300 flex items-center space-x-2 shadow-md hover:shadow-lg transform hover:scale-105"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Tambah User</span>
-          </button>
-        </div>
+      <Card>
+        <PageHeader
+          title="Data User"
+          actions={
+            <ActionButton onClick={handleAddUser} variant="purple">
+              <Plus className="w-5 h-5" />
+              <span>Tambah User</span>
+            </ActionButton>
+          }
+        />
 
-        {/* Search Bar */}
-        <div className="mb-6">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Cari user..."
-              value={searchTerm}
-              onChange={handleSearch}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-            />
-          </div>
-        </div>
+        <SearchFilter
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Cari user..."
+          filters={[
+            {
+              value: statusFilter,
+              onChange: setStatusFilter,
+              options: statusOptions,
+            },
+            {
+              value: roleFilter,
+              onChange: setRoleFilter,
+              options: roleOptions,
+            },
+          ]}
+        />
 
-        {/* Users Table */}
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="text-left py-4 px-6 text-gray-700 font-medium text-sm uppercase tracking-wider">
-                  Nama
-                </th>
-                <th className="text-left py-4 px-6 text-gray-700 font-medium text-sm uppercase tracking-wider">
-                  Email
-                </th>
-                <th className="text-left py-4 px-6 text-gray-700 font-medium text-sm uppercase tracking-wider">
-                  Role
-                </th>
-                <th className="text-left py-4 px-6 text-gray-700 font-medium text-sm uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="text-left py-4 px-6 text-gray-700 font-medium text-sm uppercase tracking-wider">
-                  Aksi
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredUsers.length > 0 ? (
-                filteredUsers.map((user) => (
-                  <tr
-                    key={user.id}
-                    className="hover:bg-gray-50 transition-colors duration-150"
-                  >
-                    <td className="py-4 px-6 text-gray-900 font-medium">
-                      {user.name}
-                    </td>
-                    <td className="py-4 px-6 text-gray-600">{user.email}</td>
-                    <td className="py-4 px-6 text-gray-600">{user.role}</td>
-                    <td className="py-4 px-6">
-                      <span
-                        className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          user.status === "active"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {user.status === "active" ? "Aktif" : "Tidak Aktif"}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="flex space-x-3">
-                        <button
-                          onClick={() => handleEditUser(user.id)}
-                          className="text-blue-600 hover:text-blue-800 transition-colors duration-200 p-1 hover:bg-blue-50 rounded"
-                          title="Edit User"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteUser(user.id)}
-                          className="text-red-600 hover:text-red-800 transition-colors duration-200 p-1 hover:bg-red-50 rounded"
-                          title="Delete User"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={5}
-                    className="py-8 px-6 text-center text-gray-500"
-                  >
-                    {searchTerm
-                      ? "Tidak ada user yang ditemukan"
-                      : "Belum ada data user"}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <Table
+          columns={columns}
+          data={filteredUsers}
+          emptyMessage={
+            searchTerm || statusFilter !== "all" || roleFilter !== "all"
+              ? "Tidak ada user yang ditemukan"
+              : "Belum ada data user"
+          }
+          emptyIcon={Users}
+        />
 
         {/* Results Info */}
-        {searchTerm && (
+        {(searchTerm || statusFilter !== "all" || roleFilter !== "all") && (
           <div className="mt-4 text-sm text-gray-600">
             Menampilkan {filteredUsers.length} dari {users.length} user
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 };
