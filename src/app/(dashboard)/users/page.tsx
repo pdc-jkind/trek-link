@@ -1,8 +1,15 @@
 // src/app/(dashboard)/users/page.tsx
 "use client";
 
-import React, { useState, useMemo } from "react";
-import { Plus, Edit, Trash2, Users } from "lucide-react";
+import React, { useState, useMemo, useEffect } from "react";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Users,
+  RefreshCw,
+  AlertCircle,
+} from "lucide-react";
 import {
   Card,
   PageHeader,
@@ -11,122 +18,286 @@ import {
   StatusBadge,
   ActionButton,
 } from "../components/ui";
+import { UserAssignmentModal } from "./UserAssignmentModal";
+import { useUser } from "./useUser";
+import type { User } from "@/types/user.types";
 
-// Types
-interface User {
+// Interface for deduplicated user
+interface DeduplicatedUser {
   id: string;
-  name: string;
   email: string;
-  role: string;
-  status: "active" | "inactive";
+  phone: string | null;
+  email_confirmed_at: string | null;
+  created_at: string;
+  offices: Array<{
+    office_id: string;
+    office_name: string;
+    office_type: string;
+    role_id: string;
+    role_name: string;
+    role_description: string;
+    assigned_at: string;
+  }>;
 }
-
-// Dummy data
-const dummyUsers: User[] = [
-  {
-    id: "1",
-    name: "John Doe",
-    email: "john@example.com",
-    role: "Admin",
-    status: "active",
-  },
-  {
-    id: "2",
-    name: "Jane Smith",
-    email: "jane@example.com",
-    role: "Manager",
-    status: "active",
-  },
-  {
-    id: "3",
-    name: "Bob Johnson",
-    email: "bob@example.com",
-    role: "Staff",
-    status: "inactive",
-  },
-];
 
 const UsersPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [roleFilter, setRoleFilter] = useState("all");
-  const [users] = useState<User[]>(dummyUsers);
+  const [officeFilter, setOfficeFilter] = useState("all");
 
-  // Filter options
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<DeduplicatedUser | null>(
+    null
+  );
+
+  const {
+    users,
+    offices,
+    roles,
+    loading,
+    error,
+    refreshing,
+    refreshUsers,
+    refreshMasterData,
+    searchUsers,
+    updateUserOfficeAssignment,
+    deleteUserOfficeAssignment,
+    createOfficeUserAssignment,
+    getUserById,
+  } = useUser();
+
+  // Deduplicate users by email
+  const deduplicatedUsers = useMemo(() => {
+    const userMap = new Map<string, DeduplicatedUser>();
+
+    users.forEach((user) => {
+      const existingUser = userMap.get(user.email);
+
+      if (existingUser) {
+        // Add office assignment to existing user
+        existingUser.offices.push({
+          office_id: user.office_id,
+          office_name: user.office_name,
+          office_type: user.office_type,
+          role_id: user.role_id,
+          role_name: user.role_name,
+          role_description: user.role_description,
+          assigned_at: user.assigned_at,
+        });
+      } else {
+        // Create new deduplicated user
+        userMap.set(user.email, {
+          id: user.id,
+          email: user.email,
+          phone: user.phone,
+          email_confirmed_at: user.email_confirmed_at,
+          created_at: user.created_at,
+          offices: [
+            {
+              office_id: user.office_id,
+              office_name: user.office_name,
+              office_type: user.office_type,
+              role_id: user.role_id,
+              role_name: user.role_name,
+              role_description: user.role_description,
+              assigned_at: user.assigned_at,
+            },
+          ],
+        });
+      }
+    });
+
+    return Array.from(userMap.values());
+  }, [users]);
+
+  // Filter options for status (based on confirmation status)
   const statusOptions = [
     { value: "all", label: "Semua Status" },
-    { value: "active", label: "Aktif" },
-    { value: "inactive", label: "Tidak Aktif" },
+    { value: "confirmed", label: "Email Terkonfirmasi" },
+    { value: "unconfirmed", label: "Email Belum Terkonfirmasi" },
   ];
 
-  const roleOptions = [
-    { value: "all", label: "Semua Role" },
-    { value: "Admin", label: "Admin" },
-    { value: "Manager", label: "Manager" },
-    { value: "Staff", label: "Staff" },
-  ];
+  // Role filter options from API data
+  const roleOptions = useMemo(
+    () => [
+      { value: "all", label: "Semua Role" },
+      ...roles.map((role) => ({
+        value: role.id,
+        label: role.name,
+      })),
+    ],
+    [roles]
+  );
+
+  // Office filter options from API data
+  const officeOptions = useMemo(
+    () => [
+      { value: "all", label: "Semua Office" },
+      ...offices.map((office) => ({
+        value: office.id,
+        label: `${office.name} (${office.location})`,
+      })),
+    ],
+    [offices]
+  );
 
   // Filtered users
   const filteredUsers = useMemo(() => {
-    return users.filter((user) => {
+    return deduplicatedUsers.filter((user) => {
       const matchesSearch =
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.role.toLowerCase().includes(searchTerm.toLowerCase());
+        (user.phone &&
+          user.phone.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        user.offices.some(
+          (office) =>
+            office.role_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            office.office_name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
 
-      const matchesStatus =
-        statusFilter === "all" || user.status === statusFilter;
-      const matchesRole = roleFilter === "all" || user.role === roleFilter;
+      const matchesStatus = (() => {
+        if (statusFilter === "all") return true;
+        if (statusFilter === "confirmed") return !!user.email_confirmed_at;
+        if (statusFilter === "unconfirmed") return !user.email_confirmed_at;
+        return true;
+      })();
 
-      return matchesSearch && matchesStatus && matchesRole;
+      const matchesRole =
+        roleFilter === "all" ||
+        user.offices.some((office) => office.role_id === roleFilter);
+
+      const matchesOffice =
+        officeFilter === "all" ||
+        user.offices.some((office) => office.office_id === officeFilter);
+
+      return matchesSearch && matchesStatus && matchesRole && matchesOffice;
     });
-  }, [users, searchTerm, statusFilter, roleFilter]);
+  }, [deduplicatedUsers, searchTerm, statusFilter, roleFilter, officeFilter]);
+
+  // Format office type badge
+  const getOfficeTypeBadge = (type: string) => {
+    const typeMap = {
+      pdc: { label: "PDC", variant: "info" as const },
+      distributor: { label: "Distributor", variant: "success" as const },
+      grb: { label: "GRB", variant: "warning" as const },
+      unset: { label: "Unassigned", variant: "error" as const },
+    };
+
+    const config = typeMap[type as keyof typeof typeMap] || {
+      label: type,
+      variant: "default" as const,
+    };
+    return <StatusBadge status={config.label} variant={config.variant} />;
+  };
+
+  // Format date
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "-";
+    return new Date(dateString).toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
 
   // Table columns
   const columns = [
     {
-      key: "name",
-      label: "Nama",
-      render: (value: string) => (
-        <span className="font-medium text-gray-900">{value}</span>
+      key: "email",
+      label: "Email",
+      render: (value: string, row: DeduplicatedUser) => (
+        <div className="flex flex-col">
+          <span className="font-medium text-gray-900">{value}</span>
+          {row.phone && (
+            <span className="text-sm text-gray-500">{row.phone}</span>
+          )}
+          {row.email_confirmed_at ? (
+            <span className="text-xs text-green-600">Email Terkonfirmasi</span>
+          ) : (
+            <span className="text-xs text-red-600">
+              Email Belum Terkonfirmasi
+            </span>
+          )}
+        </div>
       ),
     },
     {
-      key: "email",
-      label: "Email",
-      render: (value: string) => <span className="text-gray-600">{value}</span>,
+      key: "offices",
+      label: "Office",
+      render: (_: any, row: DeduplicatedUser) => (
+        <div className="space-y-7">
+          {row.offices.map((office, index) => (
+            <div
+              key={`${office.office_id}-${office.role_id}-${index}`}
+              className="flex flex-col"
+            >
+              <div className="flex items-center gap-2">
+                {getOfficeTypeBadge(office.office_type)}
+                <span className="font-medium text-gray-900 text-sm">
+                  {office.office_name}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      ),
     },
     {
-      key: "role",
+      key: "roles",
       label: "Role",
-      render: (value: string) => <span className="text-gray-600">{value}</span>,
+      render: (_: any, row: DeduplicatedUser) => (
+        <div className="space-y-2">
+          {row.offices.map((office, index) => (
+            <div
+              key={`${office.office_id}-${office.role_id}-${index}`}
+              className="flex flex-col py-1"
+            >
+              <span className="text-sm font-medium text-gray-900">
+                {office.role_name}
+              </span>
+              {office.role_description && (
+                <span className="text-xs text-gray-500 mt-1">
+                  {office.role_description}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      ),
     },
     {
-      key: "status",
-      label: "Status",
-      render: (value: string) => (
-        <StatusBadge
-          status={value === "active" ? "Aktif" : "Tidak Aktif"}
-          variant={value === "active" ? "success" : "error"}
-        />
+      key: "assigned_dates",
+      label: "Tanggal Assign",
+      render: (_: any, row: DeduplicatedUser) => (
+        <div className="space-y-2">
+          {row.offices.map((office, index) => (
+            <div
+              key={`${office.office_id}-${office.role_id}-${index}`}
+              className="text-sm text-gray-600 py-1"
+            >
+              {formatDate(office.assigned_at)}
+            </div>
+          ))}
+        </div>
       ),
     },
     {
       key: "actions",
       label: "Aksi",
-      render: (_: any, row: User) => (
+      render: (_: any, row: DeduplicatedUser) => (
         <ActionButton
           mode="multiple"
           actions={[
             {
-              label: "Edit User",
-              onClick: () => handleEditUser(row.id),
+              label: "Edit Assignment",
+              onClick: () => handleEditUser(row),
               icon: Edit,
               variant: "edit",
             },
             {
-              label: "Delete User",
-              onClick: () => handleDeleteUser(row.id),
+              label: "Delete All Assignments",
+              onClick: () => handleDeleteAllUserAssignments(row),
               icon: Trash2,
               variant: "delete",
             },
@@ -142,33 +313,165 @@ const UsersPage: React.FC = () => {
     // TODO: Implement add user modal/form
   };
 
-  const handleEditUser = (userId: string) => {
-    console.log("Edit user:", userId);
-    // TODO: Implement edit user functionality
+  const handleEditUser = (user: DeduplicatedUser) => {
+    setSelectedUser(user);
+    setModalOpen(true);
   };
 
-  const handleDeleteUser = (userId: string) => {
-    console.log("Delete user:", userId);
-    // TODO: Implement delete user functionality
+  const handleDeleteAllUserAssignments = async (user: DeduplicatedUser) => {
+    const officeCount = user.offices.length;
+    const confirmMessage =
+      officeCount > 1
+        ? `Apakah Anda yakin ingin menghapus semua ${officeCount} office assignment untuk user ${user.email}?`
+        : `Apakah Anda yakin ingin menghapus office assignment untuk user ${user.email}?`;
+
+    if (window.confirm(confirmMessage)) {
+      // Get all actual user records for this email (since we have deduplicated view)
+      const userAssignments = users.filter((u) => u.email === user.email);
+
+      // Delete all assignments for this user
+      let allSuccess = true;
+      for (const userAssignment of userAssignments) {
+        const success = await deleteUserOfficeAssignment(userAssignment.id);
+        if (!success) {
+          allSuccess = false;
+          console.error(
+            `Failed to delete assignment for user ${userAssignment.id}`
+          );
+        }
+      }
+
+      if (allSuccess) {
+        console.log("All user assignments deleted successfully");
+      } else {
+        alert("Gagal menghapus beberapa assignment. Silakan coba lagi.");
+      }
+    }
   };
+
+  const handleRefresh = async () => {
+    await Promise.all([refreshUsers(), refreshMasterData()]);
+  };
+
+  // Handle modal save
+  const handleModalSave = async (
+    assignments: Array<{ office_id: string; role_id: string }>
+  ) => {
+    if (!selectedUser) return false;
+
+    try {
+      // For this implementation, we'll use a batch update approach
+      // In a real production app, you might want to implement a more sophisticated
+      // approach that only updates changed assignments
+
+      // First, collect all current assignments for this user from the raw users data
+      const currentUserAssignments = users.filter(
+        (user) => user.email === selectedUser.email
+      );
+
+      // Delete all existing assignments for this user
+      for (const userAssignment of currentUserAssignments) {
+        const success = await deleteUserOfficeAssignment(userAssignment.id);
+        if (!success) {
+          console.error(
+            `Failed to delete assignment for user ${userAssignment.id}`
+          );
+          return false;
+        }
+      }
+
+      // Create new assignments
+      for (const assignment of assignments) {
+        const success = await createOfficeUserAssignment({
+          user_id: selectedUser.id,
+          office_id: assignment.office_id,
+          role_id: assignment.role_id,
+        });
+        if (!success) {
+          console.error("Failed to create new assignment");
+          return false;
+        }
+      }
+
+      // Refresh data after successful update
+      await refreshUsers();
+      return true;
+    } catch (error) {
+      console.error("Failed to save assignments:", error);
+      return false;
+    }
+  };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center gap-2">
+          <RefreshCw className="w-5 h-5 animate-spin" />
+          <span>Memuat data users...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Terjadi Kesalahan
+              </h3>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <ActionButton onClick={handleRefresh} variant="purple">
+                <RefreshCw className="w-4 h-4" />
+                Coba Lagi
+              </ActionButton>
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <Card>
         <PageHeader
-          title="Data User"
+          title={`Data User (${deduplicatedUsers.length})`}
           actions={
-            <ActionButton onClick={handleAddUser} variant="purple">
-              <Plus className="w-5 h-5" />
-              <span>Tambah User</span>
-            </ActionButton>
+            <div className="flex gap-2">
+              <ActionButton
+                onClick={handleRefresh}
+                variant="blue"
+                disabled={refreshing}
+              >
+                <RefreshCw
+                  className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`}
+                />
+                Refresh
+              </ActionButton>
+              <ActionButton onClick={handleAddUser} variant="purple">
+                <Plus className="w-5 h-5" />
+                <span>Tambah Assignment</span>
+              </ActionButton>
+            </div>
           }
         />
+
+        {/* Total Users Info */}
+        <div className="mb-4 text-sm text-gray-600">
+          Total {deduplicatedUsers.length} unique users dengan {users.length}{" "}
+          total assignments
+        </div>
 
         <SearchFilter
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
-          searchPlaceholder="Cari user..."
+          searchPlaceholder="Cari email, phone, role, atau office..."
           filters={[
             {
               value: statusFilter,
@@ -180,6 +483,11 @@ const UsersPage: React.FC = () => {
               onChange: setRoleFilter,
               options: roleOptions,
             },
+            {
+              value: officeFilter,
+              onChange: setOfficeFilter,
+              options: officeOptions,
+            },
           ]}
         />
 
@@ -187,20 +495,52 @@ const UsersPage: React.FC = () => {
           columns={columns}
           data={filteredUsers}
           emptyMessage={
-            searchTerm || statusFilter !== "all" || roleFilter !== "all"
-              ? "Tidak ada user yang ditemukan"
-              : "Belum ada data user"
+            searchTerm ||
+            statusFilter !== "all" ||
+            roleFilter !== "all" ||
+            officeFilter !== "all"
+              ? "Tidak ada user yang ditemukan dengan filter tersebut"
+              : "Belum ada data user assignment"
           }
           emptyIcon={Users}
         />
 
         {/* Results Info */}
-        {(searchTerm || statusFilter !== "all" || roleFilter !== "all") && (
+        {(searchTerm ||
+          statusFilter !== "all" ||
+          roleFilter !== "all" ||
+          officeFilter !== "all") && (
           <div className="mt-4 text-sm text-gray-600">
-            Menampilkan {filteredUsers.length} dari {users.length} user
+            Menampilkan {filteredUsers.length} dari {deduplicatedUsers.length}{" "}
+            user
           </div>
         )}
       </Card>
+
+      {/* User Assignment Modal */}
+      <UserAssignmentModal
+        isOpen={modalOpen}
+        onClose={() => {
+          setModalOpen(false);
+          setSelectedUser(null);
+        }}
+        userEmail={selectedUser?.email || ""}
+        userId={selectedUser?.id || ""}
+        assignments={
+          selectedUser?.offices.map((office) => ({
+            office_id: office.office_id,
+            office_name: office.office_name,
+            office_type: office.office_type,
+            role_id: office.role_id,
+            role_name: office.role_name,
+            assigned_at: office.assigned_at,
+          })) || []
+        }
+        offices={offices}
+        roles={roles}
+        onSave={handleModalSave}
+        loading={refreshing}
+      />
     </div>
   );
 };

@@ -34,7 +34,7 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
           placeholder={searchPlaceholder}
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+          className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-gray-900 placeholder-gray-500"
         />
       </div>
       {filters.map((filter, index) => (
@@ -42,10 +42,14 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
           key={index}
           value={filter.value}
           onChange={(e) => filter.onChange(e.target.value)}
-          className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+          className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-gray-900"
         >
           {filter.options.map((option) => (
-            <option key={option.value} value={option.value}>
+            <option
+              key={option.value}
+              value={option.value}
+              className="text-gray-900 bg-white"
+            >
               {option.label}
             </option>
           ))}
