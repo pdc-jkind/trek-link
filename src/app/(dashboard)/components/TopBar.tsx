@@ -20,6 +20,7 @@ export interface TopBarProps {
   // User data
   userName: string;
   userRole: UserRole;
+  userImage?: string; // Add optional user image prop
 
   // Office data
   offices: Office[];
@@ -44,6 +45,7 @@ const TopBar = ({
   currentSection,
   userName,
   userRole,
+  userImage,
   offices,
   selectedOffice,
   showLogoutModal,
@@ -135,7 +137,7 @@ const TopBar = ({
             </div>
 
             {/* Right Side - Office Toggle, Notifications & User - reduced spacing */}
-            <div className="flex items-center space-x-2 lg:space-x-3">
+            <div className="flex items-center space-x-3 lg:space-x-4">
               {/* Office Toggle Switch */}
               <div className="hidden sm:block">
                 <OfficeToggleSwitch />
@@ -158,8 +160,30 @@ const TopBar = ({
                   onClick={onToggleUserDropdown}
                   className="flex items-center gap-2 bg-white/40 hover:bg-white/70 text-gray-600 hover:text-gray-800 font-medium py-1.5 px-2.5 lg:px-3 rounded-lg shadow-sm hover:shadow-md transition-all duration-300"
                 >
-                  <div className="w-5 lg:w-7 h-5 lg:h-7 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                    <User className="w-3 lg:w-4 h-3 lg:h-4 text-white" />
+                  <div className="w-5 lg:w-7 h-5 lg:h-7 rounded-full overflow-hidden flex items-center justify-center">
+                    {userImage ? (
+                      <img
+                        src={userImage}
+                        alt={userName}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Fallback to gradient background with User icon if image fails to load
+                          e.currentTarget.style.display = "none";
+                          const nextElement = e.currentTarget
+                            .nextElementSibling as HTMLElement;
+                          if (nextElement) {
+                            nextElement.style.display = "flex";
+                          }
+                        }}
+                      />
+                    ) : null}
+                    <div
+                      className={`w-full h-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center ${
+                        userImage ? "hidden" : ""
+                      }`}
+                    >
+                      <User className="w-3 lg:w-4 h-3 lg:h-4 text-white" />
+                    </div>
                   </div>
                 </button>
 

@@ -1,94 +1,99 @@
 // src/hooks/useAuth.ts
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { AuthService } from '@/services/auth.service';
-import { useUserStore, setupUserAutoRefresh } from '@/store/userStore';
+import { useUserStore } from '@/store/user.store';
 import type { AuthUser, AuthProvider as AuthProviderType } from '@/types/auth.types';
 
-// Main auth hook for internal use and AuthProvider
+interface AuthState {
+  user: AuthUser | null;
+  isLoading: boolean;
+  error: string | null;
+}
+
 export const useAuth = () => {
-  // Auth state for session management
-  const [authState, setAuthState] = useState({
-    user: null as AuthUser | null,
+  // Auth state for session management only
+  const [authState, setAuthState] = useState<AuthState>({
+    user: null,
     isLoading: true,
-    error: null as string | null,
+    error: null,
   });
 
-  // Get user store state
-  const userStore = useUserStore();
+  // Get user store actions and state
+  const {
+    currentUser,
+    isAuthenticated: userStoreAuthenticated,
+    setUsers,
+    clearUser,
+    isDataStale,
+    setLastFetched
+  } = useUserStore();
+
   const router = useRouter();
+  
+  // Ref to track if auth is being initialized
+  const initializingRef = useRef(false);
+  const authListenerRef = useRef<{ unsubscribe: () => void } | null>(null);
 
-  // Initialize auth state
-  useEffect(() => {
-    let mounted = true;
-    let cleanup: (() => void) | null = null;
-
-    const initAuth = async () => {
-      try {
-        console.log('Initializing auth state...');
-        
-        // Get current session and user
-        const authUser = await AuthService.getCurrentUser();
-        
-        if (!mounted) return;
-
-        if (authUser) {
-          setAuthState({
-            user: authUser,
-            isLoading: false,
-            error: null,
-          });
-        } else {
-          // No session
-          setAuthState({
-            user: null,
-            isLoading: false,
-            error: null,
-          });
-          
-          // Clear user store if no session
-          if (userStore.user) {
-            userStore.clearUser();
-          }
-        }
-
-        // Setup auto-refresh for user profile data
-        cleanup = setupUserAutoRefresh();
-
-      } catch (error: any) {
-        console.error('Auth initialization error:', error);
-        if (mounted) {
-          setAuthState({
-            user: null,
-            isLoading: false,
-            error: 'Gagal menginisialisasi autentikasi',
-          });
-        }
+  // Load user profile after authentication
+  const loadUserProfile = useCallback(async (userId: string) => {
+    try {
+      console.log('Loading user profile for:', userId);
+      
+      const userProfiles = await AuthService.getUserProfile(userId);
+      
+      if (userProfiles && userProfiles.length > 0) {
+        setUsers(userProfiles);
+        console.log('User profiles loaded and stored');
+      } else {
+        console.warn('No user profiles found');
+        clearUser();
       }
-    };
+    } catch (error: any) {
+      console.error('Error loading user profile:', error);
+      // Don't clear auth state, just log the error
+      // The user is still authenticated, just couldn't load profile
+    }
+  }, []); // Remove dependencies to prevent re-creation
 
-    initAuth();
+  // Setup auth state listener (extracted to separate function)
+  const setupAuthListener = useCallback(() => {
+    if (authListenerRef.current) {
+      authListenerRef.current.unsubscribe();
+    }
 
-    // Listen to auth changes
     const { data: { subscription } } = AuthService.onAuthStateChange(
       async (event, session) => {
-        if (!mounted) return;
-
         console.log('Auth state changed:', event, !!session);
 
         try {
           if (session?.user) {
+            // User signed in
             const authUser = await AuthService.getCurrentUser();
             
-            setAuthState({
-              user: authUser,
-              isLoading: false,
-              error: null,
-            });
+            if (authUser) {
+              setAuthState({
+                user: authUser,
+                isLoading: false,
+                error: null,
+              });
+
+              // Get fresh store values inside the listener
+            const storeState = useUserStore.getState();
+            const shouldLoadProfile = !storeState.currentUser || storeState.isDataStale();
+            
+            if (shouldLoadProfile) {
+              console.log('Auth listener: Loading profile - currentUser exists:', !!storeState.currentUser, 'isStale:', storeState.isDataStale());
+              await loadUserProfile(authUser.id);
+            } else {
+              console.log('Auth listener: Skipping profile load - already exists and fresh');
+            }
+            }
 
           } else {
+            // User signed out
             setAuthState({
               user: null,
               isLoading: false,
@@ -96,7 +101,8 @@ export const useAuth = () => {
             });
 
             // Clear user store
-            userStore.clearUser();
+            const { clearUser: clearUserAction } = useUserStore.getState();
+            clearUserAction();
 
             // Redirect to login on sign out
             if (event === 'SIGNED_OUT') {
@@ -107,30 +113,108 @@ export const useAuth = () => {
           }
         } catch (error: any) {
           console.error('Auth state change error:', error);
-          if (mounted) {
-            setAuthState(prev => ({
-              ...prev,
-              error: 'Terjadi kesalahan saat perubahan status auth',
-              isLoading: false,
-            }));
-          }
+          setAuthState(prev => ({
+            ...prev,
+            error: 'Terjadi kesalahan saat perubahan status auth',
+            isLoading: false,
+          }));
         }
       }
     );
 
+    authListenerRef.current = subscription;
+    return subscription;
+  }, [router]); // Only depend on router to minimize re-creation
+
+  // Initialize auth state (only once)
+  useEffect(() => {
+    let mounted = true;
+
+    const initAuth = async () => {
+      // Prevent multiple initializations
+      if (initializingRef.current) {
+        console.log('Auth already initializing, skipping...');
+        return;
+      }
+
+      initializingRef.current = true;
+
+      try {
+        console.log('Initializing auth state...');
+        
+        // Check current session
+        const authUser = await AuthService.getCurrentUser();
+        
+        if (!mounted) return;
+
+        if (authUser) {
+          // User is authenticated
+          setAuthState({
+            user: authUser,
+            isLoading: false,
+            error: null,
+          });
+
+          // Load user profile if not exists or stale
+          // Add additional check to prevent unnecessary API calls during init
+          const shouldLoadProfile = !currentUser || isDataStale();
+          if (shouldLoadProfile) {
+            console.log('Init: Loading profile - currentUser exists:', !!currentUser, 'isStale:', isDataStale());
+            await loadUserProfile(authUser.id);
+          } else {
+            console.log('Init: Skipping profile load - already exists and fresh');
+          }
+        } else {
+          // No session
+          setAuthState({
+            user: null,
+            isLoading: false,
+            error: null,
+          });
+          
+          // Clear user store if no session
+          clearUser();
+        }
+
+      } catch (error: any) {
+        console.error('Auth initialization error:', error);
+        if (mounted) {
+          setAuthState({
+            user: null,
+            isLoading: false,
+            error: 'Gagal menginisialisasi autentikasi',
+          });
+        }
+      } finally {
+        initializingRef.current = false;
+      }
+    };
+
+    // Initialize auth and setup listener
+    initAuth().then(() => {
+      if (mounted) {
+        setupAuthListener();
+      }
+    });
+
     return () => {
       mounted = false;
-      subscription.unsubscribe();
-      if (cleanup) cleanup();
+      if (authListenerRef.current) {
+        authListenerRef.current.unsubscribe();
+        authListenerRef.current = null;
+      }
     };
-  }, [router]);
+  }, []); // Remove all dependencies to prevent re-initialization
 
+  // Don't auto-update listener to prevent loops - only on manual refresh
+
+  // Login function
   const login = useCallback(async (provider: AuthProviderType = 'google') => {
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
-    userStore.setError(null);
     
     try {
       await AuthService.initiateOAuthLogin(provider);
+      // State will be updated by auth state change listener
     } catch (error: any) {
       console.error('Login error:', error);
       setAuthState(prev => ({
@@ -139,15 +223,16 @@ export const useAuth = () => {
         isLoading: false,
       }));
     }
-  }, [userStore]);
+  }, []);
 
+  // Logout function
   const logout = useCallback(async () => {
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
     
     try {
-      console.log("AuthService.logout called");
+      console.log("Logging out...");
       await AuthService.logout();
-      // State akan di-clear oleh auth state change listener
+      // State will be cleared by auth state change listener
     } catch (error: any) {
       console.error('Logout error:', error);
       setAuthState(prev => ({
@@ -158,54 +243,50 @@ export const useAuth = () => {
     }
   }, []);
 
+  // Clear error function
   const clearError = useCallback(() => {
     setAuthState(prev => ({ ...prev, error: null }));
-    userStore.setError(null);
-  }, [userStore]);
-
-  // Check auth status helper
-  const checkAuthStatus = useCallback(async (): Promise<boolean> => {
-    try {
-      const authStatus = await AuthService.checkAuthStatus();
-      
-      setAuthState(prev => ({
-        ...prev,
-        user: authStatus.user,
-        isLoading: false,
-        error: null,
-      }));
-
-      return authStatus.isAuthenticated;
-    } catch (error: any) {
-      console.error('Check auth status error:', error);
-      setAuthState(prev => ({
-        ...prev,
-        error: error.message || 'Gagal memeriksa status autentikasi',
-        isLoading: false,
-      }));
-      return false;
-    }
   }, []);
 
+  // Refresh profile function
   const refreshProfile = useCallback(async () => {
+    if (!authState.user) {
+      console.warn('No authenticated user to refresh profile for');
+      return;
+    }
+
     try {
-      await AuthService.refreshUserProfileIfNeeded();
+      console.log('Refreshing user profile...');
+      await loadUserProfile(authState.user.id);
+      setLastFetched();
     } catch (error: any) {
       console.error('Refresh profile error:', error);
-      userStore.setError(error.message || 'Gagal merefresh profil');
+      setAuthState(prev => ({
+        ...prev,
+        error: error.message || 'Gagal merefresh profil',
+      }));
     }
-  }, [userStore]);
+  }, [authState.user, loadUserProfile, setLastFetched]);
+
+  // Check if user is fully authenticated (has auth session and user profile)
+  const isFullyAuthenticated = !!authState.user && userStoreAuthenticated;
 
   return {
+    // Auth session data
     user: authState.user,
-    fullUserProfile: userStore.user, // Complete user profile from Zustand
-    isLoading: authState.isLoading || userStore.isLoading,
-    isAuthenticated: !!authState.user && userStore.isAuthenticated,
-    error: authState.error || userStore.error,
+    // Full user profile from store
+    userProfile: currentUser,
+    // Loading states
+    isLoading: authState.isLoading,
+    // Authentication status
+    isAuthenticated: !!authState.user, // Has valid session
+    isFullyAuthenticated, // Has session + user profile loaded
+    // Error state
+    error: authState.error,
+    // Actions
     login,
     logout,
     clearError,
-    checkAuthStatus,
     refreshProfile,
   };
 };

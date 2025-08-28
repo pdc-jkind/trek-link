@@ -1,6 +1,7 @@
 // src/services/auth.service.ts
 import { createClient } from "@/lib/supabase/client";
 import type { AuthUser, AuthProvider } from "@/types/auth.types";
+import type { User } from "@/types/user.types";
 
 export class AuthService {
   private static getClient() {
@@ -78,46 +79,17 @@ export class AuthService {
     }
   }
 
-  static async checkAuthStatus(): Promise<{
-    isAuthenticated: boolean;
-    user: AuthUser | null;
-  }> {
-    try {
-      const user = await this.getCurrentUser();
-      const isAuthenticated = !!user;
-      
-      return { isAuthenticated, user };
-    } catch (error: any) {
-      console.error('Check auth status error:', error);
-      return { isAuthenticated: false, user: null };
-    }
-  }
-
   static async logout(): Promise<void> {
     try {
       const supabase = this.getClient();
-      
-      // Clear store first
-      if (typeof window !== 'undefined') {
-        const { useUserStore } = await import('@/store/userStore');
-        useUserStore.getState().clearUser();
-      }
-      
       const { error } = await supabase.auth.signOut();
+      
       if (error) {
         console.error("Error logging out:", error);
         throw new Error(error.message || 'Gagal logout');
       }
-      
     } catch (error: any) {
       console.error("Error logging out:", error);
-      
-      // Ensure local state is cleared
-      if (typeof window !== 'undefined') {
-        const { useUserStore } = await import('@/store/userStore');
-        useUserStore.getState().clearUser();
-      }
-      
       throw new Error(error.message || 'Gagal logout');
     }
   }
@@ -149,13 +121,27 @@ export class AuthService {
 
   static onAuthStateChange(callback: (event: string, session: any) => void) {
     const supabase = this.getClient();
-    return supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT' && typeof window !== 'undefined') {
-        const { useUserStore } = await import('@/store/userStore');
-        useUserStore.getState().clearUser();
-      }
+    return supabase.auth.onAuthStateChange(callback);
+  }
+
+  static async getUserProfile(userId: string): Promise<User[] | null> {
+    try {
+      const supabase = this.getClient();
       
-      callback(event, session);
-    });
+      const { data, error } = await supabase
+        .from('users_with_office_assignment')
+        .select('*')
+        .eq('id', userId);
+
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        return null;
+      }
+
+      return data as User[];
+    } catch (error) {
+      console.error('Error in getUserProfile:', error);
+      return null;
+    }
   }
 }
