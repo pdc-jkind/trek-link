@@ -12,12 +12,13 @@ import {
   Table,
   StatusBadge,
 } from "@/app/(dashboard)/components/ui";
-import { useItems, useItemMasters } from "./useItems";
+import { useItems, useItemMasters, useOffices } from "./useItems";
 import { Item, ItemFilters, ItemMaster } from "./items.type";
 import { ItemModal } from "./components/ItemModal";
 import { ItemMasterModal } from "./components/ItemMasterModal";
 
 const ItemsPage: React.FC = () => {
+  // Local UI state
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
@@ -29,15 +30,7 @@ const ItemsPage: React.FC = () => {
   const [editingMaster, setEditingMaster] = useState<ItemMaster | null>(null);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
 
-  // Initialize filters for the hook
-  const initialFilters: ItemFilters = {
-    search: searchTerm || undefined,
-    item_master_id: selectedCategory || undefined,
-    page: 1,
-    limit: 50,
-  };
-
-  // Use the custom hooks for items and masters management
+  // Initialize hooks
   const {
     items,
     loading,
@@ -53,7 +46,7 @@ const ItemsPage: React.FC = () => {
     refetch,
     checkItemCodeExists,
     generateItemCode,
-  } = useItems(initialFilters);
+  } = useItems();
 
   const {
     itemMasters,
@@ -65,53 +58,76 @@ const ItemsPage: React.FC = () => {
     refetch: refetchMasters,
   } = useItemMasters();
 
-  // Debounced update function
-  const debouncedUpdateFilters = useCallback(
-    (() => {
-      let timeoutId: NodeJS.Timeout;
-      return (newFilters: Partial<ItemFilters>) => {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => {
-          updateFilters(newFilters);
-        }, 300);
-      };
-    })(),
+  const {
+    offices,
+    loading: officesLoading,
+    error: officesError,
+  } = useOffices();
+
+  // Debug logging for state changes
+  useEffect(() => {
+    console.log("📊 Items Page State Update:", {
+      itemsCount: items.length,
+      loading,
+      error,
+      totalCount,
+      mastersCount: itemMasters.length,
+      mastersLoading,
+      officesCount: offices.length,
+      officesLoading,
+      officesError,
+      currentFilters: filters,
+    });
+  }, [
+    items,
+    loading,
+    error,
+    totalCount,
+    itemMasters,
+    mastersLoading,
+    filters,
+    offices,
+    officesLoading,
+    officesError,
+  ]);
+
+  // Simplified debounced update - removed complex debounce logic
+  const updateFiltersWithDebounce = useCallback(
+    (newFilters: Partial<ItemFilters>) => {
+      console.log("🔧 Updating filters from UI:", newFilters);
+      updateFilters(newFilters);
+    },
     [updateFilters]
   );
 
-  // Update filters when local state changes
+  // Simplified filter sync - no debouncing, direct update
   useEffect(() => {
-    const newFilters: Partial<ItemFilters> = {};
+    const newFilters: Partial<ItemFilters> = {
+      search: searchTerm || undefined,
+      item_master_id: selectedCategory || undefined,
+    };
 
-    if (searchTerm !== (filters.search || "")) {
-      newFilters.search = searchTerm || undefined;
-    }
+    console.log("🎯 Syncing UI filters to hook:", {
+      searchTerm,
+      selectedCategory,
+      newFilters,
+    });
 
-    if (selectedCategory !== (filters.item_master_id || "")) {
-      newFilters.item_master_id = selectedCategory || undefined;
-    }
-
-    // Only update if there are actual changes
-    if (Object.keys(newFilters).length > 0) {
-      debouncedUpdateFilters(newFilters);
-    }
-  }, [
-    searchTerm,
-    selectedCategory,
-    filters.search,
-    filters.item_master_id,
-    debouncedUpdateFilters,
-  ]);
+    updateFiltersWithDebounce(newFilters);
+  }, [searchTerm, selectedCategory, updateFiltersWithDebounce]);
 
   // Categories options from item masters
   const categories = useMemo(() => {
-    return [
+    const options = [
       { value: "", label: "Semua Kategori" },
       ...itemMasters.map((master) => ({
         value: master.id,
         label: `${master.name} (${master.type})`,
       })),
     ];
+
+    console.log("📋 Categories options generated:", options);
+    return options;
   }, [itemMasters]);
 
   const statuses = [
@@ -123,7 +139,7 @@ const ItemsPage: React.FC = () => {
 
   // Memoized stats calculation
   const statsData = useMemo(() => {
-    return [
+    const stats = [
       {
         title: "Total Items",
         value: totalCount.toString(),
@@ -149,32 +165,38 @@ const ItemsPage: React.FC = () => {
         color: "from-purple-500 to-purple-600",
       },
     ];
+
+    console.log("📈 Stats calculated:", stats);
+    return stats;
   }, [items, totalCount]);
 
   // Modal handlers
   const handleAddItem = useCallback(() => {
+    console.log("➕ Opening add item modal");
     setEditingItem(null);
     setModalMode("create");
     setIsItemModalOpen(true);
   }, []);
 
   const handleAddMaster = useCallback(() => {
+    console.log("➕ Opening add master modal");
     setEditingMaster(null);
     setModalMode("create");
     setIsMasterModalOpen(true);
   }, []);
 
   const handleCreateMasterFromItemModal = useCallback(() => {
+    console.log("🔄 Switching from item modal to master modal");
     setIsItemModalOpen(false);
     handleAddMaster();
   }, [handleAddMaster]);
 
   const handleViewItem = useCallback(
     async (id: string) => {
-      console.log("Viewing item:", id);
+      console.log("👁️ Viewing item:", id);
       const item = await getItem(id);
       if (item) {
-        console.log("Item details:", item);
+        console.log("📋 Item details:", JSON.stringify(item, null, 2));
       }
     },
     [getItem]
@@ -182,6 +204,7 @@ const ItemsPage: React.FC = () => {
 
   const handleEditItem = useCallback(
     async (id: string) => {
+      console.log("✏️ Editing item:", id);
       const item = await getItem(id);
       if (item) {
         setEditingItem(item);
@@ -195,11 +218,12 @@ const ItemsPage: React.FC = () => {
   const handleDeleteItem = useCallback(
     async (id: string) => {
       if (window.confirm("Apakah Anda yakin ingin menghapus barang ini?")) {
+        console.log("🗑️ Deleting item:", id);
         const result = await deleteItem(id);
         if (result.success) {
-          console.log("Item deleted successfully");
+          console.log("✅ Item deleted successfully");
         } else {
-          console.error("Failed to delete item:", result.error);
+          console.error("❌ Failed to delete item:", result.error);
         }
       }
     },
@@ -209,11 +233,15 @@ const ItemsPage: React.FC = () => {
   // Save handlers
   const handleSaveItem = useCallback(
     async (data: any) => {
+      console.log("💾 Saving item:", { mode: modalMode, data });
+
       if (modalMode === "create") {
         const result = await createItem(data);
+        console.log("✅ Create item result:", result);
         return result;
       } else {
         const result = await updateItem(data);
+        console.log("✅ Update item result:", result);
         return result;
       }
     },
@@ -222,14 +250,18 @@ const ItemsPage: React.FC = () => {
 
   const handleSaveMaster = useCallback(
     async (data: any) => {
+      console.log("💾 Saving item master:", { mode: modalMode, data });
+
       if (modalMode === "create") {
         const result = await createItemMaster(data);
+        console.log("✅ Create master result:", result);
         if (result.success) {
           refetchMasters();
         }
         return result;
       } else {
         const result = await updateItemMaster(data);
+        console.log("✅ Update master result:", result);
         if (result.success) {
           refetchMasters();
         }
@@ -248,13 +280,14 @@ const ItemsPage: React.FC = () => {
   }, []);
 
   const handleResetFilters = useCallback(() => {
+    console.log("🔄 Resetting all filters");
     setSearchTerm("");
     setSelectedCategory("");
     setSelectedStatus("");
     resetFilters();
   }, [resetFilters]);
 
-  // Table columns - Updated to match actual Item interface
+  // Table columns
   const columns = [
     {
       key: "item_code",
@@ -361,15 +394,6 @@ const ItemsPage: React.FC = () => {
         <span>Filter</span>
       </ActionButton>
 
-      <ActionButton
-        onClick={handleAddMaster}
-        variant="green"
-        disabled={mastersLoading}
-      >
-        <Plus className="w-4 h-4" />
-        <span>Tambah Kategori</span>
-      </ActionButton>
-
       <ActionButton onClick={handleAddItem} variant="purple" disabled={loading}>
         <Plus className="w-4 h-4" />
         <span>Tambah Barang</span>
@@ -394,6 +418,7 @@ const ItemsPage: React.FC = () => {
 
   // Show error state if there's an error
   if (error) {
+    console.error("💥 Rendering error state:", error);
     return (
       <div className="space-y-6">
         <Card>
@@ -411,6 +436,15 @@ const ItemsPage: React.FC = () => {
       </div>
     );
   }
+
+  console.log("🎨 Rendering items page with state:", {
+    loading,
+    itemsLength: items.length,
+    mastersLoading,
+    mastersLength: itemMasters.length,
+    officesLoading,
+    officesLength: offices.length,
+  });
 
   return (
     <div className="space-y-6">
@@ -430,6 +464,9 @@ const ItemsPage: React.FC = () => {
           <div className="text-center py-10">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
             <p className="mt-2 text-gray-600">Loading items...</p>
+            <p className="mt-1 text-xs text-gray-500">
+              Check console for detailed logs
+            </p>
           </div>
         ) : (
           <Table
@@ -457,6 +494,7 @@ const ItemsPage: React.FC = () => {
       <ItemModal
         isOpen={isItemModalOpen}
         onClose={() => {
+          console.log("❌ Closing item modal");
           setIsItemModalOpen(false);
           setEditingItem(null);
         }}
@@ -473,6 +511,7 @@ const ItemsPage: React.FC = () => {
       <ItemMasterModal
         isOpen={isMasterModalOpen}
         onClose={() => {
+          console.log("❌ Closing master modal");
           setIsMasterModalOpen(false);
           setEditingMaster(null);
           // Reopen item modal if it was previously open
@@ -484,6 +523,8 @@ const ItemsPage: React.FC = () => {
         itemMaster={editingMaster}
         mode={modalMode}
         checkNameExists={checkItemMasterNameExists}
+        offices={offices}
+        officesLoading={officesLoading}
       />
     </div>
   );

@@ -226,33 +226,44 @@ export const ItemModal: React.FC<ItemModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-lg font-semibold">
+    <div className="fixed inset-0 flex items-center justify-center z-50">
+      {/* Enhanced backdrop with blur effect */}
+      <div
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+        onClick={handleClose}
+      />
+
+      {/* Modal content */}
+      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto border border-gray-200/50">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-white sticky top-0 z-10 rounded-t-xl">
+          <h2 className="text-lg font-semibold text-gray-900">
             {mode === "create" ? "Tambah Barang" : "Edit Barang"}
           </h2>
           <button
             onClick={handleClose}
             disabled={isSubmitting}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-500 hover:text-gray-700 transition-colors p-1 rounded-md hover:bg-gray-100"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {errors.submit && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-start space-x-2">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start space-x-3">
               <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-              <span className="text-red-700 text-sm">{errors.submit}</span>
+              <span className="text-red-800 text-sm font-medium">
+                {errors.submit}
+              </span>
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Item Code */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
                 Kode Barang *
               </label>
               <div className="flex space-x-2">
@@ -260,10 +271,10 @@ export const ItemModal: React.FC<ItemModalProps> = ({
                   type="text"
                   value={formData.item_code}
                   onChange={(e) => handleCodeChange(e.target.value)}
-                  className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`flex-1 px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all text-gray-900 font-medium placeholder-gray-500 ${
                     errors.item_code || codeExists
-                      ? "border-red-300 focus:ring-red-500"
-                      : "border-gray-300"
+                      ? "border-red-300 focus:ring-red-500 bg-red-50"
+                      : "border-gray-300 focus:ring-blue-500 focus:border-blue-500 bg-white"
                   }`}
                   placeholder="Masukkan kode barang"
                   disabled={isSubmitting}
@@ -273,19 +284,19 @@ export const ItemModal: React.FC<ItemModalProps> = ({
                     type="button"
                     onClick={handleGenerateCode}
                     disabled={isSubmitting || isGeneratingCode}
-                    className="px-3 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    className="px-4 py-3 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 font-medium border border-gray-300 rounded-lg hover:from-gray-200 hover:to-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 transition-all shadow-sm"
                     title="Generate Code"
                   >
                     {isGeneratingCode ? (
                       <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
                     ) : (
-                      "Auto"
+                      <span className="text-sm">Auto</span>
                     )}
                   </button>
                 )}
               </div>
               {(errors.item_code || codeExists) && (
-                <p className="mt-1 text-sm text-red-600">
+                <p className="mt-2 text-sm text-red-700 font-medium">
                   {errors.item_code ||
                     (codeExists ? "Kode barang sudah ada" : "")}
                 </p>
@@ -294,30 +305,32 @@ export const ItemModal: React.FC<ItemModalProps> = ({
 
             {/* Item Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
                 Nama Barang *
               </label>
               <input
                 type="text"
                 value={formData.item_name}
                 onChange={(e) => handleInputChange("item_name", e.target.value)}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all text-gray-900 font-medium placeholder-gray-500 ${
                   errors.item_name
-                    ? "border-red-300 focus:ring-red-500"
-                    : "border-gray-300"
+                    ? "border-red-300 focus:ring-red-500 bg-red-50"
+                    : "border-gray-300 focus:ring-blue-500 focus:border-blue-500 bg-white"
                 }`}
                 placeholder="Masukkan nama barang"
                 disabled={isSubmitting}
               />
               {errors.item_name && (
-                <p className="mt-1 text-sm text-red-600">{errors.item_name}</p>
+                <p className="mt-2 text-sm text-red-700 font-medium">
+                  {errors.item_name}
+                </p>
               )}
             </div>
           </div>
 
           {/* Category */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
               Kategori
             </label>
             <div className="flex space-x-2">
@@ -326,12 +339,18 @@ export const ItemModal: React.FC<ItemModalProps> = ({
                 onChange={(e) =>
                   handleInputChange("item_master_id", e.target.value)
                 }
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
                 disabled={isSubmitting}
               >
-                <option value="">Pilih kategori (opsional)</option>
+                <option value="" className="text-gray-500">
+                  Pilih kategori (opsional)
+                </option>
                 {itemMasters.map((master) => (
-                  <option key={master.id} value={master.id}>
+                  <option
+                    key={master.id}
+                    value={master.id}
+                    className="text-gray-900"
+                  >
                     {master.name} ({master.type})
                   </option>
                 ))}
@@ -341,7 +360,7 @@ export const ItemModal: React.FC<ItemModalProps> = ({
                   type="button"
                   onClick={onCreateMaster}
                   disabled={isSubmitting}
-                  className="px-3 py-2 bg-green-100 text-green-700 border border-green-300 rounded-md hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 flex items-center space-x-1"
+                  className="px-4 py-3 bg-gradient-to-r from-green-100 to-green-200 text-green-800 font-medium border border-green-300 rounded-lg hover:from-green-200 hover:to-green-300 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 flex items-center space-x-2 transition-all shadow-sm"
                   title="Tambah Kategori Baru"
                 >
                   <Plus className="w-4 h-4" />
@@ -351,43 +370,45 @@ export const ItemModal: React.FC<ItemModalProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Base Unit */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
                 Unit Dasar *
               </label>
               <select
                 value={formData.unit}
                 onChange={(e) => handleInputChange("unit", e.target.value)}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all text-gray-900 font-medium bg-white ${
                   errors.unit
-                    ? "border-red-300 focus:ring-red-500"
-                    : "border-gray-300"
+                    ? "border-red-300 focus:ring-red-500 bg-red-50"
+                    : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
                 }`}
                 disabled={isSubmitting}
               >
                 {commonUnits.map((unit) => (
-                  <option key={unit} value={unit}>
+                  <option key={unit} value={unit} className="text-gray-900">
                     {unit}
                   </option>
                 ))}
               </select>
               {errors.unit && (
-                <p className="mt-1 text-sm text-red-600">{errors.unit}</p>
+                <p className="mt-2 text-sm text-red-700 font-medium">
+                  {errors.unit}
+                </p>
               )}
             </div>
 
             {/* Alternative Unit */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
                 Unit Alternatif
               </label>
               <input
                 type="text"
                 value={formData.alt_unit}
                 onChange={(e) => handleInputChange("alt_unit", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium placeholder-gray-500 bg-white transition-all"
                 placeholder="contoh: box, lusin"
                 disabled={isSubmitting}
               />
@@ -395,7 +416,7 @@ export const ItemModal: React.FC<ItemModalProps> = ({
 
             {/* Conversion Ratio */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
                 Rasio Konversi
               </label>
               <input
@@ -405,21 +426,21 @@ export const ItemModal: React.FC<ItemModalProps> = ({
                 onChange={(e) =>
                   handleInputChange("conversion_to_base", e.target.value)
                 }
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all text-gray-900 font-medium placeholder-gray-500 bg-white ${
                   errors.conversion_to_base
-                    ? "border-red-300 focus:ring-red-500"
-                    : "border-gray-300"
+                    ? "border-red-300 focus:ring-red-500 bg-red-50"
+                    : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
                 }`}
                 placeholder="contoh: 12"
                 disabled={isSubmitting}
               />
               {errors.conversion_to_base && (
-                <p className="mt-1 text-sm text-red-600">
+                <p className="mt-2 text-sm text-red-700 font-medium">
                   {errors.conversion_to_base}
                 </p>
               )}
               {formData.alt_unit && formData.conversion_to_base && (
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-2 text-xs text-gray-600 font-medium bg-blue-50 px-3 py-2 rounded-md">
                   1 {formData.alt_unit} = {formData.conversion_to_base}{" "}
                   {formData.unit}
                 </p>
@@ -428,19 +449,20 @@ export const ItemModal: React.FC<ItemModalProps> = ({
           </div>
         </form>
 
-        <div className="flex justify-end space-x-3 p-6 border-t bg-gray-50">
+        {/* Footer */}
+        <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50/50 rounded-b-xl">
           <button
             type="button"
             onClick={handleClose}
             disabled={isSubmitting}
-            className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            className="px-5 py-2.5 text-gray-700 font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 disabled:opacity-50 transition-all"
           >
             Batal
           </button>
           <button
             onClick={handleSubmit}
             disabled={isSubmitting || codeExists}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 flex items-center space-x-2"
+            className="px-5 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 flex items-center space-x-2 transition-all shadow-lg"
           >
             {isSubmitting ? (
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />

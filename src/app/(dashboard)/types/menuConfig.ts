@@ -2,6 +2,7 @@
 import {
   Home,
   Users,
+  Store,
   Package,
   ShoppingCart,
   Database,
@@ -15,6 +16,7 @@ import {
 export type SectionKey =
   | "dashboard"
   | "users"
+  | "offices"
   | "inventory"
   | "orders"
   | "items"
@@ -66,6 +68,16 @@ export const MENU_CONFIG: MenuItemConfig[] = [
     roles: ["admin"],
     title: "Data User",
     subtitle: "Kelola data pengguna sistem",
+  },
+  {
+    id: "offices",
+    label: "Data Office",
+    icon: Store,
+    url: "/offices",
+    category: "main",
+    roles: ["admin"],
+    title: "Data Office",
+    subtitle: "Kelola data office",
   },
 
   // Inventory Management Group
