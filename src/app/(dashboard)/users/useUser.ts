@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import UserService from './user.service';
 import type { User, UserResponse } from '@/types/user.types';
-import type { Office, Role, UpdateOfficeUserRequest, CreateOfficeUserRequest } from './types';
+import type { Office, Role, UpdateOfficeUserRequest, CreateOfficeUserRequest } from './user.types';
 
 interface UseUserState {
   users: User[];
@@ -18,11 +18,13 @@ interface UseUserActions {
   refreshUsers: () => Promise<void>;
   refreshMasterData: () => Promise<void>;
   searchUsers: (searchTerm: string) => Promise<User[]>;
-  updateUserOfficeAssignment: (userId: string, data: UpdateOfficeUserRequest) => Promise<boolean>;
+  updateUserOfficeAssignment: (recordId: string, data: UpdateOfficeUserRequest) => Promise<boolean>;
   createOfficeUserAssignment: (data: CreateOfficeUserRequest) => Promise<boolean>;
-  deleteUserOfficeAssignment: (userId: string) => Promise<boolean>;
+  deleteUserOfficeAssignment: (recordId: string) => Promise<boolean>;
+  deleteAllUserOfficeAssignments: (userId: string) => Promise<boolean>;
   getUserById: (userId: string) => Promise<User | null>;
   checkUserPermission: (userId: string, permission: string) => Promise<boolean>;
+  bulkUpdateUserAssignments: (userId: string, assignments: Array<{ office_id: string; role_id: string }>) => Promise<boolean>;
 }
 
 export type UseUserReturn = UseUserState & UseUserActions;
@@ -42,11 +44,28 @@ export const useUser = (): UseUserReturn => {
     setState(prev => ({ ...prev, ...updates }));
   }, []);
 
-  // Helper function to handle errors
-  const handleError = useCallback((error: any, defaultMessage: string) => {
+  // Enhanced error handling helper
+  const handleError = useCallback((error: any, defaultMessage: string, showAlert: boolean = false) => {
     console.error(defaultMessage, error);
-    const errorMessage = error?.message || defaultMessage;
+    
+    // Enhanced error message extraction
+    let errorMessage = defaultMessage;
+    if (error?.message) {
+      errorMessage = `${defaultMessage}: ${error.message}`;
+    } else if (error?.details) {
+      errorMessage = `${defaultMessage}: ${error.details}`;
+    } else if (error?.hint) {
+      errorMessage = `${defaultMessage}: ${error.hint}`;
+    } else if (typeof error === 'string') {
+      errorMessage = `${defaultMessage}: ${error}`;
+    }
+
     updateState({ error: errorMessage });
+    
+    if (showAlert) {
+      alert(errorMessage);
+    }
+    
     return false;
   }, [updateState]);
 
@@ -72,7 +91,7 @@ export const useUser = (): UseUserReturn => {
   // Fetch master data (offices and roles)
   const refreshMasterData = useCallback(async () => {
     try {
-      updateState({ refreshing: true });
+      updateState({ refreshing: true, error: null });
       
       const [officesResult, rolesResult] = await Promise.all([
         UserService.getAllOffices(),
@@ -125,6 +144,11 @@ export const useUser = (): UseUserReturn => {
   // Get user by ID
   const getUserById = useCallback(async (userId: string): Promise<User | null> => {
     try {
+      if (!userId) {
+        console.warn('getUserById called with empty userId');
+        return null;
+      }
+
       const { data, error } = await UserService.getUserById(userId);
       
       if (error) {
@@ -139,18 +163,23 @@ export const useUser = (): UseUserReturn => {
     }
   }, [handleError]);
 
-  // Update office assignment
+  // Update office assignment - now uses record ID
   const updateUserOfficeAssignment = useCallback(async (
-    userId: string, 
+    recordId: string, 
     updateData: UpdateOfficeUserRequest
   ): Promise<boolean> => {
     try {
+      if (!recordId) {
+        handleError(new Error('Record ID is required'), 'Failed to update office assignment', true);
+        return false;
+      }
+
       updateState({ refreshing: true, error: null });
       
-      const { data, error } = await UserService.updateOfficeUser(userId, updateData);
+      const { data, error } = await UserService.updateOfficeUser(recordId, updateData);
       
       if (error) {
-        handleError(error, 'Failed to update office assignment');
+        handleError(error, 'Failed to update office assignment', true);
         return false;
       }
 
@@ -159,24 +188,34 @@ export const useUser = (): UseUserReturn => {
       updateState({ refreshing: false });
       return true;
     } catch (error) {
-      handleError(error, 'Failed to update office assignment');
+      handleError(error, 'Failed to update office assignment', true);
       return false;
     } finally {
       updateState({ refreshing: false });
     }
   }, [updateState, handleError, refreshUsers]);
 
-  // Create office user assignment
+  // Create office user assignment - Enhanced validation
   const createOfficeUserAssignment = useCallback(async (
     data: CreateOfficeUserRequest
   ): Promise<boolean> => {
     try {
+      // Validate required fields
+      if (!data.user_id || !data.office_id || !data.role_id) {
+        handleError(
+          new Error('User ID, Office ID, and Role ID are required'), 
+          'Failed to create office assignment',
+          true
+        );
+        return false;
+      }
+
       updateState({ refreshing: true, error: null });
       
       const { data: result, error } = await UserService.createOfficeUser(data);
       
       if (error) {
-        handleError(error, 'Failed to create office assignment');
+        handleError(error, 'Failed to create office assignment', true);
         return false;
       }
 
@@ -185,22 +224,27 @@ export const useUser = (): UseUserReturn => {
       updateState({ refreshing: false });
       return true;
     } catch (error) {
-      handleError(error, 'Failed to create office assignment');
+      handleError(error, 'Failed to create office assignment', true);
       return false;
     } finally {
       updateState({ refreshing: false });
     }
   }, [updateState, handleError, refreshUsers]);
 
-  // Delete office user assignment
-  const deleteUserOfficeAssignment = useCallback(async (userId: string): Promise<boolean> => {
+  // Delete single office user assignment - now uses record ID
+  const deleteUserOfficeAssignment = useCallback(async (recordId: string): Promise<boolean> => {
     try {
+      if (!recordId) {
+        handleError(new Error('Record ID is required'), 'Failed to delete office assignment', true);
+        return false;
+      }
+
       updateState({ refreshing: true, error: null });
       
-      const { data, error } = await UserService.deleteOfficeUser(userId);
+      const { data, error } = await UserService.deleteOfficeUser(recordId);
       
       if (error) {
-        handleError(error, 'Failed to delete office assignment');
+        handleError(error, 'Failed to delete office assignment', true);
         return false;
       }
 
@@ -209,7 +253,131 @@ export const useUser = (): UseUserReturn => {
       updateState({ refreshing: false });
       return true;
     } catch (error) {
-      handleError(error, 'Failed to delete office assignment');
+      handleError(error, 'Failed to delete office assignment', true);
+      return false;
+    } finally {
+      updateState({ refreshing: false });
+    }
+  }, [updateState, handleError, refreshUsers]);
+
+  // Delete all office assignments for a user
+  const deleteAllUserOfficeAssignments = useCallback(async (userId: string): Promise<boolean> => {
+    try {
+      if (!userId) {
+        handleError(new Error('User ID is required'), 'Failed to delete user assignments', true);
+        return false;
+      }
+
+      updateState({ refreshing: true, error: null });
+      
+      const { data, error } = await UserService.deleteAllUserOfficeAssignments(userId);
+      
+      if (error) {
+        handleError(error, 'Failed to delete all user office assignments', true);
+        return false;
+      }
+
+      // Refresh users after successful deletion
+      await refreshUsers();
+      updateState({ refreshing: false });
+      return true;
+    } catch (error) {
+      handleError(error, 'Failed to delete all user office assignments', true);
+      return false;
+    } finally {
+      updateState({ refreshing: false });
+    }
+  }, [updateState, handleError, refreshUsers]);
+
+  // Bulk update user assignments (delete all and recreate) - Enhanced with better error handling
+  const bulkUpdateUserAssignments = useCallback(async (
+    userId: string,
+    assignments: Array<{ office_id: string; role_id: string }>
+  ): Promise<boolean> => {
+    try {
+      if (!userId) {
+        handleError(new Error('User ID is required'), 'Failed to update assignments', true);
+        return false;
+      }
+
+      if (!assignments || assignments.length === 0) {
+        handleError(new Error('At least one assignment is required'), 'Failed to update assignments', true);
+        return false;
+      }
+
+      // Validate assignments
+      const invalidAssignments = assignments.filter(a => !a.office_id || !a.role_id);
+      if (invalidAssignments.length > 0) {
+        handleError(
+          new Error('All assignments must have valid office_id and role_id'), 
+          'Failed to update assignments',
+          true
+        );
+        return false;
+      }
+
+      updateState({ refreshing: true, error: null });
+      
+      // First, delete all existing assignments for this user (only if user has existing assignments)
+      const existingAssignments = await UserService.getAllOfficeAssignmentsByUserId(userId);
+      
+      if (existingAssignments.error) {
+        console.warn('Could not fetch existing assignments, proceeding with creation only:', existingAssignments.error);
+      } else if (existingAssignments.data && existingAssignments.data.length > 0) {
+        // Only delete if user has existing assignments
+        const { error: deleteError } = await UserService.deleteAllUserOfficeAssignments(userId);
+        
+        if (deleteError) {
+          handleError(deleteError, 'Failed to delete existing assignments', true);
+          return false;
+        }
+      }
+
+      // Create new assignments with enhanced error handling
+      const creationResults = await Promise.allSettled(
+        assignments.map(assignment =>
+          UserService.createOfficeUser({
+            user_id: userId,
+            office_id: assignment.office_id,
+            role_id: assignment.role_id,
+          })
+        )
+      );
+
+      // Check for any failed creations
+      const failedCreations = creationResults.filter(
+        (result, index) => {
+          if (result.status === 'rejected') {
+            console.error(`Failed to create assignment ${index + 1}:`, result.reason);
+            return true;
+          }
+          if (result.status === 'fulfilled' && result.value.error) {
+            console.error(`Failed to create assignment ${index + 1}:`, result.value.error);
+            return true;
+          }
+          return false;
+        }
+      );
+
+      if (failedCreations.length > 0) {
+        handleError(
+          new Error(`Failed to create ${failedCreations.length} out of ${assignments.length} assignments`),
+          'Some assignments could not be created',
+          true
+        );
+        
+        // Still refresh to show partial success
+        await refreshUsers();
+        updateState({ refreshing: false });
+        return false;
+      }
+
+      // Refresh users after successful update
+      await refreshUsers();
+      updateState({ refreshing: false });
+      return true;
+    } catch (error) {
+      handleError(error, 'Failed to bulk update user assignments', true);
       return false;
     } finally {
       updateState({ refreshing: false });
@@ -222,6 +390,11 @@ export const useUser = (): UseUserReturn => {
     permission: string
   ): Promise<boolean> => {
     try {
+      if (!userId || !permission) {
+        console.warn('checkUserPermission called with missing parameters');
+        return false;
+      }
+
       const { hasPermission, error } = await UserService.userHasPermission(userId, permission);
       
       if (error) {
@@ -239,14 +412,19 @@ export const useUser = (): UseUserReturn => {
   // Initialize data on mount
   useEffect(() => {
     const initializeData = async () => {
-      await Promise.all([
-        refreshUsers(),
-        refreshMasterData()
-      ]);
+      try {
+        updateState({ loading: true, error: null });
+        
+        // Load master data first, then users
+        await refreshMasterData();
+        await refreshUsers();
+      } catch (error) {
+        handleError(error, 'Failed to initialize data');
+      }
     };
 
     initializeData();
-  }, [refreshUsers, refreshMasterData]);
+  }, [refreshUsers, refreshMasterData, handleError]);
 
   return {
     // State
@@ -264,8 +442,10 @@ export const useUser = (): UseUserReturn => {
     updateUserOfficeAssignment,
     createOfficeUserAssignment,
     deleteUserOfficeAssignment,
+    deleteAllUserOfficeAssignments,
     getUserById,
     checkUserPermission,
+    bulkUpdateUserAssignments,
   };
 };
 

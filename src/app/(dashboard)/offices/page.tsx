@@ -19,13 +19,29 @@ import {
   ActionButton,
 } from "../components/ui";
 import { useOffice } from "./useOffice";
-import type { Office } from "./office.type";
+import { OfficeModal } from "./components/OfficeModal";
+import type { Office, OfficeType } from "./office.type";
+
+interface CreateOfficePayload {
+  name: string;
+  type: OfficeType;
+  location: string;
+}
+
+interface UpdateOfficePayload extends CreateOfficePayload {
+  id: string;
+}
 
 const OfficesPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("all");
+
+  // Modal states
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<"create" | "edit">("create");
+  const [selectedOffice, setSelectedOffice] = useState<Office | null>(null);
 
   // Use office hook
   const {
@@ -165,27 +181,58 @@ const OfficesPage: React.FC = () => {
     },
   ];
 
-  // Event handlers
+  // Modal event handlers
   const handleAddOffice = () => {
-    console.log("Add office clicked");
-    // TODO: Implement add office modal/form
-    // Example usage:
-    // const newOfficeData = {
-    //   name: "New Office",
-    //   type: "distributor" as OfficeType,
-    //   location: "Jakarta"
-    // };
-    // await createOffice(newOfficeData);
+    setSelectedOffice(null);
+    setModalMode("create");
+    setIsModalOpen(true);
   };
 
   const handleEditOffice = (office: Office) => {
-    console.log("Edit office:", office.id);
-    // TODO: Implement edit office modal/form
-    // Example usage:
-    // await updateOffice(office.id, {
-    //   name: "Updated Office Name",
-    //   location: "Updated Location"
-    // });
+    setSelectedOffice(office);
+    setModalMode("edit");
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedOffice(null);
+  };
+
+  const handleSaveOffice = async (
+    data: CreateOfficePayload | UpdateOfficePayload
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      if (modalMode === "create") {
+        const result = await createOffice(data as CreateOfficePayload);
+        if (result) {
+          return { success: true };
+        } else {
+          return { success: false, error: "Gagal membuat office" };
+        }
+      } else {
+        const updateData = data as UpdateOfficePayload;
+        const result = await updateOffice(updateData.id, {
+          name: updateData.name,
+          type: updateData.type,
+          location: updateData.location,
+        });
+        if (result) {
+          return { success: true };
+        } else {
+          return { success: false, error: "Gagal mengupdate office" };
+        }
+      }
+    } catch (error) {
+      console.error("Error saving office:", error);
+      return {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Terjadi kesalahan tidak terduga",
+      };
+    }
   };
 
   const handleDeleteOffice = async (office: Office) => {
@@ -349,6 +396,16 @@ const OfficesPage: React.FC = () => {
           </div>
         )}
       </Card>
+
+      {/* Office Modal */}
+      <OfficeModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onSave={handleSaveOffice}
+        office={selectedOffice}
+        mode={modalMode}
+        checkOfficeNameExists={checkOfficeNameExists}
+      />
     </div>
   );
 };
