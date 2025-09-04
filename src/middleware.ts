@@ -31,8 +31,11 @@ export async function middleware(req: NextRequest) {
     // Auth routes yang tidak boleh diakses jika sudah login
     const authRoutes = ['/login']
 
-    // Public routes yang bisa diakses tanpa auth
-    const publicRoutes = ['/callback']
+    // Auth callback route - allow to pass through for server-side processing
+    if (pathname === '/auth/callback') {
+      console.log('Allowing auth callback route for server-side processing')
+      return res
+    }
 
     // Check route types
     const isProtectedRoute = protectedRoutes.some(route => 
@@ -42,16 +45,6 @@ export async function middleware(req: NextRequest) {
     const isAuthRoute = authRoutes.some(route => 
       pathname.startsWith(route)
     )
-
-    const isPublicRoute = publicRoutes.some(route => 
-      pathname.startsWith(route)
-    )
-
-    // Always allow callback route
-    if (pathname === '/callback') {
-      console.log('Allowing callback route')
-      return res
-    }
 
     // Handle root route dengan authentication check
     if (pathname === '/') {
@@ -68,15 +61,15 @@ export async function middleware(req: NextRequest) {
     if (isProtectedRoute && !session) {
       console.log('Protected route without session, redirecting to login')
       const redirectUrl = new URL('/login', req.url)
-      redirectUrl.searchParams.set('redirectTo', pathname)
+      redirectUrl.searchParams.set('redirect_to', pathname)
       return NextResponse.redirect(redirectUrl)
     }
 
     // Jika mengakses auth route dengan session aktif
     if (isAuthRoute && session) {
       console.log('Auth route with active session, redirecting')
-      // Check if there's a redirectTo parameter
-      const redirectTo = req.nextUrl.searchParams.get('redirectTo')
+      // Check if there's a redirect_to parameter
+      const redirectTo = req.nextUrl.searchParams.get('redirect_to')
       const redirectUrl = redirectTo && redirectTo !== '/' ? redirectTo : '/dashboard'
       return NextResponse.redirect(new URL(redirectUrl, req.url))
     }
@@ -88,7 +81,7 @@ export async function middleware(req: NextRequest) {
   } catch (error) {
     console.error('Middleware error:', error)
     // Jika ada error, redirect ke login untuk safety (kecuali untuk callback)
-    if (req.nextUrl.pathname !== '/login' && req.nextUrl.pathname !== '/callback') {
+    if (req.nextUrl.pathname !== '/login' && req.nextUrl.pathname !== '/auth/callback') {
       return NextResponse.redirect(new URL('/login', req.url))
     }
     return res

@@ -2,194 +2,536 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { Plus, Edit, Trash2, Search } from "lucide-react";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Users,
+  RefreshCw,
+  AlertCircle,
+} from "lucide-react";
+import {
+  Card,
+  PageHeader,
+  SearchFilter,
+  Table,
+  StatusBadge,
+  ActionButton,
+} from "../components/ui";
+import { UserAssignmentModal } from "./UserAssignmentModal";
+import { useUser } from "./useUser";
 
-// Types
-interface User {
+// Interface for deduplicated user
+interface DeduplicatedUser {
   id: string;
-  name: string;
   email: string;
-  role: string;
-  status: "active" | "inactive";
+  phone: string | null;
+  email_confirmed_at: string | null;
+  created_at: string;
+  offices: Array<{
+    office_id: string;
+    office_name: string;
+    office_type: string;
+    role_id: string;
+    role_name: string;
+    role_description: string;
+    assigned_at: string;
+    record_id?: string;
+  }>;
 }
 
 const UsersPage: React.FC = () => {
-  // State management
   const [searchTerm, setSearchTerm] = useState("");
-  const [users] = useState<User[]>([
-    {
-      id: "1",
-      name: "John Doe",
-      email: "john@example.com",
-      role: "Admin",
-      status: "active",
-    },
-    {
-      id: "2",
-      name: "Jane Smith",
-      email: "jane@example.com",
-      role: "Manager",
-      status: "active",
-    },
-    {
-      id: "3",
-      name: "Bob Johnson",
-      email: "bob@example.com",
-      role: "Staff",
-      status: "inactive",
-    },
-  ]);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [officeFilter, setOfficeFilter] = useState("all");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<DeduplicatedUser | null>(
+    null
+  );
 
-  // Filtered users based on search
+  const {
+    users,
+    offices,
+    roles,
+    loading,
+    error,
+    refreshing,
+    refreshUsers,
+    refreshMasterData,
+    deleteAllUserOfficeAssignments,
+    bulkUpdateUserAssignments,
+  } = useUser();
+
+  // Deduplicate users by email
+  const deduplicatedUsers = useMemo(() => {
+    const userMap = new Map<string, DeduplicatedUser>();
+
+    if (!users || users.length === 0) {
+      return [];
+    }
+
+    users.forEach((user) => {
+      const existingUser = userMap.get(user.email);
+
+      if (existingUser) {
+        // Add office assignment if it exists
+        if (user.office_id && user.role_id) {
+          existingUser.offices.push({
+            office_id: user.office_id,
+            office_name: user.office_name || "",
+            office_type: user.office_type || "unset",
+            role_id: user.role_id,
+            role_name: user.role_name || "",
+            role_description: user.role_description || "",
+            assigned_at: user.assigned_at || user.created_at,
+            record_id: user.id,
+          });
+        }
+      } else {
+        // Create new deduplicated user
+        const newUser: DeduplicatedUser = {
+          id: user.id,
+          email: user.email,
+          phone: user.phone,
+          email_confirmed_at: user.email_confirmed_at,
+          created_at: user.created_at,
+          offices: [],
+        };
+
+        // Add office assignment if it exists
+        if (user.office_id && user.role_id) {
+          newUser.offices.push({
+            office_id: user.office_id,
+            office_name: user.office_name || "",
+            office_type: user.office_type || "unset",
+            role_id: user.role_id,
+            role_name: user.role_name || "",
+            role_description: user.role_description || "",
+            assigned_at: user.assigned_at || user.created_at,
+            record_id: user.id,
+          });
+        }
+
+        userMap.set(user.email, newUser);
+      }
+    });
+
+    return Array.from(userMap.values());
+  }, [users]);
+
+  // Filter options
+  const statusOptions = [
+    { value: "all", label: "Semua Status" },
+    { value: "confirmed", label: "Email Terkonfirmasi" },
+    { value: "unconfirmed", label: "Email Belum Terkonfirmasi" },
+  ];
+
+  const roleOptions = useMemo(
+    () => [
+      { value: "all", label: "Semua Role" },
+      ...roles.map((role) => ({
+        value: role.id,
+        label: role.name,
+      })),
+    ],
+    [roles]
+  );
+
+  const officeOptions = useMemo(
+    () => [
+      { value: "all", label: "Semua Office" },
+      ...offices.map((office) => ({
+        value: office.id,
+        label: `${office.name} (${office.location})`,
+      })),
+    ],
+    [offices]
+  );
+
+  // Filtered users
   const filteredUsers = useMemo(() => {
-    if (!searchTerm.trim()) return users;
-
-    return users.filter(
-      (user) =>
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    return deduplicatedUsers.filter((user) => {
+      const matchesSearch =
         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.role.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [users, searchTerm]);
+        (user.phone &&
+          user.phone.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        user.offices.some(
+          (office) =>
+            office.role_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            office.office_name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+      const matchesStatus = (() => {
+        if (statusFilter === "all") return true;
+        if (statusFilter === "confirmed") return !!user.email_confirmed_at;
+        if (statusFilter === "unconfirmed") return !user.email_confirmed_at;
+        return true;
+      })();
+
+      const matchesRole =
+        roleFilter === "all" ||
+        user.offices.some((office) => office.role_id === roleFilter);
+
+      const matchesOffice =
+        officeFilter === "all" ||
+        user.offices.some((office) => office.office_id === officeFilter);
+
+      return matchesSearch && matchesStatus && matchesRole && matchesOffice;
+    });
+  }, [deduplicatedUsers, searchTerm, statusFilter, roleFilter, officeFilter]);
+
+  // Utility functions
+  const getOfficeTypeBadge = (type: string) => {
+    const typeMap = {
+      pdc: { label: "PDC", variant: "info" as const },
+      distributor: { label: "Distributor", variant: "success" as const },
+      grb: { label: "GRB", variant: "warning" as const },
+      unset: { label: "Unassigned", variant: "error" as const },
+    };
+
+    const config = typeMap[type as keyof typeof typeMap] || {
+      label: type,
+      variant: "default" as const,
+    };
+    return <StatusBadge status={config.label} variant={config.variant} />;
+  };
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "-";
+    return new Date(dateString).toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
 
   // Event handlers
-  const handleAddUser = () => {
-    console.log("Add user clicked");
-    // TODO: Implement add user modal/form
+  const handleEditUser = (user: DeduplicatedUser) => {
+    setSelectedUser(user);
+    setModalOpen(true);
   };
 
-  const handleEditUser = (userId: string) => {
-    console.log("Edit user:", userId);
-    // TODO: Implement edit user functionality
+  const handleDeleteAllUserAssignments = async (user: DeduplicatedUser) => {
+    const officeCount = user.offices.length;
+    const confirmMessage =
+      officeCount > 1
+        ? `Apakah Anda yakin ingin menghapus semua ${officeCount} office assignment untuk user ${user.email}?`
+        : `Apakah Anda yakin ingin menghapus office assignment untuk user ${user.email}?`;
+
+    if (window.confirm(confirmMessage)) {
+      const success = await deleteAllUserOfficeAssignments(user.id);
+
+      if (success) {
+        console.log("All user assignments deleted successfully");
+      } else {
+        alert("Gagal menghapus assignment. Silakan coba lagi.");
+      }
+    }
   };
 
-  const handleDeleteUser = (userId: string) => {
-    console.log("Delete user:", userId);
-    // TODO: Implement delete user functionality
+  const handleRefresh = async () => {
+    await Promise.all([refreshUsers(), refreshMasterData()]);
   };
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
+  const handleModalSave = async (
+    assignments: Array<{ office_id: string; role_id: string }>
+  ) => {
+    if (!selectedUser) return false;
+
+    try {
+      const success = await bulkUpdateUserAssignments(
+        selectedUser.id,
+        assignments
+      );
+
+      if (success) {
+        await refreshUsers();
+      }
+
+      return success;
+    } catch (error) {
+      console.error("Failed to save assignments:", error);
+      return false;
+    }
   };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setSelectedUser(null);
+  };
+
+  // Table columns
+  const columns = [
+    {
+      key: "email",
+      label: "Email",
+      render: (value: string, row: DeduplicatedUser) => (
+        <div className="flex flex-col">
+          <span className="font-medium text-gray-900">{value}</span>
+          {row.phone && (
+            <span className="text-sm text-gray-500">{row.phone}</span>
+          )}
+          <span
+            className={`text-xs ${
+              row.email_confirmed_at ? "text-green-600" : "text-red-600"
+            }`}
+          >
+            {row.email_confirmed_at
+              ? "Email Terkonfirmasi"
+              : "Email Belum Terkonfirmasi"}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: "offices",
+      label: "Office",
+      render: (_: any, row: DeduplicatedUser) => (
+        <div className="space-y-2">
+          {row.offices.length > 0 ? (
+            row.offices.map((office, index) => (
+              <div
+                key={`${office.office_id}-${office.role_id}-${index}`}
+                className="flex flex-col"
+              >
+                <div className="flex items-center gap-2">
+                  {getOfficeTypeBadge(office.office_type)}
+                  <span className="font-medium text-gray-900 text-sm">
+                    {office.office_name}
+                  </span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="flex items-center gap-2">
+              {getOfficeTypeBadge("unset")}
+              <span className="text-sm text-gray-500 italic">
+                Belum ada assignment
+              </span>
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "roles",
+      label: "Role",
+      render: (_: any, row: DeduplicatedUser) => (
+        <div className="space-y-2">
+          {row.offices.length > 0 ? (
+            row.offices.map((office, index) => (
+              <div
+                key={`${office.office_id}-${office.role_id}-${index}`}
+                className="flex flex-col py-1"
+              >
+                <span className="text-sm font-medium text-gray-900">
+                  {office.role_name}
+                </span>
+                {office.role_description && (
+                  <span className="text-xs text-gray-500 mt-1">
+                    {office.role_description}
+                  </span>
+                )}
+              </div>
+            ))
+          ) : (
+            <div className="py-1">
+              <span className="text-sm text-gray-500 italic">
+                Belum ada role
+              </span>
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "assigned_dates",
+      label: "Tanggal Assign",
+      render: (_: any, row: DeduplicatedUser) => (
+        <div className="space-y-2">
+          {row.offices.length > 0 ? (
+            row.offices.map((office, index) => (
+              <div
+                key={`${office.office_id}-${office.role_id}-${index}`}
+                className="text-sm text-gray-600 py-1"
+              >
+                {formatDate(office.assigned_at)}
+              </div>
+            ))
+          ) : (
+            <div className="py-1">
+              <span className="text-sm text-gray-500 italic">-</span>
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "actions",
+      label: "Aksi",
+      render: (_: any, row: DeduplicatedUser) => {
+        const actions: Array<{
+          label: string;
+          onClick: () => void;
+          icon: React.ElementType;
+          variant: "view" | "edit" | "delete";
+        }> = [
+          {
+            label: row.offices.length > 0 ? "Edit Assignment" : "Assign Office",
+            onClick: () => handleEditUser(row),
+            icon: row.offices.length > 0 ? Edit : Plus,
+            variant: row.offices.length > 0 ? "edit" : "view",
+          },
+        ];
+
+        // Only show delete action if user has assignments
+        if (row.offices.length > 0) {
+          actions.push({
+            label: "Delete All Assignments",
+            onClick: () => handleDeleteAllUserAssignments(row),
+            icon: Trash2,
+            variant: "delete",
+          });
+        }
+
+        return <ActionButton mode="multiple" actions={actions} />;
+      },
+    },
+  ];
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center gap-2">
+          <RefreshCw className="w-5 h-5 animate-spin" />
+          <span>Memuat data users...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Terjadi Kesalahan
+              </h3>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <ActionButton onClick={handleRefresh} variant="purple">
+                <RefreshCw className="w-4 h-4" />
+                Coba Lagi
+              </ActionButton>
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // Determine empty message based on filters
+  const hasActiveFilters =
+    searchTerm ||
+    statusFilter !== "all" ||
+    roleFilter !== "all" ||
+    officeFilter !== "all";
+
+  const emptyMessage = hasActiveFilters
+    ? "Tidak ada user yang ditemukan dengan filter tersebut"
+    : "Belum ada data user assignment";
 
   return (
     <div className="space-y-6">
-      {/* Main Content Card */}
-      <div className="bg-white bg-opacity-80 backdrop-blur-lg rounded-2xl p-6 border border-white border-opacity-40 shadow-lg">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
-          <h2 className="text-gray-900 text-xl font-semibold">Data User</h2>
-          <button
-            onClick={handleAddUser}
-            className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white px-4 py-2 rounded-xl hover:from-purple-600 hover:to-indigo-600 transition-all duration-300 flex items-center space-x-2 shadow-md hover:shadow-lg transform hover:scale-105"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Tambah User</span>
-          </button>
+      <Card>
+        <PageHeader
+          title={`Data User (${deduplicatedUsers.length})`}
+          actions={
+            <ActionButton
+              onClick={handleRefresh}
+              variant="blue"
+              disabled={refreshing}
+            >
+              <RefreshCw
+                className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`}
+              />
+              Refresh
+            </ActionButton>
+          }
+        />
+
+        {/* User Statistics */}
+        <div className="mb-4 text-sm text-gray-600">
+          Total {deduplicatedUsers.length} unique users dengan {users.length}{" "}
+          total assignments
         </div>
 
-        {/* Search Bar */}
-        <div className="mb-6">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Cari user..."
-              value={searchTerm}
-              onChange={handleSearch}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-            />
-          </div>
-        </div>
+        <SearchFilter
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Cari email, phone, role, atau office..."
+          filters={[
+            {
+              value: statusFilter,
+              onChange: setStatusFilter,
+              options: statusOptions,
+            },
+            {
+              value: roleFilter,
+              onChange: setRoleFilter,
+              options: roleOptions,
+            },
+            {
+              value: officeFilter,
+              onChange: setOfficeFilter,
+              options: officeOptions,
+            },
+          ]}
+        />
 
-        {/* Users Table */}
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="text-left py-4 px-6 text-gray-700 font-medium text-sm uppercase tracking-wider">
-                  Nama
-                </th>
-                <th className="text-left py-4 px-6 text-gray-700 font-medium text-sm uppercase tracking-wider">
-                  Email
-                </th>
-                <th className="text-left py-4 px-6 text-gray-700 font-medium text-sm uppercase tracking-wider">
-                  Role
-                </th>
-                <th className="text-left py-4 px-6 text-gray-700 font-medium text-sm uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="text-left py-4 px-6 text-gray-700 font-medium text-sm uppercase tracking-wider">
-                  Aksi
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredUsers.length > 0 ? (
-                filteredUsers.map((user) => (
-                  <tr
-                    key={user.id}
-                    className="hover:bg-gray-50 transition-colors duration-150"
-                  >
-                    <td className="py-4 px-6 text-gray-900 font-medium">
-                      {user.name}
-                    </td>
-                    <td className="py-4 px-6 text-gray-600">{user.email}</td>
-                    <td className="py-4 px-6 text-gray-600">{user.role}</td>
-                    <td className="py-4 px-6">
-                      <span
-                        className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          user.status === "active"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {user.status === "active" ? "Aktif" : "Tidak Aktif"}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="flex space-x-3">
-                        <button
-                          onClick={() => handleEditUser(user.id)}
-                          className="text-blue-600 hover:text-blue-800 transition-colors duration-200 p-1 hover:bg-blue-50 rounded"
-                          title="Edit User"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteUser(user.id)}
-                          className="text-red-600 hover:text-red-800 transition-colors duration-200 p-1 hover:bg-red-50 rounded"
-                          title="Delete User"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={5}
-                    className="py-8 px-6 text-center text-gray-500"
-                  >
-                    {searchTerm
-                      ? "Tidak ada user yang ditemukan"
-                      : "Belum ada data user"}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <Table
+          columns={columns}
+          data={filteredUsers}
+          emptyMessage={emptyMessage}
+          emptyIcon={Users}
+        />
 
         {/* Results Info */}
-        {searchTerm && (
+        {hasActiveFilters && (
           <div className="mt-4 text-sm text-gray-600">
-            Menampilkan {filteredUsers.length} dari {users.length} user
+            Menampilkan {filteredUsers.length} dari {deduplicatedUsers.length}{" "}
+            user
           </div>
         )}
-      </div>
+      </Card>
+
+      {/* User Assignment Modal */}
+      <UserAssignmentModal
+        isOpen={modalOpen}
+        onClose={closeModal}
+        userEmail={selectedUser?.email || ""}
+        userId={selectedUser?.id || ""}
+        assignments={
+          selectedUser?.offices.map((office) => ({
+            office_id: office.office_id,
+            office_name: office.office_name,
+            office_type: office.office_type,
+            role_id: office.role_id,
+            role_name: office.role_name,
+            assigned_at: office.assigned_at,
+            record_id: office.record_id,
+          })) || []
+        }
+        offices={offices}
+        roles={roles}
+        onSave={handleModalSave}
+        loading={refreshing}
+      />
     </div>
   );
 };

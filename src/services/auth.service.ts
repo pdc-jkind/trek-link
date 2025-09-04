@@ -1,47 +1,44 @@
 // src/services/auth.service.ts
 import { createClient } from "@/lib/supabase/client";
 import type { AuthUser, AuthProvider } from "@/types/auth.types";
+import type { User } from "@/types/user.types";
 
 export class AuthService {
-  /**
-   * Get supabase client instance
-   */
   private static getClient() {
     return createClient();
   }
 
-  /**
-   * Checks if user is currently authenticated
-   */
+  private static getRedirectUrl(): string {
+    const baseUrl = typeof window !== 'undefined' 
+      ? window.location.origin 
+      : process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+    
+    return `${baseUrl}/callback`;
+  }
+
   static async isAuthenticated(): Promise<boolean> {
     try {
       const supabase = this.getClient();
       const { data: { session }, error } = await supabase.auth.getSession();
+      
       if (error) {
         console.error("Error checking authentication:", error);
         return false;
       }
-      return session !== null;
+      
+      return !!session;
     } catch (error) {
       console.error("Error checking authentication:", error);
       return false;
     }
   }
 
-  /**
-   * Gets current user data from Supabase session
-   */
   static async getCurrentUser(): Promise<AuthUser | null> {
     try {
       const supabase = this.getClient();
       const { data: { session }, error } = await supabase.auth.getSession();
 
-      if (error) {
-        console.error("Error getting session:", error);
-        return null;
-      }
-
-      if (!session?.user) {
+      if (error || !session?.user) {
         return null;
       }
 
@@ -65,9 +62,6 @@ export class AuthService {
     }
   }
 
-  /**
-   * Gets current session from Supabase
-   */
   static async getSession() {
     try {
       const supabase = this.getClient();
@@ -85,14 +79,11 @@ export class AuthService {
     }
   }
 
-  /**
-   * Logs out the user using Supabase auth
-   */
   static async logout(): Promise<void> {
     try {
       const supabase = this.getClient();
       const { error } = await supabase.auth.signOut();
-
+      
       if (error) {
         console.error("Error logging out:", error);
         throw new Error(error.message || 'Gagal logout');
@@ -103,16 +94,15 @@ export class AuthService {
     }
   }
 
-  /**
-   * Initiates OAuth login flow with Supabase
-   */
   static async initiateOAuthLogin(provider: AuthProvider = 'google'): Promise<void> {
     try {
       const supabase = this.getClient();
+      const redirectUrl = this.getRedirectUrl();
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/callback`,
+          redirectTo: redirectUrl,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -121,7 +111,6 @@ export class AuthService {
       });
 
       if (error) {
-        console.error("OAuth login error:", error);
         throw new Error(error.message || 'Gagal melakukan login');
       }
     } catch (error: any) {
@@ -130,11 +119,29 @@ export class AuthService {
     }
   }
 
-  /**
-   * Listen to auth state changes
-   */
   static onAuthStateChange(callback: (event: string, session: any) => void) {
     const supabase = this.getClient();
     return supabase.auth.onAuthStateChange(callback);
+  }
+
+  static async getUserProfile(userId: string): Promise<User[] | null> {
+    try {
+      const supabase = this.getClient();
+      
+      const { data, error } = await supabase
+        .from('users_with_office_assignment')
+        .select('*')
+        .eq('id', userId);
+
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        return null;
+      }
+
+      return data as User[];
+    } catch (error) {
+      console.error('Error in getUserProfile:', error);
+      return null;
+    }
   }
 }

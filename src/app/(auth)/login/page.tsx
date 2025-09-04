@@ -15,7 +15,8 @@ import {
 
 // ========== LOGIN CONTENT COMPONENT ==========
 const LoginContent: React.FC = () => {
-  const { login, error, clearError, isLoading, isAuthenticated } = useAuth();
+  const { login, error, clearError, isLoading, isFullyAuthenticated } =
+    useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -23,25 +24,40 @@ const LoginContent: React.FC = () => {
   const urlError = searchParams.get("error");
   const displayError = error || urlError;
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated and has user profile
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isFullyAuthenticated) {
       const redirectTo = searchParams.get("redirectTo") || "/dashboard";
+      console.log("User fully authenticated, redirecting to:", redirectTo);
       router.replace(redirectTo);
     }
-  }, [isAuthenticated, router, searchParams]);
+  }, [isFullyAuthenticated, router, searchParams]);
 
   const handleGoogleLogin = async () => {
     clearError();
     try {
+      console.log("Initiating Google login...");
       await login("google");
     } catch (err) {
       console.error("Login failed:", err);
     }
   };
 
+  // Clear URL error on mount
+  useEffect(() => {
+    if (urlError) {
+      // Clear URL error by replacing without the error param
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete("error");
+      const newUrl = newParams.toString()
+        ? `${window.location.pathname}?${newParams.toString()}`
+        : window.location.pathname;
+      router.replace(newUrl);
+    }
+  }, [urlError, router, searchParams]);
+
   // Show loading state while redirecting
-  if (isAuthenticated) {
+  if (isFullyAuthenticated) {
     return (
       <AuthLayout showFloatingBubbles={false}>
         <AuthCard variant="glass" padding="lg">
@@ -86,6 +102,7 @@ const LoginContent: React.FC = () => {
             text="Masuk dengan Google"
             loadingText="Memproses..."
             fullWidth={true}
+            disabled={isLoading}
           />
         </div>
 
@@ -93,7 +110,13 @@ const LoginContent: React.FC = () => {
         <div className="mt-8 text-center">
           <p className="text-white/60 text-xs">
             Butuh bantuan?{" "}
-            <button className="text-white/80 hover:text-white underline transition-colors">
+            <button
+              className="text-white/80 hover:text-white underline transition-colors"
+              onClick={() => {
+                // Add support contact functionality here
+                console.log("Support contact clicked");
+              }}
+            >
               Hubungi Support
             </button>
           </p>

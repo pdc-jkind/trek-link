@@ -1,419 +1,531 @@
 // src/app/(dashboard)/items/page.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { Package, Plus, Filter, Eye, Edit, Trash2 } from "lucide-react";
 import {
-  Package,
-  Plus,
-  Filter,
-  Search,
-  Eye,
-  Edit,
-  Trash2,
-  Archive,
-} from "lucide-react";
-
-interface Item {
-  id: string;
-  name: string;
-  category: string;
-  description: string;
-  unit: string;
-  minStock: number;
-  currentStock: number;
-  price: number;
-  supplier: string;
-  status: "active" | "inactive" | "discontinued";
-  createdDate: string;
-  lastUpdated: string;
-}
+  Card,
+  ActionButton,
+  PageHeader,
+  SearchFilter,
+  StatsGrid,
+  Table,
+  StatusBadge,
+} from "@/app/(dashboard)/components/ui";
+import { useItems, useItemMasters, useOffices } from "./useItems";
+import { Item, ItemFilters, ItemMaster } from "./items.type";
+import { ItemModal } from "./components/ItemModal";
+import { ItemMasterModal } from "./components/ItemMasterModal";
 
 const ItemsPage: React.FC = () => {
+  // Local UI state
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
-  const [isAddingItem, setIsAddingItem] = useState(false);
 
-  // Dummy data
-  const items: Item[] = [
-    {
-      id: "ITM-001",
-      name: "Laptop Dell Inspiron 15",
-      category: "Electronics",
-      description: "Laptop dengan processor Intel i5, RAM 8GB, SSD 256GB",
-      unit: "pcs",
-      minStock: 5,
-      currentStock: 25,
-      price: 8500000,
-      supplier: "PT Tech Solutions",
-      status: "active",
-      createdDate: "2024-01-01",
-      lastUpdated: "2024-01-15",
+  // Modal states
+  const [isItemModalOpen, setIsItemModalOpen] = useState(false);
+  const [isMasterModalOpen, setIsMasterModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<Item | null>(null);
+  const [editingMaster, setEditingMaster] = useState<ItemMaster | null>(null);
+  const [modalMode, setModalMode] = useState<"create" | "edit">("create");
+
+  // Initialize hooks
+  const {
+    items,
+    loading,
+    error,
+    totalCount,
+    filters,
+    createItem,
+    updateItem,
+    deleteItem,
+    getItem,
+    updateFilters,
+    resetFilters,
+    refetch,
+    checkItemCodeExists,
+    generateItemCode,
+  } = useItems();
+
+  const {
+    itemMasters,
+    loading: mastersLoading,
+    createItemMaster,
+    updateItemMaster,
+    deleteItemMaster,
+    checkItemMasterNameExists,
+    refetch: refetchMasters,
+  } = useItemMasters();
+
+  const {
+    offices,
+    loading: officesLoading,
+    error: officesError,
+  } = useOffices();
+
+  // Debug logging for state changes
+  useEffect(() => {
+    console.log("📊 Items Page State Update:", {
+      itemsCount: items.length,
+      loading,
+      error,
+      totalCount,
+      mastersCount: itemMasters.length,
+      mastersLoading,
+      officesCount: offices.length,
+      officesLoading,
+      officesError,
+      currentFilters: filters,
+    });
+  }, [
+    items,
+    loading,
+    error,
+    totalCount,
+    itemMasters,
+    mastersLoading,
+    filters,
+    offices,
+    officesLoading,
+    officesError,
+  ]);
+
+  // Simplified debounced update - removed complex debounce logic
+  const updateFiltersWithDebounce = useCallback(
+    (newFilters: Partial<ItemFilters>) => {
+      console.log("🔧 Updating filters from UI:", newFilters);
+      updateFilters(newFilters);
     },
-    {
-      id: "ITM-002",
-      name: "Office Chair Ergonomic",
-      category: "Furniture",
-      description: "Kursi kantor ergonomis dengan penyangga lumbar",
-      unit: "pcs",
-      minStock: 10,
-      currentStock: 50,
-      price: 1200000,
-      supplier: "PT Furniture Prima",
-      status: "active",
-      createdDate: "2024-01-02",
-      lastUpdated: "2024-01-14",
-    },
-    {
-      id: "ITM-003",
-      name: "Printer Canon G3010",
-      category: "Electronics",
-      description: "Printer multifungsi dengan sistem ink tank",
-      unit: "pcs",
-      minStock: 3,
-      currentStock: 2,
-      price: 2500000,
-      supplier: "PT Office Equipment",
-      status: "active",
-      createdDate: "2024-01-03",
-      lastUpdated: "2024-01-13",
-    },
-    {
-      id: "ITM-004",
-      name: "Kertas A4 80gsm",
-      category: "Stationery",
-      description: "Kertas A4 putih 80gsm untuk keperluan kantor",
-      unit: "ream",
-      minStock: 20,
-      currentStock: 100,
-      price: 45000,
-      supplier: "PT Paper Supply",
-      status: "active",
-      createdDate: "2024-01-04",
-      lastUpdated: "2024-01-12",
-    },
-    {
-      id: "ITM-005",
-      name: "Monitor LG 24 inch",
-      category: "Electronics",
-      description: "Monitor LCD 24 inch Full HD",
-      unit: "pcs",
-      minStock: 5,
-      currentStock: 0,
-      price: 1800000,
-      supplier: "PT Display Tech",
-      status: "inactive",
-      createdDate: "2024-01-05",
-      lastUpdated: "2024-01-11",
-    },
+    [updateFilters]
+  );
+
+  // Simplified filter sync - no debouncing, direct update
+  useEffect(() => {
+    const newFilters: Partial<ItemFilters> = {
+      search: searchTerm || undefined,
+      item_master_id: selectedCategory || undefined,
+    };
+
+    console.log("🎯 Syncing UI filters to hook:", {
+      searchTerm,
+      selectedCategory,
+      newFilters,
+    });
+
+    updateFiltersWithDebounce(newFilters);
+  }, [searchTerm, selectedCategory, updateFiltersWithDebounce]);
+
+  // Categories options from item masters
+  const categories = useMemo(() => {
+    const options = [
+      { value: "", label: "Semua Kategori" },
+      ...itemMasters.map((master) => ({
+        value: master.id,
+        label: `${master.name} (${master.type})`,
+      })),
+    ];
+
+    console.log("📋 Categories options generated:", options);
+    return options;
+  }, [itemMasters]);
+
+  const statuses = [
+    { value: "", label: "Semua Status" },
+    { value: "active", label: "Aktif" },
+    { value: "inactive", label: "Tidak Aktif" },
+    { value: "discontinued", label: "Dihentikan" },
   ];
 
-  const categories = ["All", "Electronics", "Furniture", "Stationery"];
-  const statuses = ["All", "active", "inactive", "discontinued"];
+  // Memoized stats calculation
+  const statsData = useMemo(() => {
+    const stats = [
+      {
+        title: "Total Items",
+        value: totalCount.toString(),
+        color: "from-blue-500 to-blue-600",
+      },
+      {
+        title: "Regular Items",
+        value: items
+          .filter((item) => item.item_master?.type === "regular")
+          .length.toString(),
+        color: "from-green-500 to-green-600",
+      },
+      {
+        title: "Inventory Items",
+        value: items
+          .filter((item) => item.item_master?.type === "inventory")
+          .length.toString(),
+        color: "from-yellow-500 to-yellow-600",
+      },
+      {
+        title: "With Alt Unit",
+        value: items.filter((item) => item.alt_unit).length.toString(),
+        color: "from-purple-500 to-purple-600",
+      },
+    ];
 
-  const filteredItems = items.filter((item) => {
-    const matchesSearch =
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.supplier.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory =
-      selectedCategory === "" ||
-      selectedCategory === "All" ||
-      item.category === selectedCategory;
-    const matchesStatus =
-      selectedStatus === "" ||
-      selectedStatus === "All" ||
-      item.status === selectedStatus;
-    return matchesSearch && matchesCategory && matchesStatus;
-  });
+    console.log("📈 Stats calculated:", stats);
+    return stats;
+  }, [items, totalCount]);
 
-  const handleAddItem = () => {
-    setIsAddingItem(true);
-    console.log("Opening add item modal");
-    // You can add modal logic here
-    setTimeout(() => setIsAddingItem(false), 1000);
-  };
+  // Modal handlers
+  const handleAddItem = useCallback(() => {
+    console.log("➕ Opening add item modal");
+    setEditingItem(null);
+    setModalMode("create");
+    setIsItemModalOpen(true);
+  }, []);
 
-  const handleViewItem = (id: string) => {
-    console.log("Viewing item:", id);
-  };
+  const handleAddMaster = useCallback(() => {
+    console.log("➕ Opening add master modal");
+    setEditingMaster(null);
+    setModalMode("create");
+    setIsMasterModalOpen(true);
+  }, []);
 
-  const handleEditItem = (id: string) => {
-    console.log("Editing item:", id);
-  };
+  const handleCreateMasterFromItemModal = useCallback(() => {
+    console.log("🔄 Switching from item modal to master modal");
+    setIsItemModalOpen(false);
+    handleAddMaster();
+  }, [handleAddMaster]);
 
-  const handleDeleteItem = (id: string) => {
-    console.log("Deleting item:", id);
-  };
+  const handleViewItem = useCallback(
+    async (id: string) => {
+      console.log("👁️ Viewing item:", id);
+      const item = await getItem(id);
+      if (item) {
+        console.log("📋 Item details:", JSON.stringify(item, null, 2));
+      }
+    },
+    [getItem]
+  );
 
-  const getStatusBadge = (status: Item["status"]) => {
-    switch (status) {
-      case "active":
-        return "bg-green-100 text-green-800";
-      case "inactive":
-        return "bg-yellow-100 text-yellow-800";
-      case "discontinued":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
+  const handleEditItem = useCallback(
+    async (id: string) => {
+      console.log("✏️ Editing item:", id);
+      const item = await getItem(id);
+      if (item) {
+        setEditingItem(item);
+        setModalMode("edit");
+        setIsItemModalOpen(true);
+      }
+    },
+    [getItem]
+  );
 
-  const getStatusText = (status: Item["status"]) => {
-    switch (status) {
-      case "active":
-        return "Aktif";
-      case "inactive":
-        return "Tidak Aktif";
-      case "discontinued":
-        return "Dihentikan";
-      default:
-        return status;
-    }
-  };
+  const handleDeleteItem = useCallback(
+    async (id: string) => {
+      if (window.confirm("Apakah Anda yakin ingin menghapus barang ini?")) {
+        console.log("🗑️ Deleting item:", id);
+        const result = await deleteItem(id);
+        if (result.success) {
+          console.log("✅ Item deleted successfully");
+        } else {
+          console.error("❌ Failed to delete item:", result.error);
+        }
+      }
+    },
+    [deleteItem]
+  );
 
-  const getStockStatus = (current: number, min: number) => {
-    if (current === 0) return { color: "text-red-600", label: "Habis" };
-    if (current <= min)
-      return { color: "text-yellow-600", label: "Stok Rendah" };
-    return { color: "text-green-600", label: "Normal" };
-  };
+  // Save handlers
+  const handleSaveItem = useCallback(
+    async (data: any) => {
+      console.log("💾 Saving item:", { mode: modalMode, data });
 
-  const formatCurrency = (amount: number) => {
+      if (modalMode === "create") {
+        const result = await createItem(data);
+        console.log("✅ Create item result:", result);
+        return result;
+      } else {
+        const result = await updateItem(data);
+        console.log("✅ Update item result:", result);
+        return result;
+      }
+    },
+    [modalMode, createItem, updateItem]
+  );
+
+  const handleSaveMaster = useCallback(
+    async (data: any) => {
+      console.log("💾 Saving item master:", { mode: modalMode, data });
+
+      if (modalMode === "create") {
+        const result = await createItemMaster(data);
+        console.log("✅ Create master result:", result);
+        if (result.success) {
+          refetchMasters();
+        }
+        return result;
+      } else {
+        const result = await updateItemMaster(data);
+        console.log("✅ Update master result:", result);
+        if (result.success) {
+          refetchMasters();
+        }
+        return result;
+      }
+    },
+    [modalMode, createItemMaster, updateItemMaster, refetchMasters]
+  );
+
+  const formatCurrency = useCallback((amount: number) => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
       currency: "IDR",
       minimumFractionDigits: 0,
     }).format(amount);
-  };
+  }, []);
+
+  const handleResetFilters = useCallback(() => {
+    console.log("🔄 Resetting all filters");
+    setSearchTerm("");
+    setSelectedCategory("");
+    setSelectedStatus("");
+    resetFilters();
+  }, [resetFilters]);
+
+  // Table columns
+  const columns = [
+    {
+      key: "item_code",
+      label: "Kode Barang",
+      render: (value: string) => (
+        <span className="font-mono text-sm">{value}</span>
+      ),
+    },
+    {
+      key: "item_name",
+      label: "Nama Barang",
+      render: (value: string, row: Item) => (
+        <div>
+          <div className="font-medium">{value}</div>
+          <div className="text-xs text-gray-500">
+            {row.item_master?.name || "No Category"}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "unit",
+      label: "Unit",
+      render: (value: string, row: Item) => (
+        <div>
+          <div className="font-medium">{value}</div>
+          {row.alt_unit && (
+            <div className="text-xs text-gray-500">
+              Alt: {row.alt_unit}
+              {row.conversion_to_base && ` (${row.conversion_to_base}:1)`}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "item_master",
+      label: "Kategori",
+      render: (value: ItemMaster | undefined) => (
+        <div>
+          <div className="font-medium">{value?.name || "No Category"}</div>
+          <div className="text-xs text-gray-500 capitalize">{value?.type}</div>
+        </div>
+      ),
+    },
+    {
+      key: "created_at",
+      label: "Dibuat",
+      render: (value: string) => (
+        <span className="text-sm">
+          {new Date(value).toLocaleDateString("id-ID")}
+        </span>
+      ),
+    },
+    {
+      key: "updated_at",
+      label: "Diperbarui",
+      render: (value: string) => (
+        <span className="text-sm">
+          {new Date(value).toLocaleDateString("id-ID")}
+        </span>
+      ),
+    },
+    {
+      key: "actions",
+      label: "Aksi",
+      className: "text-center",
+      render: (value: any, row: Item) => (
+        <div className="flex items-center justify-center space-x-1">
+          <button
+            onClick={() => handleViewItem(row.id)}
+            className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded transition-colors"
+            title="View Details"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleEditItem(row.id)}
+            className="p-1 text-green-600 hover:text-green-800 hover:bg-green-100 rounded transition-colors"
+            title="Edit Item"
+          >
+            <Edit className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleDeleteItem(row.id)}
+            className="p-1 text-red-600 hover:text-red-800 hover:bg-red-100 rounded transition-colors"
+            title="Delete Item"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  // Page actions
+  const headerActions = (
+    <>
+      <ActionButton
+        onClick={() => console.log("Opening filters")}
+        variant="blue"
+      >
+        <Filter className="w-4 h-4" />
+        <span>Filter</span>
+      </ActionButton>
+
+      <ActionButton onClick={handleAddItem} variant="purple" disabled={loading}>
+        <Plus className="w-4 h-4" />
+        <span>Tambah Barang</span>
+      </ActionButton>
+    </>
+  );
+
+  const filterOptions = [
+    {
+      value: selectedCategory,
+      onChange: setSelectedCategory,
+      options: categories,
+      placeholder: "Pilih Kategori",
+    },
+    {
+      value: selectedStatus,
+      onChange: setSelectedStatus,
+      options: statuses,
+      placeholder: "Pilih Status",
+    },
+  ];
+
+  // Show error state if there's an error
+  if (error) {
+    console.error("💥 Rendering error state:", error);
+    return (
+      <div className="space-y-6">
+        <Card>
+          <div className="p-6 text-center">
+            <div className="text-red-600 mb-4">
+              <Package className="w-12 h-12 mx-auto mb-2" />
+              <h3 className="text-lg font-semibold">Error Loading Items</h3>
+              <p className="text-sm">{error}</p>
+            </div>
+            <ActionButton onClick={refetch} variant="blue">
+              Try Again
+            </ActionButton>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  console.log("🎨 Rendering items page with state:", {
+    loading,
+    itemsLength: items.length,
+    mastersLoading,
+    mastersLength: itemMasters.length,
+    officesLoading,
+    officesLength: offices.length,
+  });
 
   return (
     <div className="space-y-6">
-      <div className="bg-white bg-opacity-80 backdrop-blur-lg rounded-2xl p-6 border border-white border-opacity-40 shadow-lg">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-gray-900 text-xl font-semibold">
-            Pengelolaan Barang
-          </h2>
-          <div className="flex space-x-3">
-            <button
-              onClick={() => console.log("Opening filters")}
-              className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-4 py-2 rounded-xl hover:from-blue-600 hover:to-cyan-600 transition-all duration-300 flex items-center space-x-2"
-            >
-              <Filter className="w-5 h-5" />
-              <span>Filter</span>
-            </button>
-            <button
-              onClick={handleAddItem}
-              disabled={isAddingItem}
-              className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white px-4 py-2 rounded-xl hover:from-purple-600 hover:to-indigo-600 transition-all duration-300 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Plus
-                className={`w-5 h-5 ${isAddingItem ? "animate-spin" : ""}`}
-              />
-              <span>{isAddingItem ? "Adding..." : "Tambah Barang"}</span>
-            </button>
-          </div>
-        </div>
+      <Card>
+        <PageHeader title="Pengelolaan Barang" actions={headerActions} />
 
-        {/* Search and Filter */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Cari barang, deskripsi, atau supplier..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-            />
-          </div>
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-          >
-            {categories.map((category) => (
-              <option key={category} value={category === "All" ? "" : category}>
-                {category}
-              </option>
-            ))}
-          </select>
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-          >
-            {statuses.map((status) => (
-              <option key={status} value={status === "All" ? "" : status}>
-                {status === "All"
-                  ? "Semua Status"
-                  : getStatusText(status as Item["status"])}
-              </option>
-            ))}
-          </select>
-        </div>
+        <SearchFilter
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          filters={filterOptions}
+          searchPlaceholder="Cari kode barang, nama barang..."
+        />
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-4 text-white">
-            <h3 className="text-sm font-medium opacity-90">Total Aktif</h3>
-            <p className="text-2xl font-bold">
-              {items.filter((item) => item.status === "active").length}
-            </p>
-          </div>
-          <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-lg p-4 text-white">
-            <h3 className="text-sm font-medium opacity-90">Stok Rendah</h3>
-            <p className="text-2xl font-bold">
-              {
-                items.filter(
-                  (item) =>
-                    item.currentStock <= item.minStock && item.currentStock > 0
-                ).length
-              }
-            </p>
-          </div>
-          <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-lg p-4 text-white">
-            <h3 className="text-sm font-medium opacity-90">Stok Habis</h3>
-            <p className="text-2xl font-bold">
-              {items.filter((item) => item.currentStock === 0).length}
-            </p>
-          </div>
-          <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white">
-            <h3 className="text-sm font-medium opacity-90">Total Barang</h3>
-            <p className="text-2xl font-bold">{items.length}</p>
-          </div>
-        </div>
+        <StatsGrid stats={statsData} />
 
-        {/* Items Table */}
-        {filteredItems.length > 0 ? (
-          <div className="bg-white rounded-lg overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-gray-700">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="text-left py-3 px-4 font-medium">
-                      ID Barang
-                    </th>
-                    <th className="text-left py-3 px-4 font-medium">
-                      Nama Barang
-                    </th>
-                    <th className="text-left py-3 px-4 font-medium">
-                      Kategori
-                    </th>
-                    <th className="text-right py-3 px-4 font-medium">Stok</th>
-                    <th className="text-right py-3 px-4 font-medium">Harga</th>
-                    <th className="text-left py-3 px-4 font-medium">
-                      Supplier
-                    </th>
-                    <th className="text-center py-3 px-4 font-medium">
-                      Status
-                    </th>
-                    <th className="text-center py-3 px-4 font-medium">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredItems.map((item, index) => {
-                    const stockStatus = getStockStatus(
-                      item.currentStock,
-                      item.minStock
-                    );
-                    return (
-                      <tr
-                        key={item.id}
-                        className={`border-b border-gray-200 hover:bg-gray-50 transition-colors ${
-                          index % 2 === 0 ? "bg-white" : "bg-gray-25"
-                        }`}
-                      >
-                        <td className="py-3 px-4 font-mono text-sm">
-                          {item.id}
-                        </td>
-                        <td className="py-3 px-4">
-                          <div>
-                            <div className="font-medium">{item.name}</div>
-                            <div className="text-xs text-gray-500 truncate max-w-xs">
-                              {item.description}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">{item.category}</td>
-                        <td className="py-3 px-4 text-right">
-                          <div>
-                            <span className={stockStatus.color}>
-                              {item.currentStock} {item.unit}
-                            </span>
-                            <div className="text-xs text-gray-500">
-                              Min: {item.minStock}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-right font-medium">
-                          {formatCurrency(item.price)}
-                        </td>
-                        <td className="py-3 px-4">{item.supplier}</td>
-                        <td className="py-3 px-4 text-center">
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(
-                              item.status
-                            )}`}
-                          >
-                            {getStatusText(item.status)}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center justify-center space-x-1">
-                            <button
-                              onClick={() => handleViewItem(item.id)}
-                              className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded"
-                              title="View Details"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleEditItem(item.id)}
-                              className="p-1 text-green-600 hover:text-green-800 hover:bg-green-100 rounded"
-                              title="Edit Item"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteItem(item.id)}
-                              className="p-1 text-red-600 hover:text-red-800 hover:bg-red-100 rounded"
-                              title="Delete Item"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+        {loading ? (
+          <div className="text-center py-10">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+            <p className="mt-2 text-gray-600">Loading items...</p>
+            <p className="mt-1 text-xs text-gray-500">
+              Check console for detailed logs
+            </p>
           </div>
         ) : (
-          <div className="text-center py-12">
-            <Package className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-            <p className="text-gray-600">
-              {searchTerm || selectedCategory || selectedStatus
+          <Table
+            columns={columns}
+            data={items}
+            emptyMessage={
+              searchTerm || selectedCategory
                 ? "Tidak ada barang yang sesuai dengan filter."
-                : "Belum ada data barang."}
-            </p>
-            {(searchTerm || selectedCategory || selectedStatus) && (
-              <button
-                onClick={() => {
-                  setSearchTerm("");
-                  setSelectedCategory("");
-                  setSelectedStatus("");
-                }}
-                className="mt-2 text-blue-600 hover:text-blue-800"
-              >
-                Reset Filter
-              </button>
-            )}
+                : "Belum ada data barang."
+            }
+            emptyIcon={Package}
+          />
+        )}
+
+        {items.length === 0 && !loading && (searchTerm || selectedCategory) && (
+          <div className="text-center mt-4">
+            <ActionButton onClick={handleResetFilters} variant="blue">
+              Reset Filter
+            </ActionButton>
           </div>
         )}
-      </div>
+      </Card>
+
+      {/* Item Modal */}
+      <ItemModal
+        isOpen={isItemModalOpen}
+        onClose={() => {
+          console.log("❌ Closing item modal");
+          setIsItemModalOpen(false);
+          setEditingItem(null);
+        }}
+        onSave={handleSaveItem}
+        onCreateMaster={handleCreateMasterFromItemModal}
+        item={editingItem}
+        itemMasters={itemMasters}
+        mode={modalMode}
+        checkItemCodeExists={checkItemCodeExists}
+        generateItemCode={generateItemCode}
+      />
+
+      {/* Item Master Modal */}
+      <ItemMasterModal
+        isOpen={isMasterModalOpen}
+        onClose={() => {
+          console.log("❌ Closing master modal");
+          setIsMasterModalOpen(false);
+          setEditingMaster(null);
+          // Reopen item modal if it was previously open
+          if (editingItem || modalMode === "create") {
+            setIsItemModalOpen(true);
+          }
+        }}
+        onSave={handleSaveMaster}
+        itemMaster={editingMaster}
+        mode={modalMode}
+        checkNameExists={checkItemMasterNameExists}
+        offices={offices}
+        officesLoading={officesLoading}
+      />
     </div>
   );
 };

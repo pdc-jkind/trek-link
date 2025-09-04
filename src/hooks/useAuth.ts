@@ -1,313 +1,294 @@
 // src/hooks/useAuth.ts
 "use client";
 
-import { useState, useEffect, useCallback, createContext, useContext } from 'react';
-import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import { AuthService } from '@/services/auth.service';
-import type { AuthUser, AuthState, AuthProvider as AuthProviderType } from '@/types/auth.types';
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { AuthService } from "@/services/auth.service";
+import { useUserStore } from "@/store/user.store";
+import type {
+  AuthUser,
+  AuthProvider as AuthProviderType,
+} from "@/types/auth.types";
 
-// Create Auth Context
-interface AuthContextType {
+interface AuthState {
   user: AuthUser | null;
   isLoading: boolean;
-  isAuthenticated: boolean;
   error: string | null;
-  login: (provider: AuthProviderType) => Promise<void>;
-  logout: () => Promise<void>;
-  clearError: () => void;
-  handleAuthCallback: () => Promise<boolean>;
 }
 
-export const AuthContext = createContext<AuthContextType | null>(null);
-
-// Custom hook untuk menggunakan auth context
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
-
-// Custom hook untuk auth logic (bisa dipanggil dari AuthProvider)
-export const useAuthState = () => {
-  const [state, setState] = useState<AuthState>({
+  // Auth state for session management only
+  const [authState, setAuthState] = useState<AuthState>({
     user: null,
-    session: null,
     isLoading: true,
-    isAuthenticated: false,
     error: null,
   });
 
+  // Get user store actions and state
+  const {
+    currentUser,
+    isAuthenticated: userStoreAuthenticated,
+    setUsers,
+    clearUser,
+    isDataStale,
+    setLastFetched,
+  } = useUserStore();
+
   const router = useRouter();
 
-  // Initialize auth state with optimized performance
-  useEffect(() => {
-    let mounted = true;
-    let authInitialized = false;
+  // Refs to prevent multiple operations
+  const initializingRef = useRef(false);
+  const loadingProfileRef = useRef(false);
+  const authListenerRef = useRef<{ unsubscribe: () => void } | null>(null);
+  const mountedRef = useRef(true);
 
-    const initAuth = async () => {
-      if (authInitialized) return;
-      authInitialized = true;
+  // Load user profile after authentication
+  const loadUserProfile = useCallback(
+    async (userId: string, forceReload = false) => {
+      if (!mountedRef.current || loadingProfileRef.current) {
+        return;
+      }
+
+      // Check if we need to load profile
+      if (!forceReload && currentUser && !isDataStale()) {
+        console.log("Profile is fresh, skipping reload");
+        return;
+      }
+
+      loadingProfileRef.current = true;
 
       try {
-        const supabase = createClient();
-        
-        // Get initial session with timeout for faster failure
-        const sessionPromise = supabase.auth.getSession();
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session timeout')), 5000)
-        );
+        console.log("Loading profile for:", userId);
 
-        const { data: { session }, error } = await Promise.race([
-          sessionPromise,
-          timeoutPromise
-        ]) as any;
-        
-        if (!mounted) return;
+        const userProfiles = await AuthService.getUserProfile(userId);
 
-        if (error && error.message !== 'Session timeout') {
-          console.error('Session error:', error);
-          setState(prev => ({
-            ...prev,
-            error: { message: 'Gagal mendapatkan sesi' },
-            isLoading: false,
-          }));
-          return;
+        if (!mountedRef.current) return;
+
+        if (userProfiles && userProfiles.length > 0) {
+          console.log("Profile loaded, updating store");
+          setUsers(userProfiles);
+          setLastFetched();
+        } else {
+          console.warn("No user profiles found");
+          clearUser();
         }
+      } catch (error: any) {
+        console.error("Error loading user profile:", error);
+      } finally {
+        if (mountedRef.current) {
+          loadingProfileRef.current = false;
+        }
+      }
+    },
+    [currentUser, isDataStale, setUsers, clearUser, setLastFetched]
+  );
 
-        if (session) {
-          // Parallel user fetch for faster loading
-          const userPromise = AuthService.getCurrentUser();
-          const user = await Promise.race([
-            userPromise,
-            new Promise((resolve) => setTimeout(() => resolve(null), 3000))
-          ]) as AuthUser | null;
+  // Setup auth state listener
+  const setupAuthListener = useCallback(() => {
+    if (!mountedRef.current || authListenerRef.current) {
+      return;
+    }
 
-          if (mounted) {
-            setState(prev => ({
-              ...prev,
-              user,
-              session: session as any,
-              isAuthenticated: !!user,
+    console.log("Setting up auth listener");
+
+    const {
+      data: { subscription },
+    } = AuthService.onAuthStateChange(async (event, session) => {
+      if (!mountedRef.current) return;
+
+      console.log(
+        new Date().toISOString(),
+        "Auth state changed:",
+        event,
+        !!session?.user
+      );
+
+      try {
+        if (session?.user) {
+          const authUser = await AuthService.getCurrentUser();
+
+          if (authUser && mountedRef.current) {
+            setAuthState({
+              user: authUser,
               isLoading: false,
               error: null,
-            }));
+            });
+
+            // Load profile based on event type
+            if (event === "SIGNED_IN") {
+              await loadUserProfile(authUser.id, true);
+            } else if (event === "INITIAL_SESSION") {
+              const storeState = useUserStore.getState();
+              if (!storeState.currentUser || storeState.isDataStale()) {
+                await loadUserProfile(authUser.id);
+              }
+            }
           }
         } else {
-          setState(prev => ({
+          // User signed out
+          if (mountedRef.current) {
+            setAuthState({
+              user: null,
+              isLoading: false,
+              error: null,
+            });
+            clearUser();
+
+            if (event === "SIGNED_OUT") {
+              setTimeout(() => {
+                if (mountedRef.current) {
+                  router.push("/login");
+                }
+              }, 100);
+            }
+          }
+        }
+      } catch (error: any) {
+        console.error("Auth state change error:", error);
+        if (mountedRef.current) {
+          setAuthState((prev) => ({
             ...prev,
-            user: null,
-            session: null,
-            isAuthenticated: false,
+            error: "Terjadi kesalahan saat perubahan status auth",
+            isLoading: false,
+          }));
+        }
+      }
+    });
+
+    authListenerRef.current = subscription;
+  }, [router, loadUserProfile, clearUser]);
+
+  // Initialize auth state
+  useEffect(() => {
+    mountedRef.current = true;
+
+    const initAuth = async () => {
+      if (initializingRef.current) return;
+
+      initializingRef.current = true;
+
+      try {
+        console.log("Initializing auth...");
+
+        const authUser = await AuthService.getCurrentUser();
+
+        if (!mountedRef.current) return;
+
+        if (authUser) {
+          console.log("User authenticated:", authUser.id);
+          setAuthState({
+            user: authUser,
             isLoading: false,
             error: null,
-          }));
-        }
-      } catch (error) {
-        console.error('Auth initialization error:', error);
-        if (mounted) {
-          setState(prev => ({
-            ...prev,
-            error: { message: 'Gagal menginisialisasi autentikasi' },
+          });
+
+          // Load profile if needed
+          if (!currentUser || isDataStale()) {
+            await loadUserProfile(authUser.id);
+          }
+        } else {
+          console.log("No authenticated user");
+          setAuthState({
+            user: null,
             isLoading: false,
-          }));
+            error: null,
+          });
+          clearUser();
         }
+
+        // Setup listener after initial auth check
+        if (mountedRef.current) {
+          setupAuthListener();
+        }
+      } catch (error: any) {
+        console.error("Auth initialization error:", error);
+        if (mountedRef.current) {
+          setAuthState({
+            user: null,
+            isLoading: false,
+            error: "Gagal menginisialisasi autentikasi",
+          });
+        }
+      } finally {
+        initializingRef.current = false;
       }
     };
 
     initAuth();
 
-    // Listen to auth changes with optimized handling
-    const supabase = createClient();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted) return;
-
-        console.log('Auth state changed:', event, session);
-
-        try {
-          if (session) {
-            // Set session immediately for faster UI updates
-            setState(prev => ({
-              ...prev,
-              session: session as any,
-              isLoading: true,
-              error: null,
-            }));
-
-            // Fetch user data with timeout for faster processing
-            const userPromise = AuthService.getCurrentUser();
-            const timeoutPromise = new Promise((resolve) => 
-              setTimeout(() => resolve(null), 2000)
-            );
-
-            const user = await Promise.race([userPromise, timeoutPromise]) as AuthUser | null;
-
-            if (mounted) {
-              setState(prev => ({
-                ...prev,
-                user,
-                isAuthenticated: !!user,
-                isLoading: false,
-              }));
-
-              // Optimized redirect handling - no delay for better UX
-              if (event === 'SIGNED_IN' && user) {
-                // Use setTimeout to avoid blocking the current execution
-                setTimeout(() => {
-                  router.push('/dashboard');
-                }, 0);
-              }
-            }
-          } else {
-            setState(prev => ({
-              ...prev,
-              user: null,
-              session: null,
-              isAuthenticated: false,
-              isLoading: false,
-              error: null,
-            }));
-
-            // Immediate redirect on sign out
-            if (event === 'SIGNED_OUT') {
-              setTimeout(() => {
-                router.push('/login');
-              }, 0);
-            }
-          }
-        } catch (error) {
-          console.error('Auth state change error:', error);
-          if (mounted) {
-            setState(prev => ({
-              ...prev,
-              error: { message: 'Terjadi kesalahan saat perubahan status auth' },
-              isLoading: false,
-            }));
-          }
-        }
-      }
-    );
-
     return () => {
-      mounted = false;
-      subscription.unsubscribe();
+      mountedRef.current = false;
+      if (authListenerRef.current) {
+        authListenerRef.current.unsubscribe();
+        authListenerRef.current = null;
+      }
     };
-  }, [router]);
+  }, []); // No dependencies
 
-  const login = useCallback(async (provider: AuthProviderType = 'google') => {
-    setState(prev => ({ ...prev, isLoading: true, error: null }));
-    
+  // Login function
+  const login = useCallback(async (provider: AuthProviderType = "google") => {
+    setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
+
     try {
       await AuthService.initiateOAuthLogin(provider);
     } catch (error: any) {
-      console.error('Login error:', error);
-      setState(prev => ({
+      console.error("Login error:", error);
+      setAuthState((prev) => ({
         ...prev,
-        error: { message: error.message || 'Gagal melakukan login' },
+        error: error.message || "Gagal melakukan login",
         isLoading: false,
       }));
     }
   }, []);
 
+  // Logout function
   const logout = useCallback(async () => {
-    setState(prev => ({ ...prev, isLoading: true, error: null }));
-    
+    setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
+
     try {
       await AuthService.logout();
     } catch (error: any) {
-      console.error('Logout error:', error);
-      setState(prev => ({
+      console.error("Logout error:", error);
+      setAuthState((prev) => ({
         ...prev,
-        error: { message: error.message || 'Gagal melakukan logout' },
+        error: error.message || "Gagal melakukan logout",
         isLoading: false,
       }));
     }
   }, []);
 
+  // Clear error function
   const clearError = useCallback(() => {
-    setState(prev => ({ ...prev, error: null }));
+    setAuthState((prev) => ({ ...prev, error: null }));
   }, []);
 
-  const handleAuthCallback = useCallback(async (): Promise<boolean> => {
-    setState(prev => ({ ...prev, isLoading: true, error: null }));
+  // Refresh profile function
+  const refreshProfile = useCallback(async () => {
+    if (!authState.user) return;
 
     try {
-      // Optimized callback handling with reduced waiting time
-      let attempts = 0;
-      const maxAttempts = 5;
-      
-      while (attempts < maxAttempts) {
-        // Check if there's a session after OAuth callback
-        const supabase = createClient();
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.warn(`Session check attempt ${attempts + 1} failed:`, error);
-          attempts++;
-          if (attempts < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 500)); // Reduced from 1000ms
-            continue;
-          }
-          throw error;
-        }
-
-        if (session) {
-          // Fetch user with timeout for faster processing
-          const userPromise = AuthService.getCurrentUser();
-          const timeoutPromise = new Promise((resolve) => 
-            setTimeout(() => resolve(null), 2000)
-          );
-
-          const user = await Promise.race([userPromise, timeoutPromise]) as AuthUser | null;
-          
-          setState(prev => ({
-            ...prev,
-            user,
-            session: session as any,
-            isAuthenticated: !!user,
-            isLoading: false,
-            error: null,
-          }));
-          
-          return true;
-        }
-
-        attempts++;
-        if (attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 300)); // Reduced waiting time
-        }
-      }
-
-      // No session found after all attempts
-      setState(prev => ({
-        ...prev,
-        error: { message: 'Tidak ada sesi yang ditemukan setelah beberapa percobaan' },
-        isLoading: false,
-      }));
-      return false;
-
+      await loadUserProfile(authState.user.id, true);
     } catch (error: any) {
-      console.error('Auth callback error:', error);
-      setState(prev => ({
+      console.error("Refresh profile error:", error);
+      setAuthState((prev) => ({
         ...prev,
-        error: { message: error.message || 'Gagal memproses callback' },
-        isLoading: false,
+        error: error.message || "Gagal merefresh profil",
       }));
-      return false;
     }
-  }, []);
+  }, [authState.user, loadUserProfile]);
+
+  const isFullyAuthenticated = !!authState.user && userStoreAuthenticated;
 
   return {
-    user: state.user,
-    isLoading: state.isLoading,
-    isAuthenticated: state.isAuthenticated,
-    error: state.error?.message || null,
+    user: authState.user,
+    userProfile: currentUser,
+    isLoading: authState.isLoading,
+    isAuthenticated: !!authState.user,
+    isFullyAuthenticated,
+    error: authState.error,
     login,
     logout,
     clearError,
-    handleAuthCallback,
+    refreshProfile,
   };
 };

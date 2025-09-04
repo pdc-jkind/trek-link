@@ -6,17 +6,12 @@ import { usePathname, useRouter } from "next/navigation";
 import TopBar from "@/app/(dashboard)/components/TopBar";
 import Sidebar from "@/app/(dashboard)/components/Sidebar";
 import { useAuth } from "@/hooks/useAuth";
+import { useDashboardInit } from "@/app/(dashboard)/hooks/useDashboardInit";
 import {
   SectionKey,
   MenuConfigUtils,
   UserRole,
 } from "@/app/(dashboard)/types/menuConfig";
-
-// Office type
-type Office = {
-  id: string;
-  name: string;
-};
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -27,16 +22,28 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const router = useRouter();
   const { logout } = useAuth();
 
-  // State management (replacing useLayout hook with local state)
+  // Initialize dashboard data from session
+  const {
+    isInitializing,
+    isReady,
+    error: dashboardError,
+    user,
+    currentUser, // Get raw current user object for image access
+    availableOffices,
+    selectedOffice,
+    switchOffice,
+    hasPermission,
+    clearError,
+    retry,
+    redirectToLogin,
+  } = useDashboardInit();
+
+  // State management
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
-  const [selectedOffice, setSelectedOffice] = useState<Office>({
-    id: "1",
-    name: "Jakarta",
-  });
   const [isDesktop, setIsDesktop] = useState(false);
 
   // Check if we're on desktop
@@ -50,17 +57,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
     return () => window.removeEventListener("resize", checkScreenSize);
   }, []);
-
-  // Dummy data
-  const availableOffices: Office[] = [
-    { id: "1", name: "Jakarta" },
-    { id: "2", name: "Surabaya" },
-  ];
-
-  const userData = {
-    userName: "John Doe",
-    userRole: "admin" as UserRole,
-  };
 
   // Get current section based on URL using MenuConfigUtils
   const currentSection = MenuConfigUtils.getSectionFromUrl(pathname);
@@ -85,7 +81,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const toggleUserDropdown = () => setShowUserDropdown(!showUserDropdown);
   const closeAllDropdowns = () => setShowUserDropdown(false);
 
-  const selectOffice = (office: Office) => setSelectedOffice(office);
+  // Handle office selection
+  const handleOfficeSelect = (office: { id: string; name: string }) => {
+    switchOffice(office.id);
+  };
 
   const handleLogout = async () => {
     try {
@@ -100,10 +99,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   // Handler for navigation from sidebar using MenuConfigUtils
   const handleSectionChange = (section: SectionKey) => {
+    // Map role_name to UserRole type for compatibility
+    const userRole = (user?.role.name as UserRole) || "user";
+
     // Validate user has access to this section
-    if (!MenuConfigUtils.validateSectionAccess(section, userData.userRole)) {
+    if (!MenuConfigUtils.validateSectionAccess(section, userRole)) {
       console.warn(
-        `User ${userData.userRole} does not have access to section: ${section}`
+        `User ${userRole} does not have access to section: ${section}`
       );
       return;
     }
@@ -128,6 +130,60 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     }
   };
 
+  // Show loading screen while initializing
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Memuat dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error screen if dashboard initialization failed
+  if (dashboardError && !isReady) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">
+            Terjadi Kesalahan
+          </h2>
+          <p className="text-gray-600 mb-6">{dashboardError}</p>
+          <div className="flex justify-center gap-4">
+            <button
+              onClick={retry}
+              className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              Coba Lagi
+            </button>
+            <button
+              onClick={redirectToLogin}
+              className="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+            >
+              Kembali ke Login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if not ready or no user data
+  if (!isReady || !user || !selectedOffice) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-pulse text-gray-400">
+            Mempersiapkan dashboard...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50">
       <div className="flex min-h-screen relative">
@@ -136,7 +192,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           isOpen={sidebarOpen}
           isCollapsed={sidebarCollapsed}
           activeSection={currentSection}
-          userRole={userData.userRole}
+          userRole={user.role.name as UserRole}
           onClose={closeSidebar}
           onSectionChange={handleSectionChange}
           onToggleCollapse={toggleSidebarCollapse}
@@ -152,8 +208,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           {/* Fixed TopBar */}
           <TopBar
             currentSection={currentSection}
-            userName={userData.userName}
-            userRole={userData.userRole}
+            userName={user.name}
+            userRole={user.role.name as UserRole}
+            userImage={undefined}
             offices={availableOffices}
             selectedOffice={selectedOffice}
             showUserDropdown={showUserDropdown}
@@ -165,7 +222,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             onHideLogoutModal={hideLogoutModal}
             onToggleUserDropdown={toggleUserDropdown}
             onCloseAllDropdowns={closeAllDropdowns}
-            onOfficeSelect={selectOffice}
+            onOfficeSelect={handleOfficeSelect}
           />
 
           {/* Scrollable Main Content */}
@@ -177,10 +234,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         </div>
       </div>
 
-      {/* Change Password Modal */}
+      {/* Enhanced Change Password Modal with transparent blur background */}
       {showChangePasswordModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-96 text-center transform transition-all duration-300 mx-4">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/30 backdrop-blur-sm z-50 transition-all duration-300">
+          <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-2xl p-6 w-96 text-center transform transition-all duration-300 mx-4 border border-white/20">
             <h2 className="text-lg font-semibold text-gray-800 mb-4">
               Ganti Password
             </h2>
@@ -190,9 +247,29 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             <div className="flex justify-center gap-4">
               <button
                 onClick={hideChangePasswordModal}
-                className="bg-gray-300 text-gray-700 font-semibold px-6 py-2 rounded-lg hover:bg-gray-400 transition-colors duration-300"
+                className="bg-white/80 backdrop-blur-sm text-gray-700 font-semibold px-6 py-2.5 rounded-lg hover:bg-white/90 border border-gray-200 transform hover:scale-105 transition-all duration-300 shadow-lg"
               >
                 Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Enhanced Error Toast with blur effect */}
+      {dashboardError && isReady && (
+        <div className="fixed top-4 right-4 z-50">
+          <div className="bg-red-100/90 backdrop-blur-md border text-red-700 px-4 py-3 rounded-xl shadow-2xl max-w-sm border-white/20">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium">Peringatan</p>
+                <p className="text-sm">{dashboardError}</p>
+              </div>
+              <button
+                onClick={clearError}
+                className="ml-2 text-red-400 hover:text-red-600 transform hover:scale-110 transition-all duration-300"
+              >
+                ×
               </button>
             </div>
           </div>
