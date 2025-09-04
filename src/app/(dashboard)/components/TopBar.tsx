@@ -232,26 +232,31 @@ const TopBar = ({
         <div className="fixed inset-0 z-20" onClick={onCloseAllDropdowns} />
       )}
 
-      {/* Logout Modal - reduced sizes */}
+      {/* Enhanced Logout Modal with transparent blur background */}
       {showLogoutModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white rounded-lg shadow-xl p-5 w-72 text-center transform transition-all duration-300">
-            <h2 className="text-base font-semibold text-gray-800 mb-3">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/30 backdrop-blur-sm z-50 transition-all duration-300">
+          <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-2xl p-6 w-80 text-center transform transition-all duration-300 scale-100 border border-white/20">
+            <div className="mb-4">
+              <div className="w-12 h-12 bg-gradient-to-r from-rose-500 to-red-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                <LogOut className="w-6 h-6 text-white" />
+              </div>
+            </div>
+            <h2 className="text-lg font-semibold text-gray-800 mb-2">
               Konfirmasi Logout
             </h2>
-            <p className="text-sm text-gray-600 mb-5">
-              Apakah kamu yakin ingin logout?
+            <p className="text-sm text-gray-600 mb-6">
+              Apakah kamu yakin ingin logout dari sistem?
             </p>
             <div className="flex justify-center gap-3">
               <button
                 onClick={onLogout}
-                className="bg-rose-500 text-white font-medium px-5 py-1.5 rounded-md hover:bg-rose-600 transition-colors duration-300 text-sm"
+                className="bg-gradient-to-r from-rose-500 to-red-600 text-white font-medium px-6 py-2.5 rounded-lg hover:from-rose-600 hover:to-red-700 transform hover:scale-105 transition-all duration-300 text-sm shadow-lg"
               >
-                Ya
+                Ya, Logout
               </button>
               <button
                 onClick={onHideLogoutModal}
-                className="bg-gray-300 text-gray-700 font-medium px-5 py-1.5 rounded-md hover:bg-gray-400 transition-colors duration-300 text-sm"
+                className="bg-white/80 backdrop-blur-sm text-gray-700 font-medium px-6 py-2.5 rounded-lg hover:bg-white/90 border border-gray-200 transform hover:scale-105 transition-all duration-300 text-sm shadow-lg"
               >
                 Batal
               </button>

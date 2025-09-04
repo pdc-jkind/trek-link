@@ -1,7 +1,7 @@
 // src/app/(dashboard)/hooks/useDashboardInit.ts
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUserStore, getUserOfficeInfo, getUserRole } from '@/store/user.store';
 
@@ -38,85 +38,80 @@ export const useDashboardInit = () => {
     error: null,
   });
 
-  // Initialize dashboard by checking session data
-  const initializeDashboard = useCallback(() => {
-    console.log('🚀 Initializing dashboard from session...');
-    
-    setState(prev => ({ ...prev, isInitializing: true, error: null }));
+  const mountedRef = useRef(true);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    try {
-      // Check if user is authenticated via session
-      if (!isAuthenticated) {
-        console.log('❌ User not authenticated in session, redirecting to login...');
-        router.replace('/login');
-        return;
-      }
+  // Simple initialization effect
+  useEffect(() => {
+    mountedRef.current = true;
 
-      // Check if current user exists in session
-      if (!currentUser) {
-        console.log('❌ No current user found in session, redirecting to login...');
-        router.replace('/login');
-        return;
-      }
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
 
-      // Check if user offices data exists
-      if (!allUserOffices || allUserOffices.length === 0) {
-        console.log('⚠️ No user offices found in session');
+    // Set a timeout for initialization
+    timeoutRef.current = setTimeout(() => {
+      if (!mountedRef.current) return;
+
+      console.log('Dashboard init check:', {
+        isAuthenticated,
+        hasCurrentUser: !!currentUser,
+        hasOffices: allUserOffices?.length > 0,
+        userId: currentUser?.id,
+        officeCount: allUserOffices?.length,
+      });
+
+      // Check if we have all required data
+      if (isAuthenticated && currentUser && allUserOffices?.length > 0) {
+        console.log('Dashboard ready - all data available');
         setState({
           isInitializing: false,
-          isReady: false,
-          error: 'Data kantor tidak ditemukan. Silakan login ulang.',
+          isReady: true,
+          error: null,
         });
-        return;
+      } else if (!isAuthenticated) {
+        console.log('Not authenticated, redirecting to login');
+        router.replace('/login');
+      } else {
+        console.log('Waiting for data...', {
+          needsUser: !currentUser,
+          needsOffices: !allUserOffices?.length,
+        });
+        // Keep initializing state - data might still be loading
+        setState(prev => ({
+          ...prev,
+          isInitializing: true,
+          error: null,
+        }));
       }
+    }, 100);
 
-      // Check if data is stale (older than 30 minutes)
-      if (isDataStale(30)) {
-        console.log('⚠️ Session data is stale, might need refresh');
-        // Don't block dashboard, but log warning
-        console.warn('Session data is older than 30 minutes, consider refreshing');
+    return () => {
+      mountedRef.current = false;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
       }
+    };
+  }, [isAuthenticated, currentUser?.id, allUserOffices?.length, router]);
 
-      console.log('✅ Dashboard initialization complete from session:', {
-        userId: currentUser.id,
-        userEmail: currentUser.email,
-        officeCount: allUserOffices.length,
-        currentOffice: currentUser.office_name,
-        lastFetched,
-      });
-
-      setState({
-        isInitializing: false,
-        isReady: true,
-        error: null,
-      });
-
-    } catch (error: any) {
-      console.error('❌ Dashboard initialization error:', error);
-      setState({
-        isInitializing: false,
-        isReady: false,
-        error: error.message || 'Terjadi kesalahan saat menginisialisasi dashboard',
-      });
-    }
-  }, [isAuthenticated, currentUser, allUserOffices, isDataStale, lastFetched, router]);
-
-  // Initialize on mount and when authentication state changes
+  // Cleanup on unmount
   useEffect(() => {
-    initializeDashboard();
-  }, [initializeDashboard]);
+    return () => {
+      mountedRef.current = false;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   // Handle office switching
   const handleOfficeSwitch = useCallback((officeId: string) => {
     try {
-      console.log('🔄 Switching office to:', officeId);
+      console.log('Switching office to:', officeId);
       switchOffice(officeId);
-      
-      // Optionally redirect to dashboard home after office switch
-      // router.push('/dashboard');
-      
     } catch (error: any) {
-      console.error('❌ Error switching office:', error);
+      console.error('Error switching office:', error);
       setState(prev => ({
         ...prev,
         error: 'Gagal mengganti kantor',
@@ -124,8 +119,10 @@ export const useDashboardInit = () => {
     }
   }, [switchOffice]);
 
-  // Get available offices in the format expected by UI components
+  // Get available offices
   const availableOffices = useMemo((): OfficeOption[] => {
+    if (!allUserOffices) return [];
+    
     return allUserOffices.map(user => ({
       id: user.office_id,
       name: user.office_name,
@@ -146,13 +143,13 @@ export const useDashboardInit = () => {
     };
   }, [currentUser]);
 
-  // Get user info for UI
+  // Get user info
   const userInfo = useMemo(() => {
     if (!currentUser) return null;
     
     return {
       id: currentUser.id,
-      name: currentUser.email.split('@')[0], // Extract name from email if no separate name field
+      name: currentUser.email.split('@')[0],
       email: currentUser.email,
       role: {
         id: currentUser.role_id,
@@ -169,7 +166,7 @@ export const useDashboardInit = () => {
     };
   }, [currentUser]);
 
-  // Check if data needs refresh (but don't force it)
+  // Check if data is stale
   const isDataStaleWarning = useMemo(() => {
     return isDataStale(30);
   }, [isDataStale]);
@@ -181,12 +178,17 @@ export const useDashboardInit = () => {
 
   // Retry initialization
   const retry = useCallback(() => {
-    initializeDashboard();
-  }, [initializeDashboard]);
+    console.log('Manual retry triggered');
+    setState({
+      isInitializing: true,
+      isReady: false,
+      error: null,
+    });
+  }, []);
 
-  // Force redirect to login (useful for error scenarios)
+  // Force redirect to login
   const redirectToLogin = useCallback(() => {
-    console.log('🔄 Forcing redirect to login...');
+    console.log('Forcing redirect to login');
     router.replace('/login');
   }, [router]);
 
@@ -198,9 +200,9 @@ export const useDashboardInit = () => {
     // Error state
     error: state.error,
     
-    // User data from session
+    // User data
     user: userInfo,
-    currentUser, // Raw current user object
+    currentUser,
     
     // Office data
     availableOffices,
@@ -217,7 +219,7 @@ export const useDashboardInit = () => {
     retry,
     redirectToLogin,
     
-    // Helper functions (re-exported from store)
+    // Helper functions
     getUserOfficeInfo,
     getUserRole,
   };

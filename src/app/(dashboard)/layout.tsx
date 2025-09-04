@@ -234,10 +234,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         </div>
       </div>
 
-      {/* Change Password Modal */}
+      {/* Enhanced Change Password Modal with transparent blur background */}
       {showChangePasswordModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-96 text-center transform transition-all duration-300 mx-4">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/30 backdrop-blur-sm z-50 transition-all duration-300">
+          <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-2xl p-6 w-96 text-center transform transition-all duration-300 mx-4 border border-white/20">
             <h2 className="text-lg font-semibold text-gray-800 mb-4">
               Ganti Password
             </h2>
@@ -247,7 +247,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             <div className="flex justify-center gap-4">
               <button
                 onClick={hideChangePasswordModal}
-                className="bg-gray-300 text-gray-700 font-semibold px-6 py-2 rounded-lg hover:bg-gray-400 transition-colors duration-300"
+                className="bg-white/80 backdrop-blur-sm text-gray-700 font-semibold px-6 py-2.5 rounded-lg hover:bg-white/90 border border-gray-200 transform hover:scale-105 transition-all duration-300 shadow-lg"
               >
                 Tutup
               </button>
@@ -256,10 +256,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         </div>
       )}
 
-      {/* Error Toast - Show errors that don't block the dashboard */}
+      {/* Enhanced Error Toast with blur effect */}
       {dashboardError && isReady && (
         <div className="fixed top-4 right-4 z-50">
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow-lg max-w-sm">
+          <div className="bg-red-100/90 backdrop-blur-md border text-red-700 px-4 py-3 rounded-xl shadow-2xl max-w-sm border-white/20">
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-sm font-medium">Peringatan</p>
@@ -267,7 +267,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
               </div>
               <button
                 onClick={clearError}
-                className="ml-2 text-red-400 hover:text-red-600"
+                className="ml-2 text-red-400 hover:text-red-600 transform hover:scale-110 transition-all duration-300"
               >
                 ×
               </button>
