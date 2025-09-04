@@ -46,6 +46,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
 
+  // Add logout loading state
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
   // Check if we're on desktop
   useEffect(() => {
     const checkScreenSize = () => {
@@ -76,7 +79,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     setShowLogoutModal(true);
     setShowUserDropdown(false);
   };
-  const hideLogoutModal = () => setShowLogoutModal(false);
+
+  const hideLogoutModal = () => {
+    if (!isLoggingOut) {
+      setShowLogoutModal(false);
+    }
+  };
 
   const toggleUserDropdown = () => setShowUserDropdown(!showUserDropdown);
   const closeAllDropdowns = () => setShowUserDropdown(false);
@@ -86,14 +94,26 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     switchOffice(office.id);
   };
 
+  // Enhanced logout handler with loading state
   const handleLogout = async () => {
     try {
+      setIsLoggingOut(true);
+
+      // Add a small delay to show the loading state
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
       await logout();
-      hideLogoutModal();
+
+      // Close modal and redirect
+      setShowLogoutModal(false);
+      setIsLoggingOut(false);
       router.push("/login");
     } catch (error) {
       console.error("Logout error:", error);
-      // Optionally show error message to user
+      setIsLoggingOut(false);
+
+      // Show error to user (you can enhance this with a toast notification)
+      alert("Terjadi kesalahan saat logout. Silakan coba lagi.");
     }
   };
 
@@ -205,7 +225,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             marginLeft: getMainContentMargin(),
           }}
         >
-          {/* Fixed TopBar */}
+          {/* Fixed TopBar with enhanced props */}
           <TopBar
             currentSection={currentSection}
             userName={user.name}
@@ -215,6 +235,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             selectedOffice={selectedOffice}
             showUserDropdown={showUserDropdown}
             showLogoutModal={showLogoutModal}
+            isLoggingOut={isLoggingOut}
             onMenuToggle={toggleSidebar}
             onLogout={handleLogout}
             onChangePassword={openChangePasswordModal}

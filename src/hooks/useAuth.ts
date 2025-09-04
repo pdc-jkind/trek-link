@@ -222,6 +222,9 @@ export const useAuth = () => {
         authListenerRef.current.unsubscribe();
         authListenerRef.current = null;
       }
+      // Reset refs on cleanup
+      initializingRef.current = false;
+      profileLoadingRef.current = false;
     };
   }, []); // No dependencies
 

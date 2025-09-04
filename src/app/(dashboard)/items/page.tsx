@@ -1,7 +1,13 @@
 // src/app/(dashboard)/items/page.tsx
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
 import { Package, Plus, Filter, Eye, Edit, Trash2 } from "lucide-react";
 import {
   Card,
@@ -217,6 +223,7 @@ const ItemsPage: React.FC = () => {
 
   const handleDeleteItem = useCallback(
     async (id: string) => {
+      console.log("🗑️ Attempting to delete item:", id);
       if (window.confirm("Apakah Anda yakin ingin menghapus barang ini?")) {
         console.log("🗑️ Deleting item:", id);
         const result = await deleteItem(id);
@@ -233,8 +240,9 @@ const ItemsPage: React.FC = () => {
   // Save handlers
   const handleSaveItem = useCallback(
     async (data: any) => {
+      
       console.log("💾 Saving item:", { mode: modalMode, data });
-
+      
       if (modalMode === "create") {
         const result = await createItem(data);
         console.log("✅ Create item result:", result);
@@ -416,6 +424,13 @@ const ItemsPage: React.FC = () => {
     },
   ];
 
+  console.log("🎭 About to render - Final state check:", {
+    loading,
+    error,
+    itemsLength: items.length,
+    showLoadingSpinner: loading,
+  });
+
   // Show error state if there's an error
   if (error) {
     console.error("💥 Rendering error state:", error);
@@ -469,16 +484,22 @@ const ItemsPage: React.FC = () => {
             </p>
           </div>
         ) : (
-          <Table
-            columns={columns}
-            data={items}
-            emptyMessage={
-              searchTerm || selectedCategory
-                ? "Tidak ada barang yang sesuai dengan filter."
-                : "Belum ada data barang."
-            }
-            emptyIcon={Package}
-          />
+          <>
+            <Table
+              columns={columns}
+              data={items}
+              emptyMessage={
+                searchTerm || selectedCategory
+                  ? "Tidak ada barang yang sesuai dengan filter."
+                  : "Belum ada data barang."
+              }
+              emptyIcon={Package}
+            />
+            <div className="text-xs text-gray-400 text-center mt-2">
+              Debug: Showing table with {items.length} items (loading ={" "}
+              {loading.toString()})
+            </div>
+          </>
         )}
 
         {items.length === 0 && !loading && (searchTerm || selectedCategory) && (

@@ -115,7 +115,11 @@ export const useItems = (initialFilters: ItemFilters = {}) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
-  const [filters, setFilters] = useState<ItemFilters>(initialFilters);
+  const [filters, setFilters] = useState<ItemFilters>({
+    page: 1,
+    limit: 50,
+    ...initialFilters
+  });
   
   const mountedRef = useRef(true);
   const filtersRef = useRef(filters);
@@ -163,6 +167,7 @@ export const useItems = (initialFilters: ItemFilters = {}) => {
         });
         setItems(response.data);
         setTotalCount(response.count);
+        setError(null);
       }
     } catch (err) {
       console.error('💥 Exception during fetch:', err);
@@ -176,6 +181,7 @@ export const useItems = (initialFilters: ItemFilters = {}) => {
       if (mountedRef.current) {
         console.log('🏁 Setting loading to false');
         setLoading(false);
+        initialLoadDoneRef.current = true;
       }
     }
   }, []); // Remove filters dependency to prevent infinite loops
@@ -305,6 +311,7 @@ export const useItems = (initialFilters: ItemFilters = {}) => {
     }
   }, []);
 
+  // Fixed updateFilters function - handle empty values properly
   const updateFilters = useCallback((newFilters: Partial<ItemFilters>) => {
     console.log('🔧 Updating filters:', JSON.stringify(newFilters, null, 2));
     
@@ -320,12 +327,13 @@ export const useItems = (initialFilters: ItemFilters = {}) => {
     setFilters({});
   }, []);
 
+  // Stable refetch function that uses current filters
   const refetch = useCallback(() => {
     console.log('🔄 Manual refetch requested');
     fetchItems();
   }, [fetchItems]);
 
-  // Effect to fetch items when filters change
+  // Main effect to fetch items when filters change
   useEffect(() => {
     console.log('🎯 useEffect triggered - filters changed:', JSON.stringify(filters, null, 2));
     fetchItems();
@@ -339,6 +347,15 @@ export const useItems = (initialFilters: ItemFilters = {}) => {
       mountedRef.current = false;
     };
   }, []);
+
+  console.log('🔍 useItems current state:', {
+    loading,
+    error,
+    itemsCount: items.length,
+    totalCount,
+    filters,
+    initialLoadDone: initialLoadDoneRef.current
+  });
 
   return {
     items,
@@ -364,7 +381,11 @@ export const useItemMasters = (initialFilters: ItemMasterFilters = {}) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
-  const [filters, setFilters] = useState<ItemMasterFilters>(initialFilters);
+  const [filters, setFilters] = useState<ItemMasterFilters>({
+    page: 1,
+    limit: 50,
+    ...initialFilters
+  });
   
   const mountedRef = useRef(true);
   const filtersRef = useRef(filters);
@@ -411,6 +432,7 @@ export const useItemMasters = (initialFilters: ItemMasterFilters = {}) => {
         });
         setItemMasters(response.data);
         setTotalCount(response.count);
+        setError(null);
       }
     } catch (err) {
       console.error('💥 Exception during masters fetch:', err);
@@ -424,6 +446,7 @@ export const useItemMasters = (initialFilters: ItemMasterFilters = {}) => {
       if (mountedRef.current) {
         console.log('🏁 Setting masters loading to false');
         setLoading(false);
+        initialLoadDoneRef.current = true;
       }
     }
   }, []);
@@ -557,6 +580,7 @@ export const useItemMasters = (initialFilters: ItemMasterFilters = {}) => {
     }
   }, []);
 
+  // Fixed updateFilters for ItemMasters too
   const updateFilters = useCallback((newFilters: Partial<ItemMasterFilters>) => {
     console.log('🔧 Updating item master filters:', JSON.stringify(newFilters, null, 2));
     
@@ -577,7 +601,7 @@ export const useItemMasters = (initialFilters: ItemMasterFilters = {}) => {
     fetchItemMasters();
   }, [fetchItemMasters]);
 
-  // Effect to fetch item masters when filters change
+  // Main effect to fetch item masters when filters change
   useEffect(() => {
     console.log('🎯 useItemMasters effect triggered - filters changed:', JSON.stringify(filters, null, 2));
     fetchItemMasters();
@@ -591,6 +615,15 @@ export const useItemMasters = (initialFilters: ItemMasterFilters = {}) => {
       mountedRef.current = false;
     };
   }, []);
+
+  console.log('🔍 useItemMasters current state:', {
+    loading,
+    error,
+    itemMastersCount: itemMasters.length,
+    totalCount,
+    filters,
+    initialLoadDone: initialLoadDoneRef.current
+  });
 
   return {
     itemMasters,

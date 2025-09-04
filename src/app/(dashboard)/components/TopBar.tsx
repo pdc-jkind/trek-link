@@ -1,7 +1,15 @@
-// src\app\(frontend)\components\layout\TopBar.tsx
+// src\app\(dashboard)\components\TopBar.tsx
 "use client";
 
-import { Menu, LogOut, User, Building, Lock, Bell } from "lucide-react";
+import {
+  Menu,
+  LogOut,
+  User,
+  Building,
+  Lock,
+  Bell,
+  Loader2,
+} from "lucide-react";
 import {
   SectionKey,
   MenuConfigUtils,
@@ -29,6 +37,7 @@ export interface TopBarProps {
   // Modal states
   showLogoutModal: boolean;
   showUserDropdown: boolean;
+  isLoggingOut?: boolean; // Add loading state for logout
 
   // Event handlers
   onMenuToggle: () => void;
@@ -50,6 +59,7 @@ const TopBar = ({
   selectedOffice,
   showLogoutModal,
   showUserDropdown,
+  isLoggingOut = false,
   onMenuToggle,
   onLogout,
   onChangePassword,
@@ -158,7 +168,10 @@ const TopBar = ({
               <div className="relative">
                 <button
                   onClick={onToggleUserDropdown}
-                  className="flex items-center gap-2 bg-white/40 hover:bg-white/70 text-gray-600 hover:text-gray-800 font-medium py-1.5 px-2.5 lg:px-3 rounded-lg shadow-sm hover:shadow-md transition-all duration-300"
+                  disabled={isLoggingOut}
+                  className={`flex items-center gap-2 bg-white/40 hover:bg-white/70 text-gray-600 hover:text-gray-800 font-medium py-1.5 px-2.5 lg:px-3 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 ${
+                    isLoggingOut ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
                 >
                   <div className="w-5 lg:w-7 h-5 lg:h-7 rounded-full overflow-hidden flex items-center justify-center">
                     {userImage ? (
@@ -188,8 +201,8 @@ const TopBar = ({
                 </button>
 
                 {/* User Dropdown - reduced sizes */}
-                {showUserDropdown && (
-                  <div className="absolute right-0 mt-2 w-50 bg-white rounded-lg shadow-xl border border-gray-200 py-1.5 z-50">
+                {showUserDropdown && !isLoggingOut && (
+                  <div className="absolute right-0 mt-2 w-50 bg-white rounded-lg shadow-xl border border-gray-200 py-1.5 z-50 animate-in slide-in-from-top-2 duration-200">
                     <div className="px-3 py-2.5 border-b border-gray-100">
                       <div className="font-medium text-gray-900 text-sm">
                         {userName}
@@ -214,7 +227,7 @@ const TopBar = ({
 
                     <button
                       onClick={onShowLogoutModal}
-                      className="w-full text-left px-3 py-2.5 hover:bg-gray-50 transition-colors flex items-center gap-2.5 text-rose-600"
+                      className="w-full text-left px-3 py-2.5 transition-colors flex items-center gap-2.5 text-rose-600 hover:bg-rose-50"
                     >
                       <LogOut className="w-3.5 h-3.5" />
                       <span className="text-sm">Logout</span>
@@ -228,10 +241,9 @@ const TopBar = ({
       </header>
 
       {/* Click outside handlers */}
-      {showUserDropdown && (
+      {showUserDropdown && !isLoggingOut && (
         <div className="fixed inset-0 z-20" onClick={onCloseAllDropdowns} />
       )}
-
       {/* Enhanced Logout Modal with transparent blur background */}
       {showLogoutModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/30 backdrop-blur-sm z-50 transition-all duration-300">

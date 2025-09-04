@@ -69,7 +69,7 @@ class ItemService {
     try {
       let query = this.supabase
         .from('item_masters')
-        .select('*')
+        .select('*', { count: 'exact' })
         .order('created_at', { ascending: false });
 
       console.log('📋 Base query created for item_masters');
@@ -98,7 +98,7 @@ class ItemService {
 
       console.log('📄 Applying pagination:', { page, limit, from, to });
       query = query.range(from, to);
-
+      
       console.log('📄 Executing item masters query...');
       const startTime = performance.now();
       const { data, error, count } = await query;
@@ -116,7 +116,7 @@ class ItemService {
         console.error('❌ Supabase error in getItemMasters:', error);
         throw error;
       }
-
+      
       const response = {
         data: data || [],
         count: count || 0,
@@ -126,7 +126,7 @@ class ItemService {
       return response;
       
     } catch (error) {
-      console.error('💥 Exception in getItemMasters:', error);
+      console.error('💥 Exception in getItemMasters:', error);\
       return {
         data: [],
         count: 0,
@@ -229,7 +229,7 @@ class ItemService {
         .select(`
           *,
           item_master:item_masters(*)
-        `)
+        `, { count: 'exact' })
         .order('created_at', { ascending: false });
 
       console.log('📋 Base query created for items with item_master join');
