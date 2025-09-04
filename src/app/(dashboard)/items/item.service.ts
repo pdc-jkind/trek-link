@@ -126,7 +126,7 @@ class ItemService {
       return response;
       
     } catch (error) {
-      console.error('💥 Exception in getItemMasters:', error);\
+      console.error('💥 Exception in getItemMasters:', error);
       return {
         data: [],
         count: 0,
