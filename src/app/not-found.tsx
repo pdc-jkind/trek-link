@@ -9,7 +9,7 @@ import {
   AuthIcon,
   BackButton,
   PrimaryButton,
-} from "@/app/(auth)/components";
+} from "@/app/(frontend)/(auth)/components";
 
 const NotFoundPage: React.FC = () => {
   const router = useRouter();

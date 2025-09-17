@@ -8,7 +8,7 @@ import {
   AuthCard,
   ErrorMessage,
   BackButton,
-} from "@/app/(auth)/components";
+} from "@/app/(frontend)/(auth)/components";
 
 interface ErrorPageProps {
   error: Error & { digest?: string };

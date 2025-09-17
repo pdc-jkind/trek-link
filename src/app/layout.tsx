@@ -1,7 +1,6 @@
 // src/app/layout.tsx
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
-import { AuthProvider } from "@/app/(auth)/components/AuthProvider";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -28,7 +27,7 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body className={`${poppins.variable} ${poppins.className}`}>
-        <AuthProvider>{children}</AuthProvider>
+        {children}
       </body>
     </html>
   );
