@@ -1,4 +1,4 @@
-// src/app/(auth)/callback/route.ts
+// src/app/(frontend)/(auth)/callback/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies()
     
-    // Create Supabase server client
+    // Create Supabase server client untuk code exchange
     const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
       cookies: {
         getAll() {
@@ -88,7 +88,10 @@ export async function GET(request: NextRequest) {
     response.headers.set('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
     response.headers.set('Pragma', 'no-cache')
 
+    console.log('Callback completed successfully')
     console.log('Redirecting to:', redirectTo)
+    console.log('Client useAuth will handle profile loading')
+    
     return response
 
   } catch (error: any) {

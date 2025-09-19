@@ -1,4 +1,4 @@
-// src/app/login/page.tsx
+// src/app/(frontend)/(auth)/login/page.tsx
 "use client";
 
 import React, { useEffect, Suspense } from "react";
@@ -17,6 +17,7 @@ import {
 const LoginContent: React.FC = () => {
   const { login, error, clearError, isLoading, isFullyAuthenticated } =
     useAuth();
+
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -24,10 +25,10 @@ const LoginContent: React.FC = () => {
   const urlError = searchParams.get("error");
   const displayError = error || urlError;
 
-  // Redirect if already authenticated and has user profile
+  // Redirect if already fully authenticated
   useEffect(() => {
     if (isFullyAuthenticated) {
-      const redirectTo = searchParams.get("redirectTo") || "/dashboard";
+      const redirectTo = searchParams.get("redirect_to") || "/dashboard";
       console.log("User fully authenticated, redirecting to:", redirectTo);
       router.replace(redirectTo);
     }
@@ -38,8 +39,10 @@ const LoginContent: React.FC = () => {
     try {
       console.log("Initiating Google login...");
       await login("google");
+      // OAuth akan redirect ke provider, tidak perlu handling di sini
     } catch (err) {
       console.error("Login failed:", err);
+      // Error sudah dihandle oleh useAuth hook
     }
   };
 
