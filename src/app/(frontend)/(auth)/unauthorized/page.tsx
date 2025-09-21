@@ -3,11 +3,10 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/app/(frontend)/hooks/useAuth";
+import { useAuth } from "@/app/(frontend)/(auth)/useAuth";
 import {
   AuthLayout,
   AuthCard,
-  AuthIcon,
   BackButton,
   PrimaryButton,
   LoadingMessage,

@@ -47,12 +47,10 @@ export const UserAssignmentModal: React.FC<UserAssignmentModalProps> = ({
   isOpen,
   onClose,
   userEmail,
-  userId,
   assignments,
   offices,
   roles,
   onSave,
-  loading = false,
 }) => {
   const [editableAssignments, setEditableAssignments] = useState<
     Array<{
@@ -214,18 +212,6 @@ export const UserAssignmentModal: React.FC<UserAssignmentModalProps> = ({
     }
   };
 
-  const getOfficeName = (officeId: string) => {
-    if (!officeId) return "";
-    const office = offices.find((o) => o.id === officeId);
-    return office ? `${office.name} (${office.location})` : "";
-  };
-
-  const getRoleName = (roleId: string) => {
-    if (!roleId) return "";
-    const role = roles.find((r) => r.id === roleId);
-    return role ? role.name : "";
-  };
-
   if (!isOpen) return null;
 
   return (
@@ -296,7 +282,7 @@ export const UserAssignmentModal: React.FC<UserAssignmentModalProps> = ({
             </div>
 
             <div className="space-y-4">
-              {editableAssignments.map((assignment, index) => (
+              {editableAssignments.map((assignment, _) => (
                 <div
                   key={assignment.id}
                   className="group relative overflow-hidden rounded-xl border border-gray-200/60 bg-gradient-to-r from-white/90 to-gray-50/90 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-300 hover:border-purple-300/60"
@@ -307,7 +293,7 @@ export const UserAssignmentModal: React.FC<UserAssignmentModalProps> = ({
                   <div className="relative flex items-start gap-4 p-5">
                     <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-gray-700 flex items-center gap-2">
+                        <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                           <div className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
                           Office
                         </label>
@@ -332,7 +318,7 @@ export const UserAssignmentModal: React.FC<UserAssignmentModalProps> = ({
                         </select>
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-gray-700 flex items-center gap-2">
+                        <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                           <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full" />
                           Role
                         </label>

@@ -54,30 +54,16 @@ export const useDashboardInit = () => {
     timeoutRef.current = setTimeout(() => {
       if (!mountedRef.current) return;
 
-      console.log('Dashboard init check:', {
-        isAuthenticated,
-        hasCurrentUser: !!currentUser,
-        hasOffices: allUserOffices?.length > 0,
-        userId: currentUser?.id,
-        officeCount: allUserOffices?.length,
-      });
-
       // Check if we have all required data
       if (isAuthenticated && currentUser && allUserOffices?.length > 0) {
-        console.log('Dashboard ready - all data available');
         setState({
           isInitializing: false,
           isReady: true,
           error: null,
         });
       } else if (!isAuthenticated) {
-        console.log('Not authenticated, redirecting to login');
         router.replace('/login');
       } else {
-        console.log('Waiting for data...', {
-          needsUser: !currentUser,
-          needsOffices: !allUserOffices?.length,
-        });
         // Keep initializing state - data might still be loading
         setState(prev => ({
           ...prev,
@@ -108,7 +94,6 @@ export const useDashboardInit = () => {
   // Handle office switching
   const handleOfficeSwitch = useCallback((officeId: string) => {
     try {
-      console.log('Switching office to:', officeId);
       switchOffice(officeId);
     } catch (error: any) {
       console.error('Error switching office:', error);
@@ -178,7 +163,6 @@ export const useDashboardInit = () => {
 
   // Retry initialization
   const retry = useCallback(() => {
-    console.log('Manual retry triggered');
     setState({
       isInitializing: true,
       isReady: false,
@@ -188,7 +172,6 @@ export const useDashboardInit = () => {
 
   // Force redirect to login
   const redirectToLogin = useCallback(() => {
-    console.log('Forcing redirect to login');
     router.replace('/login');
   }, [router]);
 
