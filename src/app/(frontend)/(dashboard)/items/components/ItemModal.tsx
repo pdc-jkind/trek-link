@@ -1,24 +1,31 @@
-// src\app\(dashboard)\items\components\ItemModal.tsx
+// src/app/(frontend)/(dashboard)/items/components/ItemModal.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Save, AlertCircle, Plus } from "lucide-react";
-import {
-  Item,
-  ItemMaster,
-  CreateItemPayload,
-  UpdateItemPayload,
-} from "../items.type";
+import { X, Save, AlertCircle, Plus, Minus } from "lucide-react";
+import { Tables, TablesInsert, TablesUpdate } from "@/types/database";
+
+type ItemMaster = Tables<"item_masters">;
+type ItemVariant = Tables<"item_variants">;
+type Office = Tables<"offices">;
+
+interface ItemGroup {
+  item_name: string;
+  variant_id: string;
+  unit: string;
+  alt_unit: string;
+  conversion_to_base: string;
+}
 
 interface ItemModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (
-    data: CreateItemPayload | UpdateItemPayload
-  ) => Promise<{ success: boolean; error?: string }>;
+  onSave: (data: any) => Promise<{ success: boolean; error?: string }>;
   onCreateMaster?: () => void;
-  item?: Item | null;
+  onCreateVariant?: () => void;
+  item?: any | null;
   itemMasters: ItemMaster[];
+  itemVariants: ItemVariant[];
   mode: "create" | "edit";
   checkItemCodeExists?: (
     itemCode: string,
@@ -32,20 +39,28 @@ export const ItemModal: React.FC<ItemModalProps> = ({
   onClose,
   onSave,
   onCreateMaster,
+  onCreateVariant,
   item,
   itemMasters,
+  itemVariants,
   mode,
   checkItemCodeExists,
   generateItemCode,
 }) => {
   const [formData, setFormData] = useState({
     item_code: "",
-    item_name: "",
-    unit: "pcs",
-    alt_unit: "",
-    conversion_to_base: "",
     item_master_id: "",
   });
+
+  const [itemGroups, setItemGroups] = useState<ItemGroup[]>([
+    {
+      item_name: "",
+      variant_id: "",
+      unit: "pcs",
+      alt_unit: "",
+      conversion_to_base: "",
+    },
+  ]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,18 +69,15 @@ export const ItemModal: React.FC<ItemModalProps> = ({
 
   // Common units for dropdown
   const commonUnits = [
+    "lembar",
+    "box",
+    "set",
     "pcs",
     "kg",
-    "gram",
     "liter",
+    "galon",
     "meter",
-    "cm",
-    "mm",
-    "box",
-    "pack",
     "roll",
-    "sheet",
-    "bottle",
     "unit",
   ];
 
@@ -75,21 +87,32 @@ export const ItemModal: React.FC<ItemModalProps> = ({
       if (mode === "edit" && item) {
         setFormData({
           item_code: item.item_code,
-          item_name: item.item_name,
-          unit: item.unit || "pcs",
-          alt_unit: item.alt_unit || "",
-          conversion_to_base: item.conversion_to_base?.toString() || "",
           item_master_id: item.item_master_id || "",
         });
+        // For edit mode, we'll show the single item as one group
+        setItemGroups([
+          {
+            item_name: item.item_name,
+            variant_id: item.variant_id || "",
+            unit: item.unit || "pcs",
+            alt_unit: item.alt_unit || "",
+            conversion_to_base: item.conversion_to_base?.toString() || "",
+          },
+        ]);
       } else {
         setFormData({
           item_code: "",
-          item_name: "",
-          unit: "pcs",
-          alt_unit: "",
-          conversion_to_base: "",
           item_master_id: "",
         });
+        setItemGroups([
+          {
+            item_name: "",
+            variant_id: "",
+            unit: "pcs",
+            alt_unit: "",
+            conversion_to_base: "",
+          },
+        ]);
       }
       setErrors({});
       setCodeExists(false);
@@ -140,42 +163,85 @@ export const ItemModal: React.FC<ItemModalProps> = ({
     }
   };
 
+  // Handle item group changes
+  const handleItemGroupChange = (
+    index: number,
+    field: keyof ItemGroup,
+    value: string
+  ) => {
+    const newGroups = [...itemGroups];
+    newGroups[index] = { ...newGroups[index], [field]: value };
+    setItemGroups(newGroups);
+
+    // Clear errors for this field
+    const errorKey = `group_${index}_${field}`;
+    if (errors[errorKey]) {
+      setErrors((prev) => ({ ...prev, [errorKey]: "" }));
+    }
+  };
+
+  // Add new item group
+  const addItemGroup = () => {
+    setItemGroups([
+      ...itemGroups,
+      {
+        item_name: "",
+        variant_id: "",
+        unit: "pcs",
+        alt_unit: "",
+        conversion_to_base: "",
+      },
+    ]);
+  };
+
+  // Remove item group
+  const removeItemGroup = (index: number) => {
+    if (itemGroups.length > 1) {
+      const newGroups = itemGroups.filter((_, i) => i !== index);
+      setItemGroups(newGroups);
+    }
+  };
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
+    // Validate main form
     if (!formData.item_code.trim()) {
       newErrors.item_code = "Kode barang harus diisi";
     } else if (codeExists) {
       newErrors.item_code = "Kode barang sudah ada";
     }
 
-    if (!formData.item_name.trim()) {
-      newErrors.item_name = "Nama barang harus diisi";
+    if (!formData.item_master_id) {
+      newErrors.item_master_id = "Kategori harus dipilih";
     }
 
-    if (!formData.unit.trim()) {
-      newErrors.unit = "Unit harus diisi";
-    }
+    // Validate item groups
+    itemGroups.forEach((group, index) => {
+      if (!group.item_name.trim()) {
+        newErrors[`group_${index}_item_name`] = "Nama barang harus diisi";
+      }
 
-    // Validate conversion ratio if alt_unit is provided
-    if (formData.alt_unit && !formData.conversion_to_base) {
-      newErrors.conversion_to_base =
-        "Rasio konversi harus diisi jika ada unit alternatif";
-    }
+      if (!group.unit.trim()) {
+        newErrors[`group_${index}_unit`] = "Unit harus diisi";
+      }
 
-    if (
-      formData.conversion_to_base &&
-      isNaN(Number(formData.conversion_to_base))
-    ) {
-      newErrors.conversion_to_base = "Rasio konversi harus berupa angka";
-    }
+      // Validate conversion ratio if alt_unit is provided
+      if (group.alt_unit && !group.conversion_to_base) {
+        newErrors[`group_${index}_conversion_to_base`] =
+          "Rasio konversi harus diisi jika ada unit alternatif";
+      }
 
-    if (
-      formData.conversion_to_base &&
-      Number(formData.conversion_to_base) <= 0
-    ) {
-      newErrors.conversion_to_base = "Rasio konversi harus lebih dari 0";
-    }
+      if (group.conversion_to_base && isNaN(Number(group.conversion_to_base))) {
+        newErrors[`group_${index}_conversion_to_base`] =
+          "Rasio konversi harus berupa angka";
+      }
+
+      if (group.conversion_to_base && Number(group.conversion_to_base) <= 0) {
+        newErrors[`group_${index}_conversion_to_base`] =
+          "Rasio konversi harus lebih dari 0";
+      }
+    });
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -189,29 +255,51 @@ export const ItemModal: React.FC<ItemModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      const payload = {
-        item_code: formData.item_code,
-        item_name: formData.item_name,
-        unit: formData.unit,
-        alt_unit: formData.alt_unit || null,
-        conversion_to_base: formData.conversion_to_base
-          ? Number(formData.conversion_to_base)
-          : null,
-        item_master_id: formData.item_master_id || null,
-      };
+      // For edit mode, we only update a single item
+      if (mode === "edit" && item) {
+        const group = itemGroups[0];
+        const payload = {
+          id: item.id,
+          item_code: formData.item_code,
+          item_name: group.item_name,
+          unit: group.unit,
+          alt_unit: group.alt_unit || null,
+          conversion_to_base: group.conversion_to_base
+            ? Number(group.conversion_to_base)
+            : null,
+          item_master_id: formData.item_master_id || null,
+          variant_id: group.variant_id || null,
+        };
 
-      const finalPayload =
-        mode === "edit" && item ? { id: item.id, ...payload } : payload;
-
-      const result = await onSave(finalPayload);
-
-      if (result.success) {
-        onClose();
+        const result = await onSave(payload);
+        if (result.success) {
+          onClose();
+        } else {
+          setErrors({ submit: result.error || "Terjadi kesalahan" });
+        }
       } else {
-        setErrors({ submit: result.error || "Terjadi kesalahan" });
+        // For create mode, we create multiple items if there are multiple groups
+        const items = itemGroups.map((group) => ({
+          item_code: formData.item_code,
+          item_name: group.item_name,
+          unit: group.unit,
+          alt_unit: group.alt_unit || null,
+          conversion_to_base: group.conversion_to_base
+            ? Number(group.conversion_to_base)
+            : null,
+          item_master_id: formData.item_master_id || null,
+          variant_id: group.variant_id || null,
+        }));
+
+        const result = await onSave({ items });
+        if (result.success) {
+          onClose();
+        } else {
+          setErrors({ submit: result.error || "Terjadi kesalahan" });
+        }
       }
     } catch (error) {
-      setErrors({ submit: `Terjadi kesalahan tidak terduga error: ${error}` });
+      setErrors({ submit: `Terjadi kesalahan tidak terduga: ${error}` });
     } finally {
       setIsSubmitting(false);
     }
@@ -234,7 +322,7 @@ export const ItemModal: React.FC<ItemModalProps> = ({
       />
 
       {/* Modal content */}
-      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto border border-gray-200/50">
+      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto border border-gray-200/50">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-white sticky top-0 z-10 rounded-t-xl">
           <h2 className="text-lg font-semibold text-gray-900">
@@ -260,6 +348,7 @@ export const ItemModal: React.FC<ItemModalProps> = ({
             </div>
           )}
 
+          {/* Top Section - Item Code and Category */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Item Code */}
             <div>
@@ -303,149 +392,264 @@ export const ItemModal: React.FC<ItemModalProps> = ({
               )}
             </div>
 
-            {/* Item Name */}
+            {/* Category */}
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Nama Barang *
+                Kategori *
               </label>
-              <input
-                type="text"
-                value={formData.item_name}
-                onChange={(e) => handleInputChange("item_name", e.target.value)}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all text-gray-900 font-medium placeholder-gray-500 ${
-                  errors.item_name
-                    ? "border-red-300 focus:ring-red-500 bg-red-50"
-                    : "border-gray-300 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                }`}
-                placeholder="Masukkan nama barang"
-                disabled={isSubmitting}
-              />
-              {errors.item_name && (
+              <div className="flex space-x-2">
+                <select
+                  value={formData.item_master_id}
+                  onChange={(e) =>
+                    handleInputChange("item_master_id", e.target.value)
+                  }
+                  className={`flex-1 px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all text-gray-900 font-medium bg-white ${
+                    errors.item_master_id
+                      ? "border-red-300 focus:ring-red-500 bg-red-50"
+                      : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                  }`}
+                  disabled={isSubmitting}
+                >
+                  <option value="" className="text-gray-500">
+                    Pilih kategori
+                  </option>
+                  {itemMasters.map((master) => (
+                    <option
+                      key={master.id}
+                      value={master.id}
+                      className="text-gray-900"
+                    >
+                      {master.name}
+                    </option>
+                  ))}
+                </select>
+                {onCreateMaster && (
+                  <button
+                    type="button"
+                    onClick={onCreateMaster}
+                    disabled={isSubmitting}
+                    className="px-4 py-3 bg-gradient-to-r from-green-100 to-green-200 text-green-800 font-medium border border-green-300 rounded-lg hover:from-green-200 hover:to-green-300 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 flex items-center space-x-2 transition-all shadow-sm"
+                    title="Tambah Kategori Baru"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span className="hidden sm:inline">Kategori</span>
+                  </button>
+                )}
+              </div>
+              {errors.item_master_id && (
                 <p className="mt-2 text-sm text-red-700 font-medium">
-                  {errors.item_name}
+                  {errors.item_master_id}
                 </p>
               )}
             </div>
           </div>
 
-          {/* Category */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
-              Kategori
-            </label>
-            <div className="flex space-x-2">
-              <select
-                value={formData.item_master_id}
-                onChange={(e) =>
-                  handleInputChange("item_master_id", e.target.value)
-                }
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
-                disabled={isSubmitting}
-              >
-                <option value="" className="text-gray-500">
-                  Pilih kategori (opsional)
-                </option>
-                {itemMasters.map((master) => (
-                  <option
-                    key={master.id}
-                    value={master.id}
-                    className="text-gray-900"
-                  >
-                    {master.name} ({master.type})
-                  </option>
-                ))}
-              </select>
-              {onCreateMaster && (
+          {/* Item Groups Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-md font-semibold text-gray-900">
+                Detail Barang
+              </h3>
+              {mode === "create" && (
                 <button
                   type="button"
-                  onClick={onCreateMaster}
+                  onClick={addItemGroup}
                   disabled={isSubmitting}
-                  className="px-4 py-3 bg-gradient-to-r from-green-100 to-green-200 text-green-800 font-medium border border-green-300 rounded-lg hover:from-green-200 hover:to-green-300 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 flex items-center space-x-2 transition-all shadow-sm"
-                  title="Tambah Kategori Baru"
+                  className="px-3 py-2 bg-blue-100 text-blue-800 font-medium border border-blue-300 rounded-lg hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 flex items-center space-x-2 transition-all text-sm"
                 >
                   <Plus className="w-4 h-4" />
-                  <span className="hidden sm:inline">Kategori</span>
+                  <span>Tambah Item</span>
                 </button>
               )}
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Base Unit */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Unit Dasar *
-              </label>
-              <select
-                value={formData.unit}
-                onChange={(e) => handleInputChange("unit", e.target.value)}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all text-gray-900 font-medium bg-white ${
-                  errors.unit
-                    ? "border-red-300 focus:ring-red-500 bg-red-50"
-                    : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                }`}
-                disabled={isSubmitting}
+            {itemGroups.map((group, index) => (
+              <div
+                key={index}
+                className="border border-gray-200 rounded-lg p-4 bg-gray-50"
               >
-                {commonUnits.map((unit) => (
-                  <option key={unit} value={unit} className="text-gray-900">
-                    {unit}
-                  </option>
-                ))}
-              </select>
-              {errors.unit && (
-                <p className="mt-2 text-sm text-red-700 font-medium">
-                  {errors.unit}
-                </p>
-              )}
-            </div>
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-sm font-medium text-gray-700">
+                    Item {index + 1}
+                  </h4>
+                  {mode === "create" && itemGroups.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeItemGroup(index)}
+                      disabled={isSubmitting}
+                      className="text-red-600 hover:text-red-800 p-1 rounded transition-colors"
+                      title="Hapus Item"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
 
-            {/* Alternative Unit */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Unit Alternatif
-              </label>
-              <input
-                type="text"
-                value={formData.alt_unit}
-                onChange={(e) => handleInputChange("alt_unit", e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium placeholder-gray-500 bg-white transition-all"
-                placeholder="contoh: box, lusin"
-                disabled={isSubmitting}
-              />
-            </div>
+                {/* Item Name and Variant */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Nama Barang *
+                    </label>
+                    <input
+                      type="text"
+                      value={group.item_name}
+                      onChange={(e) =>
+                        handleItemGroupChange(
+                          index,
+                          "item_name",
+                          e.target.value
+                        )
+                      }
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-all text-gray-900 placeholder-gray-500 ${
+                        errors[`group_${index}_item_name`]
+                          ? "border-red-300 focus:ring-red-500 bg-red-50"
+                          : "border-gray-300 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                      }`}
+                      placeholder="Masukkan nama barang"
+                      disabled={isSubmitting}
+                    />
+                    {errors[`group_${index}_item_name`] && (
+                      <p className="mt-1 text-xs text-red-700">
+                        {errors[`group_${index}_item_name`]}
+                      </p>
+                    )}
+                  </div>
 
-            {/* Conversion Ratio */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Rasio Konversi
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={formData.conversion_to_base}
-                onChange={(e) =>
-                  handleInputChange("conversion_to_base", e.target.value)
-                }
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all text-gray-900 font-medium placeholder-gray-500 bg-white ${
-                  errors.conversion_to_base
-                    ? "border-red-300 focus:ring-red-500 bg-red-50"
-                    : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                }`}
-                placeholder="contoh: 12"
-                disabled={isSubmitting}
-              />
-              {errors.conversion_to_base && (
-                <p className="mt-2 text-sm text-red-700 font-medium">
-                  {errors.conversion_to_base}
-                </p>
-              )}
-              {formData.alt_unit && formData.conversion_to_base && (
-                <p className="mt-2 text-xs text-gray-600 font-medium bg-blue-50 px-3 py-2 rounded-md">
-                  1 {formData.alt_unit} = {formData.conversion_to_base}{" "}
-                  {formData.unit}
-                </p>
-              )}
-            </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Variant
+                    </label>
+                    <div className="flex space-x-2">
+                      <select
+                        value={group.variant_id}
+                        onChange={(e) =>
+                          handleItemGroupChange(
+                            index,
+                            "variant_id",
+                            e.target.value
+                          )
+                        }
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
+                        disabled={isSubmitting}
+                      >
+                        <option value="" className="text-gray-500">
+                          Pilih variant
+                        </option>
+                        {itemVariants.map((variant) => (
+                          <option
+                            key={variant.id}
+                            value={variant.id}
+                            className="text-gray-900"
+                          >
+                            {variant.name}
+                          </option>
+                        ))}
+                      </select>
+                      {onCreateVariant && (
+                        <button
+                          type="button"
+                          onClick={onCreateVariant}
+                          disabled={isSubmitting}
+                          className="px-3 py-2 bg-gradient-to-r from-purple-100 to-purple-200 text-purple-800 font-medium border border-purple-300 rounded-lg hover:from-purple-200 hover:to-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 flex items-center transition-all shadow-sm"
+                          title="Tambah Variant Baru"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Units */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Unit Dasar *
+                    </label>
+                    <select
+                      value={group.unit}
+                      onChange={(e) =>
+                        handleItemGroupChange(index, "unit", e.target.value)
+                      }
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-all text-gray-900 bg-white ${
+                        errors[`group_${index}_unit`]
+                          ? "border-red-300 focus:ring-red-500 bg-red-50"
+                          : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                      }`}
+                      disabled={isSubmitting}
+                    >
+                      {commonUnits.map((unit) => (
+                        <option
+                          key={unit}
+                          value={unit}
+                          className="text-gray-900"
+                        >
+                          {unit}
+                        </option>
+                      ))}
+                    </select>
+                    {errors[`group_${index}_unit`] && (
+                      <p className="mt-1 text-xs text-red-700">
+                        {errors[`group_${index}_unit`]}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Unit Alternatif
+                    </label>
+                    <input
+                      type="text"
+                      value={group.alt_unit}
+                      onChange={(e) =>
+                        handleItemGroupChange(index, "alt_unit", e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500 bg-white transition-all"
+                      placeholder="contoh: box, lusin"
+                      disabled={isSubmitting}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Rasio Konversi
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={group.conversion_to_base}
+                      onChange={(e) =>
+                        handleItemGroupChange(
+                          index,
+                          "conversion_to_base",
+                          e.target.value
+                        )
+                      }
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-all text-gray-900 placeholder-gray-500 bg-white ${
+                        errors[`group_${index}_conversion_to_base`]
+                          ? "border-red-300 focus:ring-red-500 bg-red-50"
+                          : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                      }`}
+                      placeholder="contoh: 12"
+                      disabled={isSubmitting}
+                    />
+                    {errors[`group_${index}_conversion_to_base`] && (
+                      <p className="mt-1 text-xs text-red-700">
+                        {errors[`group_${index}_conversion_to_base`]}
+                      </p>
+                    )}
+                    {group.alt_unit && group.conversion_to_base && (
+                      <p className="mt-1 text-xs text-gray-600 bg-blue-50 px-2 py-1 rounded">
+                        1 {group.alt_unit} = {group.conversion_to_base}{" "}
+                        {group.unit}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </form>
 
