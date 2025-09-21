@@ -7,7 +7,6 @@ import {
   MenuConfigUtils,
   MenuItemConfig,
   UserRole,
-  MenuCategory,
 } from "@/app/(frontend)/(dashboard)/types/menuConfig";
 
 export interface SidebarProps {

@@ -22,6 +22,3 @@ export {
   PrimaryButton,
   BackButton,
 } from "./AuthButtons";
-
-// Re-export existing components
-export { ProtectedRoute } from "./ProtectedRoute";

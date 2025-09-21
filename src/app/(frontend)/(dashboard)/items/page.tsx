@@ -1,13 +1,7 @@
 // src/app/(dashboard)/items/page.tsx
 "use client";
 
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useCallback,
-  useRef,
-} from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Package, Plus, Filter, Eye, Edit, Trash2 } from "lucide-react";
 import {
   Card,
@@ -16,7 +10,6 @@ import {
   SearchFilter,
   StatsGrid,
   Table,
-  StatusBadge,
 } from "@/app/(frontend)/(dashboard)/components/ui";
 import { useItems, useItemMasters, useOffices } from "./useItems";
 import { Item, ItemFilters, ItemMaster } from "./items.type";
@@ -59,7 +52,6 @@ const ItemsPage: React.FC = () => {
     loading: mastersLoading,
     createItemMaster,
     updateItemMaster,
-    deleteItemMaster,
     checkItemMasterNameExists,
     refetch: refetchMasters,
   } = useItemMasters();
@@ -277,14 +269,6 @@ const ItemsPage: React.FC = () => {
     },
     [modalMode, createItemMaster, updateItemMaster, refetchMasters]
   );
-
-  const formatCurrency = useCallback((amount: number) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-    }).format(amount);
-  }, []);
 
   const handleResetFilters = useCallback(() => {
     console.log("🔄 Resetting all filters");

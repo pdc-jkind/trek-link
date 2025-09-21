@@ -1,15 +1,7 @@
 // src\app\(dashboard)\components\TopBar.tsx
 "use client";
 
-import {
-  Menu,
-  LogOut,
-  User,
-  Building,
-  Lock,
-  Bell,
-  Loader2,
-} from "lucide-react";
+import { Menu, LogOut, User, Building, Lock, Bell } from "lucide-react";
 import {
   SectionKey,
   MenuConfigUtils,

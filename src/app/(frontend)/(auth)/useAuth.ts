@@ -3,7 +3,7 @@
 
 import { useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { AuthService } from "@/app/(frontend)/services/auth.service";
+import { AuthService } from "@/app/(frontend)/(auth)/auth.service";
 import { useUserStore } from "@/app/(frontend)/store/user.store";
 import type {
   AuthUser,
@@ -14,6 +14,8 @@ export const useAuth = () => {
   const router = useRouter();
   const mountedRef = useRef(true);
   const authListenerRef = useRef<{ unsubscribe: () => void } | null>(null);
+  const isInitializedRef = useRef(false);
+  const lastEventRef = useRef<string | null>(null); // Track last event for debugging
 
   // Get everything from Zustand store
   const {
@@ -24,7 +26,7 @@ export const useAuth = () => {
     isFullyAuthenticated,
     isLoading,
     error,
-    
+
     // Actions from store
     setAuthUser,
     setUsers,
@@ -34,6 +36,29 @@ export const useAuth = () => {
     isDataStale,
   } = useUserStore();
 
+
+  // Convert Supabase session user to AuthUser format
+  const sessionUserToAuthUser = useCallback((sessionUser: any): AuthUser => {
+    const authUser = {
+      id: sessionUser.id,
+      email: sessionUser.email || "",
+      name:
+        sessionUser.user_metadata?.full_name ||
+        sessionUser.user_metadata?.name ||
+        sessionUser.email?.split("@")[0] ||
+        "User",
+      photo:
+        sessionUser.user_metadata?.avatar_url ||
+        sessionUser.user_metadata?.picture ||
+        sessionUser.user_metadata?.photo_url,
+      role:
+        sessionUser.user_metadata?.role ||
+        sessionUser.app_metadata?.role ||
+        "user",
+    };
+    return authUser;
+  }, []);
+
   // Load user profile using store actions
   const loadUserProfile = useCallback(
     async (userId: string, forceReload = false) => {
@@ -41,25 +66,22 @@ export const useAuth = () => {
 
       // Skip if data is fresh and not forcing reload
       if (!forceReload && currentUser && !isDataStale()) {
-        console.log("User profile is fresh, skipping reload");
         return;
       }
 
       try {
-        console.log("Loading user profile for:", userId);
         const profile = await AuthService.getUserProfile(userId);
 
-        if (!mountedRef.current) return;
+        if (!mountedRef.current) {
+          return;
+        }
 
         if (profile && profile.length > 0) {
-          console.log("User profile loaded, updating store");
           setUsers(profile);
         } else {
-          console.warn("No user profile found");
           clearUser();
         }
       } catch (error: any) {
-        console.error("Error loading user profile:", error);
         if (mountedRef.current) {
           setError("Gagal memuat profil pengguna");
         }
@@ -72,39 +94,72 @@ export const useAuth = () => {
   const setupAuthListener = useCallback(() => {
     if (!mountedRef.current || authListenerRef.current) return;
 
-    console.log("Setting up auth listener");
-
-    const { data: { subscription } } = AuthService.onAuthStateChange(async (event, session) => {
+    const {
+      data: { subscription },
+    } = AuthService.onAuthStateChange(async (event, session) => {
       if (!mountedRef.current) return;
 
-      console.log("Auth state changed:", event, !!session?.user);
+      lastEventRef.current = event; // Track last event
 
       try {
         if (session?.user) {
-          // User is authenticated
-          const authUser = await AuthService.getCurrentUser();
+          // Enhanced logic for different events
+          let shouldProcessEvent = true;
+          let shouldReloadProfile = false;
+          
+          switch (event) {
+            case "INITIAL_SESSION":
+              shouldReloadProfile = isDataStale();
+              isInitializedRef.current = true;
+              break;
+              
+            case "SIGNED_IN":
+              // More sophisticated phantom event detection
+              if (isInitializedRef.current && authUser && authUser.id === session.user.id) {
+                // Check if this is really just a token refresh by comparing user data
+                const sessionAuthUser = sessionUserToAuthUser(session.user);
+                const isUserDataSame = JSON.stringify(authUser) === JSON.stringify(sessionAuthUser);
+                
+                if (isUserDataSame && !isDataStale(5)) { // Less than 5 minutes old data
+                  shouldProcessEvent = false;
+                } else {
+                  shouldReloadProfile = true;
+                }
+              } else {
+                shouldReloadProfile = true;
+              }
+              break;
+              
+            case "TOKEN_REFRESHED":
+              shouldReloadProfile = false;
+              break;
+              
+            default:
+              shouldReloadProfile = false;
+          }
+          
+          if (shouldProcessEvent) {
+            // Use session.user directly from callback - more reliable than getCurrentUser()
+            const sessionAuthUser = sessionUserToAuthUser(session.user);
 
-          if (authUser && mountedRef.current) {
-            setAuthUser(authUser);
-            setLoading(false);
-            setError(null);
+            if (mountedRef.current) {
+              setAuthUser(sessionAuthUser);
+              setLoading(false);
+              setError(null);
 
-            // Load profile based on event
-            if (event === "SIGNED_IN") {
-              // Always reload on sign in
-              await loadUserProfile(authUser.id, true);
-            } else if (event === "INITIAL_SESSION") {
-              // Check if profile data is stale
-              await loadUserProfile(authUser.id, false);
+              // Load profile based on event and conditions
+              if (shouldReloadProfile) {
+                await loadUserProfile(sessionAuthUser.id, event === "SIGNED_IN");
+              }
             }
           }
         } else {
-          // User signed out
           if (mountedRef.current) {
             setAuthUser(null);
             setLoading(false);
             setError(null);
             clearUser();
+            isInitializedRef.current = false;
 
             if (event === "SIGNED_OUT") {
               router.push("/login");
@@ -112,7 +167,6 @@ export const useAuth = () => {
           }
         }
       } catch (error: any) {
-        console.error("Auth state change error:", error);
         if (mountedRef.current) {
           setError("Terjadi kesalahan saat perubahan status auth");
           setLoading(false);
@@ -121,7 +175,16 @@ export const useAuth = () => {
     });
 
     authListenerRef.current = subscription;
-  }, [router, loadUserProfile, clearUser, setAuthUser, setLoading, setError]);
+  }, [
+    router,
+    loadUserProfile,
+    clearUser,
+    setAuthUser,
+    setLoading,
+    setError,
+    sessionUserToAuthUser,
+    authUser,
+  ]);
 
   // Initialize auth using store actions
   useEffect(() => {
@@ -129,22 +192,18 @@ export const useAuth = () => {
 
     const initAuth = async () => {
       try {
-        console.log("Initializing auth...");
         setLoading(true);
 
+        // Use AuthService.getCurrentUser() for initial check only
         const authUser = await AuthService.getCurrentUser();
 
         if (!mountedRef.current) return;
 
         if (authUser) {
-          console.log("User authenticated:", authUser.id);
           setAuthUser(authUser);
           setError(null);
-
-          // Load profile if needed
           await loadUserProfile(authUser.id, false);
         } else {
-          console.log("No authenticated user");
           setAuthUser(null);
           setError(null);
           clearUser();
@@ -155,7 +214,6 @@ export const useAuth = () => {
           setupAuthListener();
         }
       } catch (error: any) {
-        console.error("Auth initialization error:", error);
         if (mountedRef.current) {
           setAuthUser(null);
           setError("Gagal menginisialisasi autentikasi");
@@ -171,6 +229,8 @@ export const useAuth = () => {
 
     return () => {
       mountedRef.current = false;
+      isInitializedRef.current = false;
+      lastEventRef.current = null;
       if (authListenerRef.current) {
         authListenerRef.current.unsubscribe();
         authListenerRef.current = null;
@@ -179,18 +239,21 @@ export const useAuth = () => {
   }, []); // Empty dependency array - run once
 
   // Auth actions using store
-  const login = useCallback(async (provider: AuthProviderType = "google") => {
-    setLoading(true);
-    setError(null);
+  const login = useCallback(
+    async (provider: AuthProviderType = "google") => {
+      setLoading(true);
+      setError(null);
 
-    try {
-      await AuthService.initiateOAuthLogin(provider);
-    } catch (error: any) {
-      console.error("Login error:", error);
-      setError(error.message || "Gagal melakukan login");
-      setLoading(false);
-    }
-  }, [setLoading, setError]);
+      try {
+        await AuthService.initiateOAuthLogin(provider);
+      } catch (error: any) {
+        console.error("Login error:", error);
+        setError(error.message || "Gagal melakukan login");
+        setLoading(false);
+      }
+    },
+    [setLoading, setError]
+  );
 
   const logout = useCallback(async () => {
     setLoading(true);
@@ -225,7 +288,7 @@ export const useAuth = () => {
   // Get access token from current session
   const getAccessToken = useCallback(async () => {
     if (!authUser) return null;
-    
+
     try {
       const session = await AuthService.getSession();
       return session?.access_token || null;
@@ -238,7 +301,7 @@ export const useAuth = () => {
   // Refresh access token by refreshing the session
   const refreshAccessToken = useCallback(async () => {
     if (!authUser) return false;
-    
+
     try {
       // Supabase handles token refresh automatically
       // We just need to get a fresh session
@@ -260,10 +323,10 @@ export const useAuth = () => {
     isAuthenticated,
     isFullyAuthenticated,
     error,
-    
+
     // Additional state from store
     allUserOffices,
-    
+
     // Actions
     login,
     logout,

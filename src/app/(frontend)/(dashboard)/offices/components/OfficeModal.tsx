@@ -173,7 +173,7 @@ export const OfficeModal: React.FC<OfficeModalProps> = ({
         setErrors({ submit: result.error || "Terjadi kesalahan" });
       }
     } catch (error) {
-      setErrors({ submit: "Terjadi kesalahan tidak terduga" });
+      setErrors({ submit: `Terjadi kesalahan tidak terduga, error: ${error}` });
     } finally {
       setIsSubmitting(false);
     }
