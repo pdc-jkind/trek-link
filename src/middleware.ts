@@ -1,6 +1,6 @@
 // middleware.ts
 import { type NextRequest, NextResponse } from 'next/server'
-import { createMiddlewareSupabaseClient } from '@/lib/supabase/server'
+import { AuthServerService } from '@/lib/auth/auth.server'
 
 export async function middleware(req: NextRequest) {
   let res = NextResponse.next({
@@ -9,21 +9,17 @@ export async function middleware(req: NextRequest) {
     },
   })
 
-  const supabase = createMiddlewareSupabaseClient(req, res)
-
   try {
-    // Refresh session if expired - required for Server Components
-    const {
-      data: { session },
-      error
-    } = await supabase.auth.getSession()
-
-    if (error) {
-      console.error('Session error in middleware:', error)
+    // Cek authentication menggunakan AuthServerService
+    const isAuthenticated = await AuthServerService.isMiddlewareAuthenticated(req, res)
+    
+    // Optional: Refresh session jika diperlukan untuk menjaga session tetap aktif
+    if (isAuthenticated) {
+      await AuthServerService.refreshMiddlewareSession(req, res)
     }
 
     const pathname = req.nextUrl.pathname
-    console.log('Middleware processing:', pathname, 'Session exists:', !!session)
+    console.log('Middleware processing:', pathname, 'Authenticated:', isAuthenticated)
 
     // Protected routes yang memerlukan authentication
     const protectedRoutes = ['/dashboard', '/profile', '/inventory', '/users', '/reports']
@@ -32,7 +28,7 @@ export async function middleware(req: NextRequest) {
     const authRoutes = ['/login']
 
     // Auth callback route - allow to pass through for server-side processing
-    if (pathname === '/auth/callback') {
+    if (pathname === '/auth/callback' || pathname === '/callback') {
       console.log('Allowing auth callback route for server-side processing')
       return res
     }
@@ -48,26 +44,26 @@ export async function middleware(req: NextRequest) {
 
     // Handle root route dengan authentication check
     if (pathname === '/') {
-      if (session) {
-        console.log('Root route: User logged in, redirecting to dashboard')
+      if (isAuthenticated) {
+        console.log('Root route: User authenticated, redirecting to dashboard')
         return NextResponse.redirect(new URL('/dashboard', req.url))
       } else {
-        console.log('Root route: User not logged in, redirecting to login')
+        console.log('Root route: User not authenticated, redirecting to login')
         return NextResponse.redirect(new URL('/login', req.url))
       }
     }
 
-    // Jika mengakses protected route tanpa session
-    if (isProtectedRoute && !session) {
-      console.log('Protected route without session, redirecting to login')
+    // Jika mengakses protected route tanpa authentication
+    if (isProtectedRoute && !isAuthenticated) {
+      console.log('Protected route without authentication, redirecting to login')
       const redirectUrl = new URL('/login', req.url)
       redirectUrl.searchParams.set('redirect_to', pathname)
       return NextResponse.redirect(redirectUrl)
     }
 
-    // Jika mengakses auth route dengan session aktif
-    if (isAuthRoute && session) {
-      console.log('Auth route with active session, redirecting')
+    // Jika mengakses auth route dengan authentication aktif
+    if (isAuthRoute && isAuthenticated) {
+      console.log('Auth route with active authentication, redirecting')
       // Check if there's a redirect_to parameter
       const redirectTo = req.nextUrl.searchParams.get('redirect_to')
       const redirectUrl = redirectTo && redirectTo !== '/' ? redirectTo : '/dashboard'
@@ -80,10 +76,17 @@ export async function middleware(req: NextRequest) {
 
   } catch (error) {
     console.error('Middleware error:', error)
-    // Jika ada error, redirect ke login untuk safety (kecuali untuk callback)
-    if (req.nextUrl.pathname !== '/login' && req.nextUrl.pathname !== '/auth/callback') {
+    
+    // Jika ada error, redirect ke login untuk safety (kecuali untuk callback routes)
+    const isCallbackRoute = req.nextUrl.pathname === '/login' || 
+                           req.nextUrl.pathname === '/auth/callback' || 
+                           req.nextUrl.pathname === '/callback'
+    
+    if (!isCallbackRoute) {
+      console.log('Middleware error occurred, redirecting to login for safety')
       return NextResponse.redirect(new URL('/login', req.url))
     }
+    
     return res
   }
 }

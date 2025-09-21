@@ -20,6 +20,77 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Project Structure
+
+```plaintext
+.
+├── .env.local
+├── .gitignore
+├── .vscode/
+├── eslint.config.mjs
+├── next-env.d.ts
+├── next.config.ts
+├── package-lock.json
+├── package.json
+├── postcss.config.mjs
+├── README.md
+├── tailwind.config.ts
+├── tsconfig.json
+├── public/
+└── src/
+    ├── app/
+    │   ├── (frontend)/
+    │   │   ├── (auth)/
+    │   │   │   ├── callback/
+    │   │   │   ├── components/
+    │   │   │   ├── login/
+    │   │   │   ├── unauthorized/
+    │   │   │   ├── layout.tsx
+    │   │   │   └── useAuth.ts
+    │   │   ├── (dashboard)/
+    │   │   │   ├── components/
+    │   │   │   │   └── ui/
+    │   │   │   ├── dashboard/
+    │   │   │   ├── disparity/
+    │   │   │   ├── help/
+    │   │   │   ├── hooks/
+    │   │   │   ├── items/
+    │   │   │   ├── offices/
+    │   │   │   ├── orders/
+    │   │   │   ├── reception/
+    │   │   │   ├── settings/
+    │   │   │   ├── types/
+    │   │   │   ├── users/
+    │   │   │   └── layout.tsx
+    │   ├── api/
+    │   │   └── v1/
+    │   │       ├── auth/
+    │   │       │   └── token/
+    │   │       ├── settings/
+    │   │       └── users/
+    │   ├── error.tsx
+    │   ├── globals.css
+    │   ├── layout.tsx
+    │   └── not-found.tsx
+    ├── hooks/
+    ├── lib/
+    │   ├── auth/
+    │   │   └── utils.ts
+    │   └── supabase/
+    │       ├── client.ts
+    │       └── server.ts
+    ├── services/
+    │   ├── auth.service.ts
+    │   └── user.service.ts
+    ├── store/
+    │   └── user.store.ts
+    ├── types/
+    │    ├── auth.types.ts
+    │    ├── database.ts
+    │    └── user.types.ts
+    └── middleware.ts
+```
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
