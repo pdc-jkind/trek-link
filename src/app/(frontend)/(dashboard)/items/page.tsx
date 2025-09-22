@@ -1,7 +1,7 @@
 // src/app/(frontend)/(dashboard)/items/page.tsx
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   Package,
   Plus,
@@ -13,183 +13,23 @@ import {
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
-import { Tables, TablesInsert, TablesUpdate } from "@/types/database";
 import { ItemModal } from "./components/ItemModal";
 import { ItemMasterModal } from "./components/ItemMasterModal";
 import { ItemVariantModal } from "./components/ItemVariantModal";
+import {
+  useItemsPage,
+  useItemMasters,
+  useItemVariants,
+  useItems,
+} from "./useItems";
+import type { Tables } from "@/types/database";
 
-// Types from database
-type Item = Tables<"items"> & {
-  item_master?: Tables<"item_masters"> | null;
-  item_variant?: Tables<"item_variants"> | null;
-};
-
+// Type definitions based on database schema
+type ViewItemsFull = Tables<"view_items_full">;
+type Office = Tables<"offices">;
 type ItemMaster = Tables<"item_masters">;
 type ItemVariant = Tables<"item_variants">;
-type Office = Tables<"offices">;
-
-// Dummy data
-const dummyOffices: Office[] = [
-  {
-    id: "office-1",
-    name: "Jakarta PDC",
-    location: "Jakarta Selatan",
-    type: "pdc",
-    created_at: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: "office-2",
-    name: "Surabaya PDC",
-    location: "Surabaya Barat",
-    type: "pdc",
-    created_at: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: "office-3",
-    name: "Bandung GRB",
-    location: "Bandung Utara",
-    type: "grb",
-    created_at: "2024-01-01T00:00:00Z",
-  },
-];
-
-const dummyItemMasters: ItemMaster[] = [
-  {
-    id: "master-1",
-    name: "Kaca Film Premium",
-    type: "regular",
-    office_id: "office-1",
-    img_url: "https://via.placeholder.com/100x100?text=Premium",
-    created_at: "2024-01-01T00:00:00Z",
-    updated_at: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: "master-2",
-    name: "Kaca Film Standard",
-    type: "regular",
-    office_id: "office-1",
-    img_url: "https://via.placeholder.com/100x100?text=Standard",
-    created_at: "2024-01-01T00:00:00Z",
-    updated_at: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: "master-3",
-    name: "Aksesoris Mobil",
-    type: "inventory",
-    office_id: "office-2",
-    img_url: "https://via.placeholder.com/100x100?text=Aksesoris",
-    created_at: "2024-01-01T00:00:00Z",
-    updated_at: "2024-01-01T00:00:00Z",
-  },
-];
-
-const dummyItemVariants: ItemVariant[] = [
-  {
-    id: "variant-1",
-    name: "Premium",
-    created_at: "2024-01-01T00:00:00Z",
-    updated_at: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: "variant-2",
-    name: "Standard",
-    created_at: "2024-01-01T00:00:00Z",
-    updated_at: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: "variant-3",
-    name: "Deluxe",
-    created_at: "2024-01-01T00:00:00Z",
-    updated_at: "2024-01-01T00:00:00Z",
-  },
-];
-
-const dummyItems: Item[] = [
-  {
-    id: "item-1",
-    item_code: "KFP001",
-    item_name: "3M Crystalline 70",
-    unit: "roll",
-    alt_unit: "meter",
-    conversion_to_base: 30,
-    item_master_id: "master-1",
-    variant_id: "variant-1",
-    created_at: "2024-01-01T00:00:00Z",
-    updated_at: "2024-01-01T00:00:00Z",
-    item_master: dummyItemMasters[0],
-    item_variant: dummyItemVariants[0],
-  },
-  {
-    id: "item-2",
-    item_code: "KFP002",
-    item_name: "3M Crystalline 40",
-    unit: "roll",
-    alt_unit: "meter",
-    conversion_to_base: 30,
-    item_master_id: "master-1",
-    variant_id: "variant-1",
-    created_at: "2024-01-01T00:00:00Z",
-    updated_at: "2024-01-01T00:00:00Z",
-    item_master: dummyItemMasters[0],
-    item_variant: dummyItemVariants[0],
-  },
-  {
-    id: "item-3",
-    item_code: "KFP003",
-    item_name: "LLumar CTX 70",
-    unit: "roll",
-    alt_unit: null,
-    conversion_to_base: null,
-    item_master_id: "master-1",
-    variant_id: "variant-2",
-    created_at: "2024-01-01T00:00:00Z",
-    updated_at: "2024-01-01T00:00:00Z",
-    item_master: dummyItemMasters[0],
-    item_variant: dummyItemVariants[1],
-  },
-  {
-    id: "item-4",
-    item_code: "KFS001",
-    item_name: "Solar Gard HPQ 70",
-    unit: "roll",
-    alt_unit: null,
-    conversion_to_base: null,
-    item_master_id: "master-2",
-    variant_id: "variant-2",
-    created_at: "2024-01-01T00:00:00Z",
-    updated_at: "2024-01-01T00:00:00Z",
-    item_master: dummyItemMasters[1],
-    item_variant: dummyItemVariants[1],
-  },
-  {
-    id: "item-5",
-    item_code: "KFS002",
-    item_name: "Solar Gard HPQ 40",
-    unit: "roll",
-    alt_unit: "meter",
-    conversion_to_base: 25,
-    item_master_id: "master-2",
-    variant_id: "variant-2",
-    created_at: "2024-01-01T00:00:00Z",
-    updated_at: "2024-01-01T00:00:00Z",
-    item_master: dummyItemMasters[1],
-    item_variant: dummyItemVariants[1],
-  },
-  {
-    id: "item-6",
-    item_code: "AKS001",
-    item_name: "Sarung Jok Kulit",
-    unit: "set",
-    alt_unit: null,
-    conversion_to_base: null,
-    item_master_id: "master-3",
-    variant_id: "variant-3",
-    created_at: "2024-01-01T00:00:00Z",
-    updated_at: "2024-01-01T00:00:00Z",
-    item_master: dummyItemMasters[2],
-    item_variant: dummyItemVariants[2],
-  },
-];
+type Item = Tables<"items">;
 
 // UI Components
 const Card: React.FC<{ children: React.ReactNode; className?: string }> = ({
@@ -247,102 +87,148 @@ const StatsCard: React.FC<{
 const ItemsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [selectedOffice, setSelectedOffice] = useState("");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // Modal states
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
   const [isMasterModalOpen, setIsMasterModalOpen] = useState(false);
   const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<Item | null>(null);
+  const [editingItem, setEditingItem] = useState<ViewItemsFull | null>(null);
   const [editingMaster, setEditingMaster] = useState<ItemMaster | null>(null);
   const [editingVariant, setEditingVariant] = useState<ItemVariant | null>(
     null
   );
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
 
-  // Filtered data
-  const filteredItems = useMemo(() => {
-    let filtered = dummyItems;
+  // Main hook for page data
+  const {
+    items,
+    itemsCount,
+    itemsLoading,
+    itemsError,
+    updateItemsFilters,
+    refetchItems,
+    offices,
+    statistics,
+    generateItemCode,
+    getAvailableUnits,
+    loading: mainLoading,
+    error: mainError,
+  } = useItemsPage({
+    search: searchTerm,
+    item_master_id: selectedCategory || undefined,
+    office_id: selectedOffice || undefined,
+    page: 1,
+    limit: 50,
+  });
 
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (item) =>
-          item.item_code.toLowerCase().includes(term) ||
-          item.item_name.toLowerCase().includes(term) ||
-          item.item_master?.name.toLowerCase().includes(term)
-      );
-    }
+  // Separate hooks for CRUD operations
+  const itemMastersHook = useItemMasters();
+  const itemVariantsHook = useItemVariants();
+  const itemsHook = useItems();
 
-    if (selectedCategory) {
-      filtered = filtered.filter(
-        (item) => item.item_master_id === selectedCategory
-      );
-    }
+  // Update filters when search/filter changes
+  React.useEffect(() => {
+    const filters: any = {
+      page: 1,
+      limit: 50,
+    };
 
-    return filtered;
-  }, [searchTerm, selectedCategory]);
+    if (searchTerm) filters.search = searchTerm;
+    if (selectedCategory) filters.item_master_id = selectedCategory;
+    if (selectedOffice) filters.office_id = selectedOffice;
+
+    updateItemsFilters(filters);
+  }, [searchTerm, selectedCategory, selectedOffice]); // Remove updateItemsFilters from deps
 
   // Group items by category (item_master)
   const groupedItems = useMemo(() => {
     const groups: {
       [key: string]: {
-        master: ItemMaster;
-        items: Item[];
-        office: Office | undefined;
+        master: {
+          id: string;
+          name: string | null;
+          type: string | null;
+          img_url: string | null;
+        };
+        items: ViewItemsFull[];
+        office: {
+          id: string | null;
+          name: string | null;
+          location?: string | null; // Note: office_location doesn't exist in view_items_full
+        };
       };
     } = {};
 
-    filteredItems.forEach((item) => {
-      if (item.item_master) {
-        const masterId = item.item_master.id;
-        if (!groups[masterId]) {
-          groups[masterId] = {
-            master: item.item_master,
-            items: [],
-            office: dummyOffices.find(
-              (o) => o.id === item.item_master?.office_id
-            ),
-          };
-        }
+    items.forEach((item) => {
+      const masterId = item.item_master_id;
+      if (masterId && !groups[masterId]) {
+        groups[masterId] = {
+          master: {
+            id: masterId,
+            name: item.item_master_name,
+            type: item.item_master_type,
+            img_url: item.item_master_img_url,
+          },
+          items: [],
+          office: {
+            id: item.office_id,
+            name: item.office_name,
+            // office_location is not available in view_items_full, we'll need to get it from offices array
+          },
+        };
+      }
+      if (masterId) {
         groups[masterId].items.push(item);
       }
     });
 
-    return Object.values(groups);
-  }, [filteredItems]);
+    // Enrich office data with location from offices array
+    Object.values(groups).forEach((group) => {
+      if (group.office.id) {
+        const office = offices.find((o) => o.id === group.office.id);
+        if (office) {
+          group.office.location = office.location;
+        }
+      }
+    });
 
-  // Stats
-  const stats = useMemo(
-    () => [
+    return Object.values(groups);
+  }, [items, offices]);
+
+  // Stats calculation
+  const stats = useMemo(() => {
+    const totalItems = statistics.totalItems || 0;
+    const totalMasters = statistics.totalItemMasters || 0;
+    const regularItems =
+      statistics.itemsByType.find((t) => t.type === "regular")?.count || 0;
+    const inventoryItems =
+      statistics.itemsByType.find((t) => t.type === "inventory")?.count || 0;
+
+    return [
       {
         title: "Total Items",
-        value: dummyItems.length.toString(),
+        value: totalItems.toString(),
         color: "from-blue-500 to-blue-600",
       },
       {
         title: "Regular Items",
-        value: dummyItems
-          .filter((item) => item.item_master?.type === "regular")
-          .length.toString(),
+        value: regularItems.toString(),
         color: "from-green-500 to-green-600",
       },
       {
         title: "Inventory Items",
-        value: dummyItems
-          .filter((item) => item.item_master?.type === "inventory")
-          .length.toString(),
+        value: inventoryItems.toString(),
         color: "from-yellow-500 to-yellow-600",
       },
       {
         title: "Categories",
-        value: dummyItemMasters.length.toString(),
+        value: totalMasters.toString(),
         color: "from-purple-500 to-purple-600",
       },
-    ],
-    []
-  );
+    ];
+  }, [statistics]);
 
   // Toggle expand/collapse for group
   const toggleGroupExpansion = (masterId: string) => {
@@ -374,79 +260,142 @@ const ItemsPage: React.FC = () => {
     setIsVariantModalOpen(true);
   };
 
-  const handleViewItem = (item: Item) => {
+  const handleViewItem = (item: ViewItemsFull) => {
     console.log("Viewing item:", item);
+    // TODO: Implement view item details
   };
 
-  const handleEditItem = (item: Item) => {
+  const handleEditItem = (item: ViewItemsFull) => {
     setEditingItem(item);
     setModalMode("edit");
     setIsItemModalOpen(true);
   };
 
-  const handleDeleteItem = (item: Item) => {
-    if (window.confirm(`Hapus item ${item.item_name}?`)) {
-      console.log("Deleting item:", item.id);
-      // Implement delete logic
+  const handleDeleteItem = async (item: ViewItemsFull) => {
+    if (item.item_id && window.confirm(`Hapus item ${item.item_name}?`)) {
+      const success = await itemsHook.deleteItem(item.item_id);
+      if (success) {
+        refetchItems(); // Refresh the main data
+      }
     }
   };
 
   // Modal handlers
   const handleSaveItem = async (data: any) => {
-    console.log("Saving item:", data);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsItemModalOpen(false);
-    return { success: true };
+    try {
+      let result;
+
+      if (modalMode === "edit" && editingItem && editingItem.item_id) {
+        // Edit single item
+        result = await itemsHook.updateItem({
+          id: editingItem.item_id,
+          ...data,
+        });
+      } else {
+        // Create new item(s)
+        if (data.items && Array.isArray(data.items)) {
+          // Multiple items
+          const results = await Promise.all(
+            data.items.map((itemData: any) => itemsHook.createItem(itemData))
+          );
+          result = results.every((r) => r !== null);
+        } else {
+          // Single item
+          result = await itemsHook.createItem(data);
+        }
+      }
+
+      if (result) {
+        setIsItemModalOpen(false);
+        refetchItems(); // Refresh the main data
+        return { success: true };
+      } else {
+        return { success: false, error: "Gagal menyimpan item" };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Terjadi kesalahan",
+      };
+    }
   };
 
   const handleSaveMaster = async (data: any) => {
-    console.log("Saving master:", data);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsMasterModalOpen(false);
-    return { success: true };
+    try {
+      let result;
+
+      if (modalMode === "edit" && editingMaster) {
+        result = await itemMastersHook.updateItemMaster(data);
+      } else {
+        result = await itemMastersHook.createItemMaster(data);
+      }
+
+      if (result) {
+        setIsMasterModalOpen(false);
+        refetchItems(); // Refresh the main data
+        return { success: true };
+      } else {
+        return { success: false, error: "Gagal menyimpan kategori" };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Terjadi kesalahan",
+      };
+    }
   };
 
   const handleSaveVariant = async (data: any) => {
-    console.log("Saving variant:", data);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsVariantModalOpen(false);
-    return { success: true };
-  };
+    try {
+      let result;
 
-  // Mock functions for modals
-  const checkItemCodeExists = async (itemCode: string, excludeId?: string) => {
-    // Mock implementation
-    return dummyItems.some(
-      (item) => item.item_code === itemCode && item.id !== excludeId
-    );
-  };
+      if (modalMode === "edit" && editingVariant) {
+        result = await itemVariantsHook.updateItemVariant(data);
+      } else {
+        result = await itemVariantsHook.createItemVariant(data);
+      }
 
-  const generateItemCode = async (prefix?: string) => {
-    // Mock implementation
-    const baseCode = prefix || "ITM";
-    let counter = 1;
-    let newCode = `${baseCode}${counter.toString().padStart(3, "0")}`;
-
-    while (dummyItems.some((item) => item.item_code === newCode)) {
-      counter++;
-      newCode = `${baseCode}${counter.toString().padStart(3, "0")}`;
+      if (result) {
+        setIsVariantModalOpen(false);
+        refetchItems(); // Refresh the main data
+        return { success: true };
+      } else {
+        return { success: false, error: "Gagal menyimpan variant" };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Terjadi kesalahan",
+      };
     }
-
-    return newCode;
   };
 
-  const checkMasterNameExists = async (name: string, excludeId?: string) => {
-    return dummyItemMasters.some(
-      (master) => master.name === name && master.id !== excludeId
+  // Show loading state
+  if (mainLoading && items.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Memuat data...</p>
+        </div>
+      </div>
     );
-  };
+  }
 
-  const checkVariantNameExists = async (name: string, excludeId?: string) => {
-    return dummyItemVariants.some(
-      (variant) => variant.name === name && variant.id !== excludeId
+  // Show error state
+  if (mainError && items.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <div className="text-center">
+          <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-600 mb-4">Gagal memuat data: {mainError}</p>
+          <ActionButton onClick={() => refetchItems()} variant="blue">
+            Coba Lagi
+          </ActionButton>
+        </div>
+      </div>
     );
-  };
+  }
 
   return (
     <div className="space-y-6">
@@ -487,15 +436,31 @@ const ItemsPage: React.FC = () => {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
               />
             </div>
+
+            {/* Category Filter */}
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
             >
               <option value="">Semua Kategori</option>
-              {dummyItemMasters.map((master) => (
+              {itemMastersHook.data.map((master) => (
                 <option key={master.id} value={master.id}>
                   {master.name}
+                </option>
+              ))}
+            </select>
+
+            {/* Office Filter */}
+            <select
+              value={selectedOffice}
+              onChange={(e) => setSelectedOffice(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+            >
+              <option value="">Semua Office</option>
+              {offices.map((office) => (
+                <option key={office.id} value={office.id}>
+                  {office.name}
                 </option>
               ))}
             </select>
@@ -511,8 +476,15 @@ const ItemsPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Loading overlay for table */}
+        {itemsLoading && (
+          <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10">
+            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
+
         {/* Table */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto relative">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
@@ -539,7 +511,7 @@ const ItemsPage: React.FC = () => {
                   <td colSpan={5} className="text-center py-10">
                     <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-500">
-                      {searchTerm || selectedCategory
+                      {searchTerm || selectedCategory || selectedOffice
                         ? "Tidak ada barang yang sesuai dengan filter."
                         : "Belum ada data barang."}
                     </p>
@@ -566,7 +538,7 @@ const ItemsPage: React.FC = () => {
                             group.master.img_url ||
                             "https://via.placeholder.com/50x50?text=No+Image"
                           }
-                          alt={group.master.name}
+                          alt={group.master.name || "Item"}
                           className="w-12 h-12 object-cover rounded-lg border border-gray-200"
                         />
                         {group.items.length > 1 && (
@@ -605,16 +577,16 @@ const ItemsPage: React.FC = () => {
                         {/* First item is always shown */}
                         {group.items.slice(0, 1).map((item) => (
                           <div
-                            key={item.id}
+                            key={item.item_id}
                             className="border-l-2 border-blue-400 pl-3"
                           >
                             <div className="font-medium text-gray-900 text-sm">
                               [{item.item_code}] {item.item_name}
                             </div>
                             <div className="text-sm text-gray-500 flex items-center space-x-2">
-                              {item.item_variant && (
+                              {item.variant_name && (
                                 <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">
-                                  {item.item_variant.name}
+                                  {item.variant_name}
                                 </span>
                               )}
                               <span>{item.unit}</span>
@@ -633,16 +605,16 @@ const ItemsPage: React.FC = () => {
                           expandedGroups.has(group.master.id) &&
                           group.items.slice(1).map((item) => (
                             <div
-                              key={item.id}
+                              key={item.item_id}
                               className="border-l-2 border-gray-300 pl-3"
                             >
                               <div className="font-medium text-gray-900 text-sm">
                                 [{item.item_code}] {item.item_name}
                               </div>
                               <div className="text-sm text-gray-500 flex items-center space-x-2">
-                                {item.item_variant && (
+                                {item.variant_name && (
                                   <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">
-                                    {item.item_variant.name}
+                                    {item.variant_name}
                                   </span>
                                 )}
                                 <span>{item.unit}</span>
@@ -674,9 +646,11 @@ const ItemsPage: React.FC = () => {
                           <div className="font-medium text-gray-900">
                             {group.office.name}
                           </div>
-                          <div className="text-xs text-gray-500">
-                            {group.office.location}
-                          </div>
+                          {group.office.location && (
+                            <div className="text-xs text-gray-500">
+                              {group.office.location}
+                            </div>
+                          )}
                         </div>
                       )}
                     </td>
@@ -717,7 +691,7 @@ const ItemsPage: React.FC = () => {
                           expandedGroups.has(group.master.id) &&
                           group.items.slice(1).map((item) => (
                             <div
-                              key={item.id}
+                              key={item.item_id}
                               className="flex items-center justify-center space-x-1 pt-1 border-t border-gray-100"
                             >
                               <button
@@ -756,7 +730,7 @@ const ItemsPage: React.FC = () => {
         <div className="p-6 border-t border-gray-200 bg-gray-50">
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-600">
-              Menampilkan {filteredItems.length} dari {dummyItems.length} barang
+              Menampilkan {items.length} dari {itemsCount} barang
             </div>
             <div className="flex items-center space-x-3">
               <ActionButton onClick={handleAddMaster} variant="green">
@@ -772,7 +746,7 @@ const ItemsPage: React.FC = () => {
         </div>
       </Card>
 
-      {/* Actual Modals */}
+      {/* Modals */}
       <ItemModal
         isOpen={isItemModalOpen}
         onClose={() => setIsItemModalOpen(false)}
@@ -780,10 +754,10 @@ const ItemsPage: React.FC = () => {
         onCreateMaster={handleAddMaster}
         onCreateVariant={handleAddVariant}
         item={editingItem}
-        itemMasters={dummyItemMasters}
-        itemVariants={dummyItemVariants}
+        itemMasters={itemMastersHook.data}
+        itemVariants={itemVariantsHook.data}
         mode={modalMode}
-        checkItemCodeExists={checkItemCodeExists}
+        checkItemCodeExists={itemsHook.checkItemCodeExists}
         generateItemCode={generateItemCode}
       />
 
@@ -793,8 +767,8 @@ const ItemsPage: React.FC = () => {
         onSave={handleSaveMaster}
         itemMaster={editingMaster}
         mode={modalMode}
-        checkNameExists={checkMasterNameExists}
-        offices={dummyOffices}
+        checkNameExists={itemMastersHook.checkNameExists}
+        offices={offices}
         officesLoading={false}
       />
 
@@ -804,7 +778,7 @@ const ItemsPage: React.FC = () => {
         onSave={handleSaveVariant}
         itemVariant={editingVariant}
         mode={modalMode}
-        checkNameExists={checkVariantNameExists}
+        checkNameExists={itemVariantsHook.checkNameExists}
       />
     </div>
   );
