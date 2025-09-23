@@ -32,6 +32,10 @@ interface ItemModalProps {
     excludeId?: string
   ) => Promise<boolean>;
   generateItemCode?: (prefix?: string) => Promise<string>;
+  generateSequentialCodes?: (
+    baseCode: string,
+    count: number
+  ) => Promise<string[]>;
 }
 
 export const ItemModal: React.FC<ItemModalProps> = ({
@@ -46,6 +50,7 @@ export const ItemModal: React.FC<ItemModalProps> = ({
   mode,
   checkItemCodeExists,
   generateItemCode,
+  generateSequentialCodes,
 }) => {
   const [formData, setFormData] = useState({
     item_code: "",
@@ -56,7 +61,7 @@ export const ItemModal: React.FC<ItemModalProps> = ({
     {
       item_name: "",
       variant_id: "",
-      unit: "pcs",
+      unit: "",
       alt_unit: "",
       conversion_to_base: "",
     },
@@ -72,6 +77,7 @@ export const ItemModal: React.FC<ItemModalProps> = ({
     "lembar",
     "box",
     "set",
+    "pack",
     "pcs",
     "kg",
     "liter",
@@ -94,7 +100,7 @@ export const ItemModal: React.FC<ItemModalProps> = ({
           {
             item_name: item.item_name,
             variant_id: item.variant_id || "",
-            unit: item.unit || "pcs",
+            unit: item.unit || "lembar",
             alt_unit: item.alt_unit || "",
             conversion_to_base: item.conversion_to_base?.toString() || "",
           },
@@ -108,7 +114,7 @@ export const ItemModal: React.FC<ItemModalProps> = ({
           {
             item_name: "",
             variant_id: "",
-            unit: "pcs",
+            unit: "lembar",
             alt_unit: "",
             conversion_to_base: "",
           },
@@ -279,19 +285,22 @@ export const ItemModal: React.FC<ItemModalProps> = ({
         }
       } else {
         // For create mode, we create multiple items if there are multiple groups
-        const items = itemGroups.map((group) => ({
-          item_code: formData.item_code,
-          item_name: group.item_name,
-          unit: group.unit,
-          alt_unit: group.alt_unit || null,
-          conversion_to_base: group.conversion_to_base
-            ? Number(group.conversion_to_base)
-            : null,
-          item_master_id: formData.item_master_id || null,
-          variant_id: group.variant_id || null,
-        }));
+        // Pass the base item code and let the parent handle sequential code generation
+        const payload = {
+          baseItemCode: formData.item_code,
+          item_master_id: formData.item_master_id,
+          items: itemGroups.map((group) => ({
+            item_name: group.item_name,
+            unit: group.unit,
+            alt_unit: group.alt_unit || null,
+            conversion_to_base: group.conversion_to_base
+              ? Number(group.conversion_to_base)
+              : null,
+            variant_id: group.variant_id || null,
+          })),
+        };
 
-        const result = await onSave({ items });
+        const result = await onSave(payload);
         if (result.success) {
           onClose();
         } else {
@@ -390,6 +399,38 @@ export const ItemModal: React.FC<ItemModalProps> = ({
                     (codeExists ? "Kode barang sudah ada" : "")}
                 </p>
               )}
+              {/* Info about sequential codes for multiple items */}
+              {mode === "create" &&
+                itemGroups.length > 1 &&
+                formData.item_code && (
+                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-xs text-blue-800 font-medium">
+                      💡 Kode berurutan akan di-generate otomatis:
+                    </p>
+                    <div className="mt-1 text-xs text-blue-700 space-y-1">
+                      {itemGroups.slice(0, 3).map((_, index) => {
+                        const parts = formData.item_code.split("-");
+                        const prefix = parts.slice(0, -1).join("-");
+                        const startNumber =
+                          parseInt(parts[parts.length - 1]) || 1;
+                        const number = startNumber + index;
+                        const paddedNumber = number.toString().padStart(3, "0");
+                        const code = `${prefix}-${paddedNumber}`;
+                        return (
+                          <div key={index} className="flex justify-between">
+                            <span>Item {index + 1}:</span>
+                            <span className="font-mono">{code}</span>
+                          </div>
+                        );
+                      })}
+                      {itemGroups.length > 3 && (
+                        <div className="text-blue-600">
+                          ... dan {itemGroups.length - 3} lainnya
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
             </div>
 
             {/* Category */}
