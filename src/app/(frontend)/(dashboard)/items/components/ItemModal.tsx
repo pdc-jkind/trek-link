@@ -2,12 +2,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Save, AlertCircle, Plus, Minus } from "lucide-react";
+import { X, Save, AlertCircle, Plus, Minus, Info } from "lucide-react";
 import { Tables, TablesInsert, TablesUpdate } from "@/types/database";
 
 type ItemMaster = Tables<"item_masters">;
 type ItemVariant = Tables<"item_variants">;
-type Office = Tables<"offices">;
 
 interface ItemGroup {
   item_name: string;
@@ -95,7 +94,6 @@ export const ItemModal: React.FC<ItemModalProps> = ({
           item_code: item.item_code,
           item_master_id: item.item_master_id || "",
         });
-        // For edit mode, we'll show the single item as one group
         setItemGroups([
           {
             item_name: item.item_name,
@@ -285,7 +283,6 @@ export const ItemModal: React.FC<ItemModalProps> = ({
         }
       } else {
         // For create mode, we create multiple items if there are multiple groups
-        // Pass the base item code and let the parent handle sequential code generation
         const payload = {
           baseItemCode: formData.item_code,
           item_master_id: formData.item_master_id,
@@ -326,393 +323,457 @@ export const ItemModal: React.FC<ItemModalProps> = ({
     <div className="fixed inset-0 flex items-center justify-center z-50">
       {/* Enhanced backdrop with blur effect */}
       <div
-        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/30 dark:bg-black/50 backdrop-blur-xs animate-fade-in"
         onClick={handleClose}
       />
 
       {/* Modal content */}
-      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto border border-gray-200/50">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-white sticky top-0 z-10 rounded-t-xl">
-          <h2 className="text-lg font-semibold text-gray-900">
+      <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-modal w-full max-w-5xl mx-4 max-h-[95vh] border border-gray-200/50 dark:border-gray-700/50 animate-scale-in">
+        {/* Fixed Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 sticky top-0 z-10 rounded-t-xl">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {mode === "create" ? "Tambah Barang" : "Edit Barang"}
           </h2>
           <button
             onClick={handleClose}
             disabled={isSubmitting}
-            className="text-gray-500 hover:text-gray-700 transition-colors p-1 rounded-md hover:bg-gray-100"
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-400"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {errors.submit && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start space-x-3">
-              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-              <span className="text-red-800 text-sm font-medium">
-                {errors.submit}
-              </span>
-            </div>
-          )}
-
-          {/* Top Section - Item Code and Category */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Item Code */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Kode Barang *
-              </label>
-              <div className="flex space-x-2">
-                <input
-                  type="text"
-                  value={formData.item_code}
-                  onChange={(e) => handleCodeChange(e.target.value)}
-                  className={`flex-1 px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all text-gray-900 font-medium placeholder-gray-500 ${
-                    errors.item_code || codeExists
-                      ? "border-red-300 focus:ring-red-500 bg-red-50"
-                      : "border-gray-300 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                  }`}
-                  placeholder="Masukkan kode barang"
-                  disabled={isSubmitting}
-                />
-                {generateItemCode && (
-                  <button
-                    type="button"
-                    onClick={handleGenerateCode}
-                    disabled={isSubmitting || isGeneratingCode}
-                    className="px-4 py-3 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 font-medium border border-gray-300 rounded-lg hover:from-gray-200 hover:to-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 transition-all shadow-sm"
-                    title="Generate Code"
-                  >
-                    {isGeneratingCode ? (
-                      <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <span className="text-sm">Auto</span>
-                    )}
-                  </button>
-                )}
+        {/* Scrollable Form Content */}
+        <div className="overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800 max-h-[calc(95vh-140px)]">
+          <form onSubmit={handleSubmit} className="p-6 space-y-8">
+            {errors.submit && (
+              <div className="bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800 rounded-lg p-4 flex items-start space-x-3 animate-slide-down">
+                <AlertCircle className="w-5 h-5 text-danger-500 flex-shrink-0 mt-0.5" />
+                <span className="text-danger-800 dark:text-danger-200 text-sm font-medium">
+                  {errors.submit}
+                </span>
               </div>
-              {(errors.item_code || codeExists) && (
-                <p className="mt-2 text-sm text-red-700 font-medium">
-                  {errors.item_code ||
-                    (codeExists ? "Kode barang sudah ada" : "")}
-                </p>
-              )}
-              {/* Info about sequential codes for multiple items */}
-              {mode === "create" &&
-                itemGroups.length > 1 &&
-                formData.item_code && (
-                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-xs text-blue-800 font-medium">
-                      💡 Kode berurutan akan di-generate otomatis:
-                    </p>
-                    <div className="mt-1 text-xs text-blue-700 space-y-1">
-                      {itemGroups.slice(0, 3).map((_, index) => {
-                        const parts = formData.item_code.split("-");
-                        const prefix = parts.slice(0, -1).join("-");
-                        const startNumber =
-                          parseInt(parts[parts.length - 1]) || 1;
-                        const number = startNumber + index;
-                        const paddedNumber = number.toString().padStart(3, "0");
-                        const code = `${prefix}-${paddedNumber}`;
-                        return (
-                          <div key={index} className="flex justify-between">
-                            <span>Item {index + 1}:</span>
-                            <span className="font-mono">{code}</span>
-                          </div>
-                        );
-                      })}
-                      {itemGroups.length > 3 && (
-                        <div className="text-blue-600">
-                          ... dan {itemGroups.length - 3} lainnya
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-            </div>
+            )}
 
-            {/* Category */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Kategori *
-              </label>
-              <div className="flex space-x-2">
-                <select
-                  value={formData.item_master_id}
-                  onChange={(e) =>
-                    handleInputChange("item_master_id", e.target.value)
-                  }
-                  className={`flex-1 px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all text-gray-900 font-medium bg-white ${
-                    errors.item_master_id
-                      ? "border-red-300 focus:ring-red-500 bg-red-50"
-                      : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                  }`}
-                  disabled={isSubmitting}
-                >
-                  <option value="" className="text-gray-500">
-                    Pilih kategori
-                  </option>
-                  {itemMasters.map((master) => (
-                    <option
-                      key={master.id}
-                      value={master.id}
-                      className="text-gray-900"
-                    >
-                      {master.name}
-                    </option>
-                  ))}
-                </select>
-                {onCreateMaster && (
-                  <button
-                    type="button"
-                    onClick={onCreateMaster}
-                    disabled={isSubmitting}
-                    className="px-4 py-3 bg-gradient-to-r from-green-100 to-green-200 text-green-800 font-medium border border-green-300 rounded-lg hover:from-green-200 hover:to-green-300 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 flex items-center space-x-2 transition-all shadow-sm"
-                    title="Tambah Kategori Baru"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span className="hidden sm:inline">Kategori</span>
-                  </button>
-                )}
-              </div>
-              {errors.item_master_id && (
-                <p className="mt-2 text-sm text-red-700 font-medium">
-                  {errors.item_master_id}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Item Groups Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-md font-semibold text-gray-900">
-                Detail Barang
+            {/* Top Section - Item Code and Category */}
+            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                Informasi Dasar
               </h3>
-              {mode === "create" && (
-                <button
-                  type="button"
-                  onClick={addItemGroup}
-                  disabled={isSubmitting}
-                  className="px-3 py-2 bg-blue-100 text-blue-800 font-medium border border-blue-300 rounded-lg hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 flex items-center space-x-2 transition-all text-sm"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Tambah Item</span>
-                </button>
-              )}
-            </div>
-
-            {itemGroups.map((group, index) => (
-              <div
-                key={index}
-                className="border border-gray-200 rounded-lg p-4 bg-gray-50"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-sm font-medium text-gray-700">
-                    Item {index + 1}
-                  </h4>
-                  {mode === "create" && itemGroups.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeItemGroup(index)}
-                      disabled={isSubmitting}
-                      className="text-red-600 hover:text-red-800 p-1 rounded transition-colors"
-                      title="Hapus Item"
-                    >
-                      <Minus className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Item Name and Variant */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nama Barang *
-                    </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Item Code */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    Kode Barang *
+                  </label>
+                  <div className="flex space-x-3">
                     <input
                       type="text"
-                      value={group.item_name}
-                      onChange={(e) =>
-                        handleItemGroupChange(
-                          index,
-                          "item_name",
-                          e.target.value
-                        )
-                      }
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-all text-gray-900 placeholder-gray-500 ${
-                        errors[`group_${index}_item_name`]
-                          ? "border-red-300 focus:ring-red-500 bg-red-50"
-                          : "border-gray-300 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                      }`}
-                      placeholder="Masukkan nama barang"
+                      value={formData.item_code}
+                      onChange={(e) => handleCodeChange(e.target.value)}
+                      className={`
+                        form-input flex-1 px-4 py-3 rounded-lg transition-all duration-200
+                        text-gray-900 dark:text-gray-100 font-medium 
+                        placeholder-gray-500 dark:placeholder-gray-400
+                        bg-white dark:bg-gray-700
+                        ${
+                          errors.item_code || codeExists
+                            ? "border-danger-300 dark:border-danger-600 focus:ring-danger-500 bg-danger-50 dark:bg-danger-900/20"
+                            : "border-gray-300 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"
+                        }
+                      `}
+                      placeholder="Masukkan kode barang"
                       disabled={isSubmitting}
                     />
-                    {errors[`group_${index}_item_name`] && (
-                      <p className="mt-1 text-xs text-red-700">
-                        {errors[`group_${index}_item_name`]}
-                      </p>
+                    {generateItemCode && (
+                      <button
+                        type="button"
+                        onClick={handleGenerateCode}
+                        disabled={isSubmitting || isGeneratingCode}
+                        className="px-4 py-3 bg-gradient-to-r from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/30 text-primary-800 dark:text-primary-200 font-medium border border-primary-300 dark:border-primary-600 rounded-lg hover:from-primary-200 hover:to-primary-300 dark:hover:from-primary-800/50 dark:hover:to-primary-700/50 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 transition-all duration-200 shadow-card hover:shadow-card-hover"
+                        title="Generate Code"
+                      >
+                        {isGeneratingCode ? (
+                          <div className="w-4 h-4 border-2 border-primary-600 dark:border-primary-400 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <span className="text-sm font-semibold">Auto</span>
+                        )}
+                      </button>
                     )}
                   </div>
+                  {(errors.item_code || codeExists) && (
+                    <p className="text-sm text-danger-700 dark:text-danger-300 font-medium animate-slide-down">
+                      {errors.item_code ||
+                        (codeExists ? "Kode barang sudah ada" : "")}
+                    </p>
+                  )}
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Variant
-                    </label>
-                    <div className="flex space-x-2">
-                      <select
-                        value={group.variant_id}
-                        onChange={(e) =>
-                          handleItemGroupChange(
-                            index,
-                            "variant_id",
-                            e.target.value
-                          )
-                        }
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
-                        disabled={isSubmitting}
-                      >
-                        <option value="" className="text-gray-500">
-                          Pilih variant
-                        </option>
-                        {itemVariants.map((variant) => (
-                          <option
-                            key={variant.id}
-                            value={variant.id}
-                            className="text-gray-900"
-                          >
-                            {variant.name}
-                          </option>
-                        ))}
-                      </select>
-                      {onCreateVariant && (
-                        <button
-                          type="button"
-                          onClick={onCreateVariant}
-                          disabled={isSubmitting}
-                          className="px-3 py-2 bg-gradient-to-r from-purple-100 to-purple-200 text-purple-800 font-medium border border-purple-300 rounded-lg hover:from-purple-200 hover:to-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 flex items-center transition-all shadow-sm"
-                          title="Tambah Variant Baru"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                  {/* Enhanced Info about sequential codes */}
+                  {mode === "create" &&
+                    itemGroups.length > 1 &&
+                    formData.item_code && (
+                      <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg p-4 animate-slide-down">
+                        <div className="flex items-start space-x-3">
+                          <Info className="w-5 h-5 text-primary-600 dark:text-primary-400 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-medium text-primary-800 dark:text-primary-200 mb-2">
+                              Kode berurutan akan di-generate otomatis:
+                            </p>
+                            <div className="space-y-2">
+                              {itemGroups.slice(0, 3).map((_, index) => {
+                                const parts = formData.item_code.split("-");
+                                const prefix = parts.slice(0, -1).join("-");
+                                const startNumber =
+                                  parseInt(parts[parts.length - 1]) || 1;
+                                const number = startNumber + index;
+                                const paddedNumber = number
+                                  .toString()
+                                  .padStart(3, "0");
+                                const code = `${prefix}-${paddedNumber}`;
+                                return (
+                                  <div
+                                    key={index}
+                                    className="flex justify-between items-center bg-white dark:bg-gray-800 px-3 py-2 rounded border border-primary-200 dark:border-primary-800"
+                                  >
+                                    <span className="text-sm text-primary-700 dark:text-primary-300">
+                                      Item {index + 1}:
+                                    </span>
+                                    <span className="font-mono text-sm font-semibold text-primary-900 dark:text-primary-100 bg-primary-100 dark:bg-primary-900/40 px-2 py-1 rounded">
+                                      {code}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                              {itemGroups.length > 3 && (
+                                <div className="text-sm text-primary-600 dark:text-primary-400 text-center py-2">
+                                  ... dan {itemGroups.length - 3} lainnya
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                 </div>
 
-                {/* Units */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Unit Dasar *
-                    </label>
+                {/* Category */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    Kategori *
+                  </label>
+                  <div className="flex space-x-3">
                     <select
-                      value={group.unit}
+                      value={formData.item_master_id}
                       onChange={(e) =>
-                        handleItemGroupChange(index, "unit", e.target.value)
+                        handleInputChange("item_master_id", e.target.value)
                       }
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-all text-gray-900 bg-white ${
-                        errors[`group_${index}_unit`]
-                          ? "border-red-300 focus:ring-red-500 bg-red-50"
-                          : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                      }`}
+                      className={`
+                        form-select flex-1 px-4 py-3 rounded-lg transition-all duration-200
+                        text-gray-900 dark:text-gray-100 font-medium 
+                        bg-white dark:bg-gray-700
+                        ${
+                          errors.item_master_id
+                            ? "border-danger-300 dark:border-danger-600 focus:ring-danger-500 bg-danger-50 dark:bg-danger-900/20"
+                            : "border-gray-300 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"
+                        }
+                      `}
                       disabled={isSubmitting}
                     >
-                      {commonUnits.map((unit) => (
+                      <option
+                        value=""
+                        className="text-gray-500 dark:text-gray-400"
+                      >
+                        Pilih kategori
+                      </option>
+                      {itemMasters.map((master) => (
                         <option
-                          key={unit}
-                          value={unit}
-                          className="text-gray-900"
+                          key={master.id}
+                          value={master.id}
+                          className="text-gray-900 dark:text-gray-100"
                         >
-                          {unit}
+                          {master.name}
                         </option>
                       ))}
                     </select>
-                    {errors[`group_${index}_unit`] && (
-                      <p className="mt-1 text-xs text-red-700">
-                        {errors[`group_${index}_unit`]}
-                      </p>
+                    {onCreateMaster && (
+                      <button
+                        type="button"
+                        onClick={onCreateMaster}
+                        disabled={isSubmitting}
+                        className="px-4 py-3 bg-gradient-to-r from-success-100 to-success-200 dark:from-success-900/30 dark:to-success-800/30 text-success-800 dark:text-success-200 font-medium border border-success-300 dark:border-success-600 rounded-lg hover:from-success-200 hover:to-success-300 dark:hover:from-success-800/50 dark:hover:to-success-700/50 focus:outline-none focus:ring-2 focus:ring-success-500 disabled:opacity-50 flex items-center space-x-2 transition-all duration-200 shadow-card hover:shadow-card-hover"
+                        title="Tambah Kategori Baru"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span className="hidden sm:inline">Kategori</span>
+                      </button>
                     )}
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Unit Alternatif
-                    </label>
-                    <input
-                      type="text"
-                      value={group.alt_unit}
-                      onChange={(e) =>
-                        handleItemGroupChange(index, "alt_unit", e.target.value)
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500 bg-white transition-all"
-                      placeholder="contoh: box, lusin"
-                      disabled={isSubmitting}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Rasio Konversi
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={group.conversion_to_base}
-                      onChange={(e) =>
-                        handleItemGroupChange(
-                          index,
-                          "conversion_to_base",
-                          e.target.value
-                        )
-                      }
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-all text-gray-900 placeholder-gray-500 bg-white ${
-                        errors[`group_${index}_conversion_to_base`]
-                          ? "border-red-300 focus:ring-red-500 bg-red-50"
-                          : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                      }`}
-                      placeholder="contoh: 12"
-                      disabled={isSubmitting}
-                    />
-                    {errors[`group_${index}_conversion_to_base`] && (
-                      <p className="mt-1 text-xs text-red-700">
-                        {errors[`group_${index}_conversion_to_base`]}
-                      </p>
-                    )}
-                    {group.alt_unit && group.conversion_to_base && (
-                      <p className="mt-1 text-xs text-gray-600 bg-blue-50 px-2 py-1 rounded">
-                        1 {group.alt_unit} = {group.conversion_to_base}{" "}
-                        {group.unit}
-                      </p>
-                    )}
-                  </div>
+                  {errors.item_master_id && (
+                    <p className="text-sm text-danger-700 dark:text-danger-300 font-medium animate-slide-down">
+                      {errors.item_master_id}
+                    </p>
+                  )}
                 </div>
               </div>
-            ))}
-          </div>
-        </form>
+            </div>
 
-        {/* Footer */}
-        <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50/50 rounded-b-xl">
+            {/* Item Groups Section */}
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  Detail Barang ({itemGroups.length} item)
+                </h3>
+                {mode === "create" && (
+                  <button
+                    type="button"
+                    onClick={addItemGroup}
+                    disabled={isSubmitting}
+                    className="px-4 py-2 bg-primary-600 dark:bg-primary-500 text-white font-medium rounded-lg hover:bg-primary-700 dark:hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 flex items-center space-x-2 transition-all duration-200 shadow-card hover:shadow-card-hover"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Tambah Item</span>
+                  </button>
+                )}
+              </div>
+
+              {itemGroups.map((group, index) => (
+                <div
+                  key={index}
+                  className="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-card animate-fade-in"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900/50 dark:to-gray-800/50 px-6 py-4 rounded-t-lg border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <h4 className="text-base font-semibold text-gray-800 dark:text-gray-200">
+                      Item {index + 1}
+                    </h4>
+                    {mode === "create" && itemGroups.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeItemGroup(index)}
+                        disabled={isSubmitting}
+                        className="text-danger-600 dark:text-danger-400 hover:text-danger-800 dark:hover:text-danger-200 p-2 rounded-lg hover:bg-danger-100 dark:hover:bg-danger-900/20 transition-all duration-200"
+                        title="Hapus Item"
+                      >
+                        <Minus className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="p-6 space-y-6">
+                    {/* Item Name and Variant */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Nama Barang *
+                        </label>
+                        <input
+                          type="text"
+                          value={group.item_name}
+                          onChange={(e) =>
+                            handleItemGroupChange(
+                              index,
+                              "item_name",
+                              e.target.value
+                            )
+                          }
+                          className={`
+                            form-input w-full px-4 py-3 rounded-lg transition-all duration-200
+                            text-gray-900 dark:text-gray-100 
+                            placeholder-gray-500 dark:placeholder-gray-400
+                            bg-white dark:bg-gray-700
+                            ${
+                              errors[`group_${index}_item_name`]
+                                ? "border-danger-300 dark:border-danger-600 focus:ring-danger-500 bg-danger-50 dark:bg-danger-900/20"
+                                : "border-gray-300 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"
+                            }
+                          `}
+                          placeholder="Masukkan nama barang"
+                          disabled={isSubmitting}
+                        />
+                        {errors[`group_${index}_item_name`] && (
+                          <p className="text-xs text-danger-700 dark:text-danger-300 animate-slide-down">
+                            {errors[`group_${index}_item_name`]}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Variant
+                        </label>
+                        <div className="flex space-x-2">
+                          <select
+                            value={group.variant_id}
+                            onChange={(e) =>
+                              handleItemGroupChange(
+                                index,
+                                "variant_id",
+                                e.target.value
+                              )
+                            }
+                            className="form-select flex-1 px-4 py-3 rounded-lg border-gray-300 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 transition-all duration-200"
+                            disabled={isSubmitting}
+                          >
+                            <option
+                              value=""
+                              className="text-gray-500 dark:text-gray-400"
+                            >
+                              Pilih variant
+                            </option>
+                            {itemVariants.map((variant) => (
+                              <option
+                                key={variant.id}
+                                value={variant.id}
+                                className="text-gray-900 dark:text-gray-100"
+                              >
+                                {variant.name}
+                              </option>
+                            ))}
+                          </select>
+                          {onCreateVariant && (
+                            <button
+                              type="button"
+                              onClick={onCreateVariant}
+                              disabled={isSubmitting}
+                              className="px-4 py-3 bg-gradient-to-r from-warning-100 to-warning-200 dark:from-warning-900/30 dark:to-warning-800/30 text-warning-800 dark:text-warning-200 font-medium border border-warning-300 dark:border-warning-600 rounded-lg hover:from-warning-200 hover:to-warning-300 dark:hover:from-warning-800/50 dark:hover:to-warning-700/50 focus:outline-none focus:ring-2 focus:ring-warning-500 disabled:opacity-50 flex items-center transition-all duration-200 shadow-card hover:shadow-card-hover"
+                              title="Tambah Variant Baru"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Units */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Unit Dasar *
+                        </label>
+                        <select
+                          value={group.unit}
+                          onChange={(e) =>
+                            handleItemGroupChange(index, "unit", e.target.value)
+                          }
+                          className={`
+                            form-select w-full px-4 py-3 rounded-lg transition-all duration-200
+                            text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700
+                            ${
+                              errors[`group_${index}_unit`]
+                                ? "border-danger-300 dark:border-danger-600 focus:ring-danger-500 bg-danger-50 dark:bg-danger-900/20"
+                                : "border-gray-300 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"
+                            }
+                          `}
+                          disabled={isSubmitting}
+                        >
+                          {commonUnits.map((unit) => (
+                            <option
+                              key={unit}
+                              value={unit}
+                              className="text-gray-900 dark:text-gray-100"
+                            >
+                              {unit}
+                            </option>
+                          ))}
+                        </select>
+                        {errors[`group_${index}_unit`] && (
+                          <p className="text-xs text-danger-700 dark:text-danger-300 animate-slide-down">
+                            {errors[`group_${index}_unit`]}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Unit Alternatif
+                        </label>
+                        <input
+                          type="text"
+                          value={group.alt_unit}
+                          onChange={(e) =>
+                            handleItemGroupChange(
+                              index,
+                              "alt_unit",
+                              e.target.value
+                            )
+                          }
+                          className="form-input w-full px-4 py-3 rounded-lg border-gray-300 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 bg-white dark:bg-gray-700 transition-all duration-200"
+                          placeholder="contoh: box, lusin"
+                          disabled={isSubmitting}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Rasio Konversi
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={group.conversion_to_base}
+                          onChange={(e) =>
+                            handleItemGroupChange(
+                              index,
+                              "conversion_to_base",
+                              e.target.value
+                            )
+                          }
+                          className={`
+                            form-input w-full px-4 py-3 rounded-lg transition-all duration-200
+                            text-gray-900 dark:text-gray-100 
+                            placeholder-gray-500 dark:placeholder-gray-400
+                            bg-white dark:bg-gray-700
+                            ${
+                              errors[`group_${index}_conversion_to_base`]
+                                ? "border-danger-300 dark:border-danger-600 focus:ring-danger-500 bg-danger-50 dark:bg-danger-900/20"
+                                : "border-gray-300 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"
+                            }
+                          `}
+                          placeholder="contoh: 12"
+                          disabled={isSubmitting}
+                        />
+                        {errors[`group_${index}_conversion_to_base`] && (
+                          <p className="text-xs text-danger-700 dark:text-danger-300 animate-slide-down">
+                            {errors[`group_${index}_conversion_to_base`]}
+                          </p>
+                        )}
+                        {group.alt_unit && group.conversion_to_base && (
+                          <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 px-3 py-2 rounded-lg animate-fade-in">
+                            <p className="text-xs text-primary-800 dark:text-primary-200 font-medium">
+                              1 {group.alt_unit} = {group.conversion_to_base}{" "}
+                              {group.unit}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </form>
+        </div>
+
+        {/* Fixed Footer */}
+        <div className="flex justify-end space-x-4 p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/20 rounded-b-xl">
           <button
             type="button"
             onClick={handleClose}
             disabled={isSubmitting}
-            className="px-5 py-2.5 text-gray-700 font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 disabled:opacity-50 transition-all"
+            className="px-6 py-3 text-gray-700 dark:text-gray-200 font-medium bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 disabled:opacity-50 transition-all duration-200 shadow-card hover:shadow-card-hover"
           >
             Batal
           </button>
           <button
             onClick={handleSubmit}
             disabled={isSubmitting || codeExists}
-            className="px-5 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 flex items-center space-x-2 transition-all shadow-lg"
+            className="px-6 py-3 bg-primary-600 dark:bg-primary-500 text-white font-medium rounded-lg hover:bg-primary-700 dark:hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 flex items-center space-x-2 transition-all duration-200 shadow-lg hover:shadow-card-hover"
           >
             {isSubmitting ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
-              <Save className="w-4 h-4" />
+              <Save className="w-5 h-5" />
             )}
             <span>{isSubmitting ? "Menyimpan..." : "Simpan"}</span>
           </button>
