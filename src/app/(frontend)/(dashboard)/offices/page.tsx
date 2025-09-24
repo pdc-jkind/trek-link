@@ -35,7 +35,6 @@ interface UpdateOfficePayload extends CreateOfficePayload {
 const OfficesPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("all");
 
   // Modal states
@@ -67,13 +66,6 @@ const OfficesPage: React.FC = () => {
     { value: "distributor", label: "Distributor" },
     { value: "grb", label: "GRB" },
     { value: "unset", label: "Unassigned" },
-  ];
-
-  // Filter options for status
-  const statusOptions = [
-    { value: "all", label: "Semua Status" },
-    { value: "active", label: "Aktif" },
-    { value: "inactive", label: "Non-Aktif" },
   ];
 
   // Location filter options from data

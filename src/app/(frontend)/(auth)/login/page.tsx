@@ -3,7 +3,7 @@
 
 import React, { useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@/app/(frontend)/hooks/useAuth";
+import { useAuth } from "@/app/(frontend)/(auth)/useAuth";
 import {
   AuthLayout,
   AuthCard,

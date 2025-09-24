@@ -47,6 +47,13 @@ export type Database = {
             referencedRelation: "offices"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "containers_location_office_id_fkey"
+            columns: ["location_office_id"]
+            isOneToOne: false
+            referencedRelation: "view_items_full"
+            referencedColumns: ["office_id"]
+          },
         ]
       }
       fcm_tokens: {
@@ -85,6 +92,7 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          img_url: string | null
           name: string
           office_id: string | null
           type: string
@@ -93,6 +101,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
+          img_url?: string | null
           name: string
           office_id?: string | null
           type: string
@@ -101,6 +110,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
+          img_url?: string | null
           name?: string
           office_id?: string | null
           type?: string
@@ -114,7 +124,35 @@ export type Database = {
             referencedRelation: "offices"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "item_masters_office_id_fkey"
+            columns: ["office_id"]
+            isOneToOne: false
+            referencedRelation: "view_items_full"
+            referencedColumns: ["office_id"]
+          },
         ]
+      }
+      item_variants: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       items: {
         Row: {
@@ -127,6 +165,7 @@ export type Database = {
           item_name: string
           unit: string | null
           updated_at: string | null
+          variant_id: string | null
         }
         Insert: {
           alt_unit?: string | null
@@ -138,6 +177,7 @@ export type Database = {
           item_name: string
           unit?: string | null
           updated_at?: string | null
+          variant_id?: string | null
         }
         Update: {
           alt_unit?: string | null
@@ -149,6 +189,7 @@ export type Database = {
           item_name?: string
           unit?: string | null
           updated_at?: string | null
+          variant_id?: string | null
         }
         Relationships: [
           {
@@ -162,8 +203,22 @@ export type Database = {
             foreignKeyName: "items_item_master_id_fkey"
             columns: ["item_master_id"]
             isOneToOne: false
-            referencedRelation: "view_items_with_master"
+            referencedRelation: "view_items_full"
             referencedColumns: ["item_master_id"]
+          },
+          {
+            foreignKeyName: "items_variant_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "item_variants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "items_variant_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "view_items_full"
+            referencedColumns: ["variant_id"]
           },
         ]
       }
@@ -196,6 +251,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "offices"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "office_users_office_id_fkey"
+            columns: ["office_id"]
+            isOneToOne: false
+            referencedRelation: "view_items_full"
+            referencedColumns: ["office_id"]
           },
           {
             foreignKeyName: "office_users_role_id_fkey"
@@ -274,7 +336,7 @@ export type Database = {
             foreignKeyName: "order_items_item_id_fkey"
             columns: ["item_id"]
             isOneToOne: false
-            referencedRelation: "view_items_with_master"
+            referencedRelation: "view_items_full"
             referencedColumns: ["item_id"]
           },
           {
@@ -326,6 +388,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "orders_office_id_fkey"
+            columns: ["office_id"]
+            isOneToOne: false
+            referencedRelation: "view_items_full"
+            referencedColumns: ["office_id"]
+          },
+          {
             foreignKeyName: "orders_ordered_by_fkey"
             columns: ["ordered_by"]
             isOneToOne: false
@@ -371,7 +440,7 @@ export type Database = {
             foreignKeyName: "receipt_items_item_id_fkey"
             columns: ["item_id"]
             isOneToOne: false
-            referencedRelation: "view_items_with_master"
+            referencedRelation: "view_items_full"
             referencedColumns: ["item_id"]
           },
           {
@@ -539,7 +608,7 @@ export type Database = {
             foreignKeyName: "shipment_items_item_id_fkey"
             columns: ["item_id"]
             isOneToOne: false
-            referencedRelation: "view_items_with_master"
+            referencedRelation: "view_items_full"
             referencedColumns: ["item_id"]
           },
           {
@@ -611,6 +680,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "shipments_from_office_id_fkey"
+            columns: ["from_office_id"]
+            isOneToOne: false
+            referencedRelation: "view_items_full"
+            referencedColumns: ["office_id"]
+          },
+          {
             foreignKeyName: "shipments_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
@@ -623,6 +699,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "offices"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipments_to_office_id_fkey"
+            columns: ["to_office_id"]
+            isOneToOne: false
+            referencedRelation: "view_items_full"
+            referencedColumns: ["office_id"]
           },
         ]
       }
@@ -658,6 +741,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "office_users_office_id_fkey"
+            columns: ["office_id"]
+            isOneToOne: false
+            referencedRelation: "view_items_full"
+            referencedColumns: ["office_id"]
+          },
+          {
             foreignKeyName: "office_users_role_id_fkey"
             columns: ["role_id"]
             isOneToOne: false
@@ -666,32 +756,24 @@ export type Database = {
           },
         ]
       }
-      view_items_with_master: {
+      view_items_full: {
         Row: {
           alt_unit: string | null
           conversion_to_base: number | null
           item_code: string | null
-          item_created_at: string | null
           item_id: string | null
-          item_master_created_at: string | null
           item_master_id: string | null
+          item_master_img_url: string | null
           item_master_name: string | null
           item_master_type: string | null
-          item_master_updated_at: string | null
           item_name: string | null
-          item_updated_at: string | null
           office_id: string | null
+          office_name: string | null
           unit: string | null
+          variant_id: string | null
+          variant_name: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "item_masters_office_id_fkey"
-            columns: ["office_id"]
-            isOneToOne: false
-            referencedRelation: "offices"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Functions: {

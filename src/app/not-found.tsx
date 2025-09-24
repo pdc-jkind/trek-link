@@ -6,8 +6,6 @@ import { useRouter } from "next/navigation";
 import {
   AuthLayout,
   AuthCard,
-  AuthIcon,
-  BackButton,
   PrimaryButton,
 } from "@/app/(frontend)/(auth)/components";
 
@@ -25,13 +23,6 @@ const NotFoundPage: React.FC = () => {
       router.push("/");
     }
   };
-
-  const popularPages = [
-    { name: "Dashboard", href: "/dashboard" },
-    { name: "Profile", href: "/profile" },
-    { name: "Settings", href: "/settings" },
-    { name: "Help", href: "/help" },
-  ];
 
   return (
     <AuthLayout showFloatingBubbles={true} variant="default">

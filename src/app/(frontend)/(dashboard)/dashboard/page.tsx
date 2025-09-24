@@ -1,18 +1,7 @@
 // src/app/(frontend)/dashboard/page.tsx
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import {
-  Package,
-  TrendingUp,
-  Users,
-  AlertCircle,
-  BarChart3,
-  Clock,
-  Plus,
-  FileText,
-} from "lucide-react";
+import { Users, BarChart3, Clock, Plus, FileText } from "lucide-react";
 import {
   Card,
   StatsGrid,

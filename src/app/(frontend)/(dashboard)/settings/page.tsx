@@ -2,18 +2,7 @@
 "use client";
 
 import React, { useState } from "react";
-import {
-  User,
-  Bell,
-  Shield,
-  Globe,
-  Copy,
-  RefreshCw,
-  Eye,
-  EyeOff,
-  CheckCircle,
-  AlertCircle,
-} from "lucide-react";
+import { User, Bell, Shield, Globe } from "lucide-react";
 import { Card, PageHeader } from "../components/ui";
 
 // Dummy data and hooks
@@ -40,8 +29,8 @@ const useDummySettings = () => {
       await new Promise((resolve) => setTimeout(resolve, 1500));
       const newToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." + Date.now();
       setAccessToken(newToken);
-    } catch (err) {
-      setError("Failed to refresh token");
+    } catch (error) {
+      setError(`Failed to refresh token error: ${error}`);
     } finally {
       setIsLoading(false);
     }
@@ -57,18 +46,6 @@ const useDummySettings = () => {
     refreshToken,
     clearError,
   };
-};
-
-// Dummy session data
-const sessionData = {
-  id: "user123",
-  email: "user@example.com",
-  activeOffice: {
-    office_name: "Jakarta Office",
-    role_name: "Administrator",
-  },
-  isAuthenticated: true,
-  hasSession: true,
 };
 
 // Settings menu items
@@ -100,37 +77,6 @@ const settingsMenuItems = [
 ];
 
 const SettingsPage: React.FC = () => {
-  const {
-    isLoading,
-    error,
-    accessToken,
-    copyToClipboard,
-    refreshToken,
-    clearError,
-  } = useDummySettings();
-
-  const [showToken, setShowToken] = useState(false);
-  const [copySuccess, setCopySuccess] = useState(false);
-
-  const handleCopyToken = async () => {
-    if (!accessToken) return;
-
-    const success = await copyToClipboard(accessToken);
-    if (success) {
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2000);
-    }
-  };
-
-  const handleRefreshToken = async () => {
-    await refreshToken();
-  };
-
-  const maskToken = (token: string) => {
-    if (token.length <= 10) return token;
-    return token.substring(0, 10) + "..." + token.substring(token.length - 10);
-  };
-
   return (
     <div className="space-y-6">
       {/* Main Settings Card */}

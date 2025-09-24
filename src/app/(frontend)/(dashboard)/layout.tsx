@@ -5,8 +5,8 @@ import React, { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import TopBar from "@/app/(frontend)/(dashboard)/components/TopBar";
 import Sidebar from "@/app/(frontend)/(dashboard)/components/Sidebar";
-import { useAuth } from "@/app/(frontend)/hooks/useAuth";
-import { useDashboardInit } from "@/app/(frontend)/(dashboard)/hooks/useDashboardInit";
+import { useAuth } from "@/app/(frontend)/(auth)/useAuth";
+import { useDashboardInit } from "@/app/(frontend)/(dashboard)/dashboard/useDashboardInit";
 import {
   SectionKey,
   MenuConfigUtils,
@@ -28,11 +28,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     isReady,
     error: dashboardError,
     user,
-    currentUser, // Get raw current user object for image access
     availableOffices,
     selectedOffice,
     switchOffice,
-    hasPermission,
     clearError,
     retry,
     redirectToLogin,

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import UserService from './user.service';
-import type { User, UserResponse } from '@/types/user.types';
+import type { User } from '@/types/user.types';
 import type { Office, Role, UpdateOfficeUserRequest, CreateOfficeUserRequest } from './user.types';
 
 interface UseUserState {
