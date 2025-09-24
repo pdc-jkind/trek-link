@@ -20,6 +20,7 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
+      "@/fe/*": ["./src/app/(frontend)/*"],
       "@/fe/lib/*": ["./src/app/(frontend)/lib/*"],
       "@/items/*": ["./src/app/(frontend)/(dashboard)/items/*"]
     }
