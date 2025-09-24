@@ -1,20 +1,18 @@
-// src\app\(dashboard)\items\components\ItemMasterModal.tsx
+// src/app/(frontend)/(dashboard)/items/components/ItemMasterModal.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { X, Save, AlertCircle, ChevronDown } from "lucide-react";
-import {
-  ItemMaster,
-  CreateItemMasterPayload,
-  UpdateItemMasterPayload,
-} from "../items.type";
-import { Office } from "../../offices/office.type";
+import { Tables, TablesInsert, TablesUpdate } from "@/types/database";
+
+type ItemMaster = Tables<"item_masters">;
+type Office = Tables<"offices">;
 
 interface ItemMasterModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (
-    data: CreateItemMasterPayload | UpdateItemMasterPayload
+    data: TablesInsert<"item_masters"> | TablesUpdate<"item_masters">
   ) => Promise<{ success: boolean; error?: string }>;
   itemMaster?: ItemMaster | null;
   mode: "create" | "edit";
@@ -37,6 +35,7 @@ export const ItemMasterModal: React.FC<ItemMasterModalProps> = ({
     name: "",
     type: "regular" as "regular" | "inventory",
     office_id: "",
+    img_url: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -49,14 +48,16 @@ export const ItemMasterModal: React.FC<ItemMasterModalProps> = ({
       if (mode === "edit" && itemMaster) {
         setFormData({
           name: itemMaster.name,
-          type: itemMaster.type,
+          type: itemMaster.type as "regular" | "inventory",
           office_id: itemMaster.office_id || "",
+          img_url: itemMaster.img_url || "",
         });
       } else {
         setFormData({
           name: "",
           type: "regular",
           office_id: "",
+          img_url: "",
         });
       }
       setErrors({});
@@ -91,9 +92,9 @@ export const ItemMasterModal: React.FC<ItemMasterModalProps> = ({
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = "Nama kategori harus diisi";
+      newErrors.name = "Jenis mobil / Nama Barang harus diisi";
     } else if (nameExists) {
-      newErrors.name = "Nama kategori sudah ada";
+      newErrors.name = "Jenis mobil / Nama Barang sudah ada";
     }
 
     if (!formData.office_id.trim()) {
@@ -112,12 +113,19 @@ export const ItemMasterModal: React.FC<ItemMasterModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      const payload =
-        mode === "edit" && itemMaster
-          ? { id: itemMaster.id, ...formData }
-          : formData;
+      const payload = {
+        name: formData.name,
+        type: formData.type,
+        office_id: formData.office_id || null,
+        img_url: formData.img_url || null,
+      };
 
-      const result = await onSave(payload);
+      const finalPayload =
+        mode === "edit" && itemMaster
+          ? { id: itemMaster.id, ...payload }
+          : payload;
+
+      const result = await onSave(finalPayload);
 
       if (result.success) {
         onClose();
@@ -125,7 +133,7 @@ export const ItemMasterModal: React.FC<ItemMasterModalProps> = ({
         setErrors({ submit: result.error || "Terjadi kesalahan" });
       }
     } catch (error) {
-      setErrors({ submit: `Terjadi kesalahan tidak terduga error: ${error}` });
+      setErrors({ submit: `Terjadi kesalahan tidak terduga: ${error}` });
     } finally {
       setIsSubmitting(false);
     }
@@ -195,7 +203,7 @@ export const ItemMasterModal: React.FC<ItemMasterModalProps> = ({
           {/* Nama Kategori */}
           <div>
             <label className="block text-sm font-semibold text-gray-900 mb-2">
-              Nama Kategori *
+              Jenis Mobil / Nama Barang *
             </label>
             <input
               type="text"
@@ -206,13 +214,40 @@ export const ItemMasterModal: React.FC<ItemMasterModalProps> = ({
                   ? "border-red-300 focus:ring-red-500 bg-red-50"
                   : "border-gray-300 focus:ring-blue-500 focus:border-blue-500 bg-white"
               }`}
-              placeholder="Masukkan nama kategori"
+              placeholder="Masukkan nama mobil / Barang"
               disabled={isSubmitting}
             />
             {(errors.name || nameExists) && (
               <p className="mt-2 text-sm text-red-700 font-medium">
-                {errors.name || (nameExists ? "Nama kategori sudah ada" : "")}
+                {errors.name || (nameExists ? "Jenis mobil sudah ada" : "")}
               </p>
+            )}
+          </div>
+
+          {/* Image URL */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              URL Gambar
+            </label>
+            <input
+              type="url"
+              value={formData.img_url}
+              onChange={(e) => handleInputChange("img_url", e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium placeholder-gray-500 bg-white transition-all"
+              placeholder="https://example.com/image.jpg"
+              disabled={isSubmitting}
+            />
+            {formData.img_url && (
+              <div className="mt-2 flex justify-center">
+                <img
+                  src={formData.img_url}
+                  alt="Preview"
+                  className="w-20 h-20 object-cover rounded-lg border border-gray-200"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                />
+              </div>
             )}
           </div>
 
@@ -228,7 +263,7 @@ export const ItemMasterModal: React.FC<ItemMasterModalProps> = ({
               disabled={isSubmitting}
             >
               <option value="regular" className="text-gray-900">
-                Regular
+                Regular (KF)
               </option>
               <option value="inventory" className="text-gray-900">
                 Inventory
