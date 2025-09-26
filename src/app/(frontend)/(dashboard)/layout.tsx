@@ -1,10 +1,10 @@
-// src/app/(dashboard)/layout.tsx
+// src/app/(frontend)/(dashboard)/layout.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import TopBar from "@/app/(frontend)/(dashboard)/components/TopBar";
-import Sidebar from "@/app/(frontend)/(dashboard)/components/Sidebar";
+import TopBar from "@/app/(frontend)/(dashboard)/components/layout/TopBar";
+import Sidebar from "@/app/(frontend)/(dashboard)/components/layout/Sidebar";
 import { useAuth } from "@/app/(frontend)/(auth)/useAuth";
 import { useDashboardInit } from "@/app/(frontend)/(dashboard)/dashboard/useDashboardInit";
 import {
@@ -17,7 +17,8 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
+// Separate component for dashboard content to ensure theme initialization
+const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
   const pathname = usePathname();
   const router = useRouter();
   const { logout } = useAuth();
@@ -151,10 +152,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   // Show loading screen while initializing
   if (isInitializing) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center transition-colors duration-200">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Memuat dashboard...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 dark:border-indigo-400 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-300">
+            Memuat dashboard...
+          </p>
         </div>
       </div>
     );
@@ -163,23 +166,25 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   // Show error screen if dashboard initialization failed
   if (dashboardError && !isReady) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center transition-colors duration-200">
         <div className="text-center max-w-md mx-auto p-6">
-          <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">
+          <div className="text-red-500 dark:text-red-400 text-6xl mb-4">⚠️</div>
+          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">
             Terjadi Kesalahan
           </h2>
-          <p className="text-gray-600 mb-6">{dashboardError}</p>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
+            {dashboardError}
+          </p>
           <div className="flex justify-center gap-4">
             <button
               onClick={retry}
-              className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+              className="bg-indigo-600 dark:bg-indigo-500 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors"
             >
               Coba Lagi
             </button>
             <button
               onClick={redirectToLogin}
-              className="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+              className="bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 px-6 py-2 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors"
             >
               Kembali ke Login
             </button>
@@ -192,9 +197,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   // Don't render if not ready or no user data
   if (!isReady || !user || !selectedOffice) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center transition-colors duration-200">
         <div className="text-center">
-          <div className="animate-pulse text-gray-400">
+          <div className="animate-pulse text-gray-400 dark:text-gray-500">
             Mempersiapkan dashboard...
           </div>
         </div>
@@ -203,7 +208,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors duration-200">
       <div className="flex min-h-screen relative">
         {/* Fixed Sidebar */}
         <Sidebar
@@ -245,7 +250,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           />
 
           {/* Scrollable Main Content */}
-          <main className="flex-1 p-4 lg:p-6 overflow-y-auto bg-gradient-to-br from-slate-50 to-blue-50 min-h-0">
+          <main className="flex-1 p-4 lg:p-6 overflow-y-auto bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-800 dark:to-gray-900 min-h-0 transition-colors duration-200">
             <div className="transition-all duration-500 ease-in-out max-w-full">
               {children}
             </div>
@@ -256,17 +261,17 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       {/* Enhanced Change Password Modal with transparent blur background */}
       {showChangePasswordModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/30 backdrop-blur-sm z-50 transition-all duration-300">
-          <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-2xl p-6 w-96 text-center transform transition-all duration-300 mx-4 border border-white/20">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">
+          <div className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-md rounded-xl shadow-2xl p-6 w-96 text-center transform transition-all duration-300 mx-4 border border-white/20 dark:border-gray-700/20">
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">
               Ganti Password
             </h2>
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
               Fitur ganti password akan segera tersedia.
             </p>
             <div className="flex justify-center gap-4">
               <button
                 onClick={hideChangePasswordModal}
-                className="bg-white/80 backdrop-blur-sm text-gray-700 font-semibold px-6 py-2.5 rounded-lg hover:bg-white/90 border border-gray-200 transform hover:scale-105 transition-all duration-300 shadow-lg"
+                className="bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm text-gray-700 dark:text-gray-200 font-semibold px-6 py-2.5 rounded-lg hover:bg-white/90 dark:hover:bg-gray-700/90 border border-gray-200 dark:border-gray-600 transform hover:scale-105 transition-all duration-300 shadow-lg"
               >
                 Tutup
               </button>
@@ -278,7 +283,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       {/* Enhanced Error Toast with blur effect */}
       {dashboardError && isReady && (
         <div className="fixed top-4 right-4 z-50">
-          <div className="bg-red-100/90 backdrop-blur-md border text-red-700 px-4 py-3 rounded-xl shadow-2xl max-w-sm border-white/20">
+          <div className="bg-red-100/90 dark:bg-red-900/90 backdrop-blur-md border text-red-700 dark:text-red-200 px-4 py-3 rounded-xl shadow-2xl max-w-sm border-white/20 dark:border-red-800/20">
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-sm font-medium">Peringatan</p>
@@ -286,7 +291,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
               </div>
               <button
                 onClick={clearError}
-                className="ml-2 text-red-400 hover:text-red-600 transform hover:scale-110 transition-all duration-300"
+                className="ml-2 text-red-400 dark:text-red-300 hover:text-red-600 dark:hover:text-red-100 transform hover:scale-110 transition-all duration-300"
               >
                 ×
               </button>
@@ -296,6 +301,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       )}
     </div>
   );
+};
+
+// Main layout wrapper with ThemeInitializer
+const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
+  return <DashboardContent>{children}</DashboardContent>;
 };
 
 export default DashboardLayout;

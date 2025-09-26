@@ -17,7 +17,7 @@ import {
   Table,
   StatusBadge,
   ActionButton,
-} from "../components/ui";
+} from "@/fe/components/index";
 import { UserAssignmentModal } from "./UserAssignmentModal";
 import { useUser } from "./useUser";
 
@@ -395,7 +395,7 @@ const UsersPage: React.FC = () => {
           });
         }
 
-        return <ActionButton mode="multiple" actions={actions} />;
+        return <ActionButton mode="multiple" onClick={actions} />;
       },
     },
   ];
@@ -424,7 +424,7 @@ const UsersPage: React.FC = () => {
                 Terjadi Kesalahan
               </h3>
               <p className="text-gray-600 mb-4">{error}</p>
-              <ActionButton onClick={handleRefresh} variant="purple">
+              <ActionButton onClick={handleRefresh} variant="primary">
                 <RefreshCw className="w-4 h-4" />
                 Coba Lagi
               </ActionButton>
@@ -454,7 +454,7 @@ const UsersPage: React.FC = () => {
           actions={
             <ActionButton
               onClick={handleRefresh}
-              variant="blue"
+              variant="success"
               disabled={refreshing}
             >
               <RefreshCw

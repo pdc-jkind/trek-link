@@ -10,11 +10,7 @@ import {
   Settings,
   Palette,
 } from "lucide-react";
-import {
-  Card,
-  ActionButton,
-  PageHeader,
-} from "@/app/(frontend)/(dashboard)/components/ui";
+import { Card, ActionButton, PageHeader } from "@/fe/components/index";
 
 // Status types for demo
 type StatusType =
@@ -78,7 +74,7 @@ const StatusPage = ({
         {customConfig?.actionButton && (
           <ActionButton
             onClick={customConfig.actionButton.onClick}
-            variant="blue"
+            variant="primary"
           >
             {customConfig.actionButton.text}
           </ActionButton>
@@ -237,7 +233,7 @@ const HelpPage: React.FC = () => {
 
                   <ActionButton
                     onClick={() => handleStatusTest(type)}
-                    variant="purple"
+                    variant="secondary"
                     className="text-xs"
                   >
                     <Eye className="w-4 h-4" />

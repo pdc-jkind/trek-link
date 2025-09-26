@@ -11,7 +11,7 @@ import {
   Table,
   ActionButton,
   StatusBadge,
-} from "../components/ui";
+} from "@/fe/components/index";
 
 interface ReceptionItem {
   id: string;
@@ -250,7 +250,7 @@ const ReceptionPage: React.FC = () => {
           actions={
             <>
               {/* <ActionButton variant="blue">Filter</ActionButton> */}
-              <ActionButton variant="purple" onClick={handleAddItem}>
+              <ActionButton variant="primary" onClick={handleAddItem}>
                 <Plus className="w-5 h-5" />
                 <span>Tambah Barang</span>
               </ActionButton>
@@ -286,7 +286,7 @@ const ReceptionPage: React.FC = () => {
 
         {(searchTerm || selectedCategory) && filteredItems.length === 0 && (
           <div className="text-center py-4">
-            <ActionButton variant="blue" onClick={handleResetFilters}>
+            <ActionButton variant="success" onClick={handleResetFilters}>
               Reset Filter
             </ActionButton>
           </div>
