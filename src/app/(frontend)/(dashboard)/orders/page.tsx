@@ -21,7 +21,7 @@ import {
   Table,
   ActionButton,
   StatusBadge,
-} from "../components/ui";
+} from "@/fe/components/index";
 
 interface OrderItem {
   itemId: string;
@@ -441,7 +441,7 @@ const OrdersPage: React.FC = () => {
           actions={
             <>
               {/* <ActionButton variant="blue">Filter</ActionButton> */}
-              <ActionButton variant="purple" onClick={handleAddOrder}>
+              <ActionButton variant="primary" onClick={handleAddOrder}>
                 <Plus className="w-5 h-5" />
                 <span>Buat Pesanan</span>
               </ActionButton>
@@ -483,7 +483,7 @@ const OrdersPage: React.FC = () => {
         {(searchTerm || selectedStatus || selectedPriority) &&
           filteredOrders.length === 0 && (
             <div className="text-center py-4">
-              <ActionButton variant="blue" onClick={handleResetFilters}>
+              <ActionButton variant="secondary" onClick={handleResetFilters}>
                 Reset Filter
               </ActionButton>
             </div>

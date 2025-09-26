@@ -18,7 +18,6 @@ export class AuthService {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         const supabase = this.getClient();
-        const startTime = Date.now();
 
         const {
           data: { session },
@@ -76,8 +75,6 @@ export class AuthService {
       for (let attempt = 1; attempt <= maxDbRetries; attempt++) {
         try {
           const supabase = this.getClient();
-          const startTime = Date.now();
-
           const { data, error } = await supabase
             .from("users_with_office_assignment")
             .select("*")

@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import { X, Save, AlertCircle, Plus, Minus, Info } from "lucide-react";
-import { Tables, TablesInsert, TablesUpdate } from "@/types/database";
+import { Tables } from "@/types/database";
 
 type ItemMaster = Tables<"item_masters">;
 type ItemVariant = Tables<"item_variants">;
@@ -49,7 +49,6 @@ export const ItemModal: React.FC<ItemModalProps> = ({
   mode,
   checkItemCodeExists,
   generateItemCode,
-  generateSequentialCodes,
 }) => {
   const [formData, setFormData] = useState({
     item_code: "",

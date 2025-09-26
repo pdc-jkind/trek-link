@@ -3,7 +3,7 @@
 
 import React from "react";
 import { Grid, Layers, Tag } from "lucide-react";
-import { ActionButton } from "@/fe/(dashboard)/components/ui/ActionButton";
+import { ActionButton } from "@/app/(frontend)/(dashboard)/components/actions/ActionButton";
 
 type ViewMode = "items" | "masters" | "variants";
 

@@ -3,8 +3,8 @@
 
 import React from "react";
 import { Package, Tag, ChevronDown, ChevronRight } from "lucide-react";
-import { EmptyState } from "@/items/components/ui/EmptyState";
-import { LoadingSpinner } from "@/items/components/ui/LoadingSpinner";
+import { EmptyState } from "@/app/(frontend)/(dashboard)/components/feedback/EmptyState";
+import { LoadingSpinner } from "@/app/(frontend)/(dashboard)/components/feedback/LoadingSpinner";
 import { ItemsTableActions } from "./ItemsTableActions";
 import { Tables } from "@/types/database";
 

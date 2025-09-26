@@ -17,7 +17,7 @@ import {
   Table,
   StatusBadge,
   ActionButton,
-} from "../components/ui";
+} from "@/fe/components/index";
 import { useOffice } from "./useOffice";
 import { OfficeModal } from "./components/OfficeModal";
 import type { Office, OfficeType } from "./office.type";
@@ -257,7 +257,7 @@ const OfficesPage: React.FC = () => {
                 Error Loading Offices
               </h3>
               <p className="text-gray-600 mb-4">{error}</p>
-              <ActionButton onClick={handleRefresh} variant="blue">
+              <ActionButton onClick={handleRefresh} variant="primary">
                 <RefreshCw className="w-4 h-4" />
                 Try Again
               </ActionButton>
@@ -289,7 +289,7 @@ const OfficesPage: React.FC = () => {
             <div className="flex gap-2">
               <ActionButton
                 onClick={handleRefresh}
-                variant="blue"
+                variant="secondary"
                 disabled={refreshing}
               >
                 <RefreshCw
@@ -297,7 +297,7 @@ const OfficesPage: React.FC = () => {
                 />
                 Refresh
               </ActionButton>
-              <ActionButton onClick={handleAddOffice} variant="purple">
+              <ActionButton onClick={handleAddOffice} variant="warning">
                 <Plus className="w-5 h-5" />
                 <span>Tambah Office</span>
               </ActionButton>

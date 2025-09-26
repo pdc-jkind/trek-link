@@ -36,7 +36,6 @@ export const useAuth = () => {
     isDataStale,
   } = useUserStore();
 
-
   // Convert Supabase session user to AuthUser format
   const sessionUserToAuthUser = useCallback((sessionUser: any): AuthUser => {
     const authUser = {
@@ -83,7 +82,7 @@ export const useAuth = () => {
         }
       } catch (error: any) {
         if (mountedRef.current) {
-          setError("Gagal memuat profil pengguna");
+          setError(`Gagal memuat profil pengguna dengan error : ${error}`);
         }
       }
     },
@@ -106,21 +105,27 @@ export const useAuth = () => {
           // Enhanced logic for different events
           let shouldProcessEvent = true;
           let shouldReloadProfile = false;
-          
+
           switch (event) {
             case "INITIAL_SESSION":
               shouldReloadProfile = isDataStale();
               isInitializedRef.current = true;
               break;
-              
+
             case "SIGNED_IN":
               // More sophisticated phantom event detection
-              if (isInitializedRef.current && authUser && authUser.id === session.user.id) {
+              if (
+                isInitializedRef.current &&
+                authUser &&
+                authUser.id === session.user.id
+              ) {
                 // Check if this is really just a token refresh by comparing user data
                 const sessionAuthUser = sessionUserToAuthUser(session.user);
-                const isUserDataSame = JSON.stringify(authUser) === JSON.stringify(sessionAuthUser);
-                
-                if (isUserDataSame && !isDataStale(5)) { // Less than 5 minutes old data
+                const isUserDataSame =
+                  JSON.stringify(authUser) === JSON.stringify(sessionAuthUser);
+
+                if (isUserDataSame && !isDataStale(5)) {
+                  // Less than 5 minutes old data
                   shouldProcessEvent = false;
                 } else {
                   shouldReloadProfile = true;
@@ -129,15 +134,15 @@ export const useAuth = () => {
                 shouldReloadProfile = true;
               }
               break;
-              
+
             case "TOKEN_REFRESHED":
               shouldReloadProfile = false;
               break;
-              
+
             default:
               shouldReloadProfile = false;
           }
-          
+
           if (shouldProcessEvent) {
             // Use session.user directly from callback - more reliable than getCurrentUser()
             const sessionAuthUser = sessionUserToAuthUser(session.user);
@@ -149,7 +154,10 @@ export const useAuth = () => {
 
               // Load profile based on event and conditions
               if (shouldReloadProfile) {
-                await loadUserProfile(sessionAuthUser.id, event === "SIGNED_IN");
+                await loadUserProfile(
+                  sessionAuthUser.id,
+                  event === "SIGNED_IN"
+                );
               }
             }
           }
@@ -168,7 +176,9 @@ export const useAuth = () => {
         }
       } catch (error: any) {
         if (mountedRef.current) {
-          setError("Terjadi kesalahan saat perubahan status auth");
+          setError(
+            `Terjadi kesalahan saat perubahan status auth, dengan error : ${error}`
+          );
           setLoading(false);
         }
       }
@@ -184,6 +194,7 @@ export const useAuth = () => {
     setError,
     sessionUserToAuthUser,
     authUser,
+    isDataStale,
   ]);
 
   // Initialize auth using store actions
@@ -216,7 +227,9 @@ export const useAuth = () => {
       } catch (error: any) {
         if (mountedRef.current) {
           setAuthUser(null);
-          setError("Gagal menginisialisasi autentikasi");
+          setError(
+            `Gagal menginisialisasi autentikasi, dengan error : ${error}`
+          );
         }
       } finally {
         if (mountedRef.current) {
@@ -236,7 +249,14 @@ export const useAuth = () => {
         authListenerRef.current = null;
       }
     };
-  }, []); // Empty dependency array - run once
+  }, [
+    clearUser,
+    loadUserProfile,
+    setAuthUser,
+    setError,
+    setLoading,
+    setupAuthListener,
+  ]); // Empty dependency array - run once
 
   // Auth actions using store
   const login = useCallback(

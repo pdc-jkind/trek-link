@@ -2,11 +2,9 @@
 "use client";
 
 import { Users, BarChart3, Clock, Plus, FileText } from "lucide-react";
-import {
-  Card,
-  StatsGrid,
-  ActionButton,
-} from "@/app/(frontend)/(dashboard)/components/ui";
+import { Card } from "@/fe/components/layout/Card"; //@/app/(frontend)/(dashboard)/components/ui
+import { StatsGrid } from "@/fe/components/data-display/StatsGrid";
+import { ActionButton } from "@/fe/components/actions/ActionButton";
 
 // Dummy data
 const statsData = [
@@ -101,17 +99,17 @@ const QuickActions = () => {
     <Card>
       <h3 className="text-gray-900 text-lg font-semibold mb-4">Aksi Cepat</h3>
       <div className="space-y-3">
-        <ActionButton onClick={handleAddItem} variant="purple">
+        <ActionButton onClick={handleAddItem} variant="primary">
           <Plus className="w-5 h-5" />
           <span>Tambah Barang</span>
         </ActionButton>
 
-        <ActionButton onClick={handleCreateReport} variant="blue">
+        <ActionButton onClick={handleCreateReport} variant="secondary">
           <FileText className="w-5 h-5" />
           <span>Buat Laporan</span>
         </ActionButton>
 
-        <ActionButton onClick={handleManageUsers} variant="green">
+        <ActionButton onClick={handleManageUsers} variant="warning">
           <Users className="w-5 h-5" />
           <span>Kelola User</span>
         </ActionButton>

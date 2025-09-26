@@ -25,8 +25,44 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="id">
-      <body className={`${poppins.variable} ${poppins.className}`}>
+    <html lang="id" suppressHydrationWarnings>
+      <head>
+        <meta name="theme-color" content="#ffffff" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                // Prevent FOUC (Flash of Unstyled Content) by applying theme immediately
+                const theme = localStorage.getItem('theme-storage');
+                const themeData = theme ? JSON.parse(theme) : null;
+                const selectedTheme = themeData?.state?.theme || 'system';
+                
+                let effectiveTheme;
+                if (selectedTheme === 'system') {
+                  effectiveTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                } else {
+                  effectiveTheme = selectedTheme;
+                }
+                
+                document.documentElement.classList.remove('light', 'dark');
+                document.documentElement.classList.add(effectiveTheme);
+                
+                // Update meta theme-color
+                const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+                if (metaThemeColor) {
+                  metaThemeColor.setAttribute('content', effectiveTheme === 'dark' ? '#1f2937' : '#ffffff');
+                }
+              } catch (e) {
+                // Fallback to light theme
+                document.documentElement.classList.add('light');
+              }
+            `,
+          }}
+        />
+      </head>
+      <body
+        className={`${poppins.variable} ${poppins.className} transition-colors duration-200`}
+      >
         {children}
       </body>
     </html>

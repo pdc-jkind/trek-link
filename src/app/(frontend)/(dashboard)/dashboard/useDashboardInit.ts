@@ -1,9 +1,13 @@
 // src/app/(dashboard)/hooks/useDashboardInit.ts
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { useUserStore, getUserOfficeInfo, getUserRole } from '@/app/(frontend)/store/user.store';
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useRouter } from "next/navigation";
+import {
+  useUserStore,
+  getUserOfficeInfo,
+  getUserRole,
+} from "@/app/(frontend)/store/user.store";
 
 interface DashboardInitState {
   isInitializing: boolean;
@@ -20,7 +24,7 @@ interface OfficeOption {
 
 export const useDashboardInit = () => {
   const router = useRouter();
-  
+
   // Get user store state and actions
   const {
     currentUser,
@@ -62,10 +66,10 @@ export const useDashboardInit = () => {
           error: null,
         });
       } else if (!isAuthenticated) {
-        router.replace('/login');
+        router.replace("/login");
       } else {
         // Keep initializing state - data might still be loading
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
           isInitializing: true,
           error: null,
@@ -79,7 +83,13 @@ export const useDashboardInit = () => {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [isAuthenticated, currentUser?.id, allUserOffices?.length, router]);
+  }, [
+    isAuthenticated,
+    currentUser,
+    currentUser?.id,
+    allUserOffices?.length,
+    router,
+  ]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -92,23 +102,26 @@ export const useDashboardInit = () => {
   }, []);
 
   // Handle office switching
-  const handleOfficeSwitch = useCallback((officeId: string) => {
-    try {
-      switchOffice(officeId);
-    } catch (error: any) {
-      console.error('Error switching office:', error);
-      setState(prev => ({
-        ...prev,
-        error: 'Gagal mengganti kantor',
-      }));
-    }
-  }, [switchOffice]);
+  const handleOfficeSwitch = useCallback(
+    (officeId: string) => {
+      try {
+        switchOffice(officeId);
+      } catch (error: any) {
+        console.error("Error switching office:", error);
+        setState((prev) => ({
+          ...prev,
+          error: "Gagal mengganti kantor",
+        }));
+      }
+    },
+    [switchOffice]
+  );
 
   // Get available offices
   const availableOffices = useMemo((): OfficeOption[] => {
     if (!allUserOffices) return [];
-    
-    return allUserOffices.map(user => ({
+
+    return allUserOffices.map((user) => ({
       id: user.office_id,
       name: user.office_name,
       type: user.office_type,
@@ -119,7 +132,7 @@ export const useDashboardInit = () => {
   // Get current selected office
   const selectedOffice = useMemo((): OfficeOption | null => {
     if (!currentUser) return null;
-    
+
     return {
       id: currentUser.office_id,
       name: currentUser.office_name,
@@ -131,10 +144,10 @@ export const useDashboardInit = () => {
   // Get user info
   const userInfo = useMemo(() => {
     if (!currentUser) return null;
-    
+
     return {
       id: currentUser.id,
-      name: currentUser.email.split('@')[0],
+      name: currentUser.email.split("@")[0],
       email: currentUser.email,
       role: {
         id: currentUser.role_id,
@@ -158,7 +171,7 @@ export const useDashboardInit = () => {
 
   // Clear error function
   const clearError = useCallback(() => {
-    setState(prev => ({ ...prev, error: null }));
+    setState((prev) => ({ ...prev, error: null }));
   }, []);
 
   // Retry initialization
@@ -172,36 +185,36 @@ export const useDashboardInit = () => {
 
   // Force redirect to login
   const redirectToLogin = useCallback(() => {
-    router.replace('/login');
+    router.replace("/login");
   }, [router]);
 
   return {
     // Loading states
     isInitializing: state.isInitializing,
     isReady: state.isReady,
-    
+
     // Error state
     error: state.error,
-    
+
     // User data
     user: userInfo,
     currentUser,
-    
+
     // Office data
     availableOffices,
     selectedOffice,
-    
+
     // Data freshness
     isDataStale: isDataStaleWarning,
     lastFetched,
-    
+
     // Actions
     switchOffice: handleOfficeSwitch,
     hasPermission,
     clearError,
     retry,
     redirectToLogin,
-    
+
     // Helper functions
     getUserOfficeInfo,
     getUserRole,

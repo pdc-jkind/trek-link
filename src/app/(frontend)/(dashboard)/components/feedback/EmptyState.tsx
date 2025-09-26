@@ -2,7 +2,7 @@
 "use client";
 
 import React from "react";
-import { ActionButton } from "@/fe/(dashboard)/components/ui/ActionButton";
+import { ActionButton } from "@/app/(frontend)/(dashboard)/components/actions/ActionButton";
 
 interface EmptyStateProps {
   icon: React.ReactNode;
