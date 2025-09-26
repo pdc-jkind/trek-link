@@ -13,8 +13,8 @@ import { ItemsTableFooter } from "@/items/components/ItemsTableFooter";
 import { ItemsStatistics } from "@/items/components/ItemsStatistics";
 import { ItemsLoadingState } from "@/items/components/ItemsLoadingState";
 import { ItemsErrorState } from "@/items/components/ItemsErrorState";
-import { ConfirmDialog } from "@/items/components/common/ConfirmDialog";
-import { Card } from "@/fe/(dashboard)/components/ui/Card";
+import { ConfirmDialog } from "@/app/(frontend)/(dashboard)/components/feedback/ConfirmDialog";
+import { Card } from "@/app/(frontend)/(dashboard)/components/layout/Card";
 import {
   useItemsPage,
   useItemMasters,
@@ -100,13 +100,11 @@ const ItemsPage: React.FC = () => {
     items,
     itemsCount,
     itemsLoading,
-    itemsError,
     updateItemsFilters,
     refetchItems,
     offices,
     statistics,
     generateItemCode,
-    getAvailableUnits,
     loading: mainLoading,
     error: mainError,
   } = useItemsPage(filters);

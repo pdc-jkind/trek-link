@@ -3,8 +3,8 @@
 
 import React from "react";
 import { Package, Box, Archive, Layers } from "lucide-react";
-import { Card } from "@/fe/(dashboard)/components/ui/Card"; //../../components/ui/Card
-import { StatsCard } from "@/items/components/ui/StatsCard"; //../../components/ui/Card
+import { Card } from "@/app/(frontend)/(dashboard)/components/layout/Card";
+import { StatsCard } from "@/app/(frontend)/(dashboard)/components/data-display/StatsCard";
 
 interface ItemsStatisticsProps {
   statistics: {
