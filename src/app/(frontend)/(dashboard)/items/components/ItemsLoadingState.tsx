@@ -2,7 +2,7 @@
 "use client";
 
 import React from "react";
-import { LoadingSpinner } from "@/items/components/ui/LoadingSpinner";
+import { LoadingSpinner } from "@/app/(frontend)/(dashboard)/components/feedback/LoadingSpinner";
 
 interface ItemsLoadingStateProps {
   message?: string;

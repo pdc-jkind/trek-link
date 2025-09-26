@@ -3,7 +3,7 @@
 
 import React from "react";
 import { Package, Filter, Plus } from "lucide-react";
-import { ActionButton } from "@/fe/(dashboard)/components/ui/ActionButton"; // ../../components/ui/ActionButton
+import { ActionButton } from "@/app/(frontend)/(dashboard)/components/actions/ActionButton"; // ../../components/ui/ActionButton
 
 interface ItemsHeaderProps {
   viewMode: "items" | "masters" | "variants";

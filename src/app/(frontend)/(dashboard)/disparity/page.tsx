@@ -10,7 +10,7 @@ import {
   Table,
   StatusBadge,
   PageHeader,
-} from "@/app/(frontend)/(dashboard)/components/ui";
+} from "@/fe/components/index";
 
 // Dummy data
 const statsData = [
@@ -196,14 +196,14 @@ const DisparityPage: React.FC = () => {
 
   const headerActions = (
     <>
-      <ActionButton onClick={handlePeriodChange} variant="green">
+      <ActionButton onClick={handlePeriodChange} variant="primary">
         <Calendar className="w-4 h-4" />
         <span>Periode</span>
       </ActionButton>
 
       <ActionButton
         onClick={handleExport}
-        variant="purple"
+        variant="secondary"
         disabled={isExporting}
       >
         <Download className={`w-4 h-4 ${isExporting ? "animate-pulse" : ""}`} />
