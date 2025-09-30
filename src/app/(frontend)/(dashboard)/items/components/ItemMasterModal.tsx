@@ -2,8 +2,17 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Save, AlertCircle, ChevronDown } from "lucide-react";
+import { Save, AlertCircle } from "lucide-react";
 import { Tables, TablesInsert, TablesUpdate } from "@/types/database";
+import {
+  Modal,
+  ModalContent,
+  ModalFooter,
+  Input,
+  Select,
+  Button,
+  Badge,
+} from "@/fe/components/index";
 
 type ItemMaster = Tables<"item_masters">;
 type Office = Tables<"offices">;
@@ -145,248 +154,175 @@ export const ItemMasterModal: React.FC<ItemMasterModalProps> = ({
     }
   };
 
-  // Get office type badge color
-  const getOfficeTypeBadgeColor = (type: string) => {
+  // Get office type badge variant
+  const getOfficeTypeBadgeVariant = (type: string) => {
     switch (type) {
       case "distributor":
-        return "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-200";
+        return "primary";
       case "grb":
-        return "bg-success-100 text-success-800 dark:bg-success-900/30 dark:text-success-200";
+        return "success";
       case "pdc":
-        return "bg-warning-100 text-warning-800 dark:bg-warning-900/30 dark:text-warning-200";
+        return "warning";
       case "unset":
-        return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200";
       default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200";
+        return "default";
     }
   };
 
-  if (!isOpen) return null;
+  // Transform offices to select options
+  const officeOptions = offices.map((office) => ({
+    value: office.id,
+    label: `${office.name} - ${office.location} (${office.type.toUpperCase()})`,
+  }));
+
+  // Type options
+  const typeOptions = [
+    { value: "regular", label: "Regular (KF)" },
+    { value: "inventory", label: "Inventory" },
+  ];
+
+  // Find selected office for preview
+  const selectedOffice = offices.find(
+    (office) => office.id === formData.office_id
+  );
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50">
-      {/* Enhanced backdrop with blur effect */}
-      <div
-        className="absolute inset-0 bg-black/30 dark:bg-black/50 backdrop-blur-xs animate-fade-in"
-        onClick={handleClose}
-      />
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title={
+        mode === "create" ? "Tambah Kategori Barang" : "Edit Kategori Barang"
+      }
+      size="md"
+      closable={!isSubmitting}
+      closeOnOverlayClick={!isSubmitting}
+    >
+      <ModalContent>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Error Alert */}
+          {errors.submit && (
+            <div className="bg-error-container border-2 border-error/40 rounded-lg p-4 flex items-start space-x-3 animate-slide-down">
+              <AlertCircle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" />
+              <span className="text-error-container-foreground text-sm font-medium">
+                {errors.submit}
+              </span>
+            </div>
+          )}
 
-      {/* Modal content */}
-      <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-modal w-full max-w-md mx-4 border border-gray-200/50 dark:border-gray-700/50 animate-scale-in">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            {mode === "create"
-              ? "Tambah Kategori Barang"
-              : "Edit Kategori Barang"}
-          </h2>
-          <button
-            onClick={handleClose}
+          {/* Nama Kategori */}
+          <Input
+            label="Jenis Mobil / Nama Barang *"
+            value={formData.name}
+            onChange={(e) => handleNameChange(e.target.value)}
+            placeholder="Masukkan nama mobil / Barang"
             disabled={isSubmitting}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-400"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+            error={errors.name || (nameExists ? "Jenis mobil sudah ada" : "")}
+            inputSize="lg"
+            clearable
+            onClear={() => handleNameChange("")}
+          />
 
-        {/* Scrollable Form */}
-        <div className="max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800">
-          <form onSubmit={handleSubmit} className="p-6 space-y-5">
-            {errors.submit && (
-              <div className="bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800 rounded-lg p-4 flex items-start space-x-3 animate-slide-down">
-                <AlertCircle className="w-5 h-5 text-danger-500 flex-shrink-0 mt-0.5" />
-                <span className="text-danger-800 dark:text-danger-200 text-sm font-medium">
-                  {errors.submit}
-                </span>
+          {/* Image URL */}
+          <div className="space-y-2">
+            <Input
+              label="URL Gambar"
+              type="url"
+              value={formData.img_url}
+              onChange={(e) => handleInputChange("img_url", e.target.value)}
+              placeholder="https://example.com/image.jpg"
+              disabled={isSubmitting}
+              inputSize="lg"
+              clearable
+              onClear={() => handleInputChange("img_url", "")}
+            />
+            {formData.img_url && (
+              <div className="flex justify-center animate-fade-in">
+                <img
+                  src={formData.img_url}
+                  alt="Preview"
+                  className="w-20 h-20 object-cover rounded-lg border-2 border-outline shadow-elevation-2"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                />
               </div>
             )}
+          </div>
 
-            {/* Nama Kategori */}
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Jenis Mobil / Nama Barang *
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => handleNameChange(e.target.value)}
-                className={`
-                  form-input w-full px-4 py-3 rounded-lg transition-all duration-200
-                  text-gray-900 dark:text-gray-100 font-medium 
-                  placeholder-gray-500 dark:placeholder-gray-400
-                  bg-white dark:bg-gray-700
-                  ${
-                    errors.name || nameExists
-                      ? "border-danger-300 dark:border-danger-600 focus:ring-danger-500 bg-danger-50 dark:bg-danger-900/20"
-                      : "border-gray-300 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"
-                  }
-                `}
-                placeholder="Masukkan nama mobil / Barang"
-                disabled={isSubmitting}
-              />
-              {(errors.name || nameExists) && (
-                <p className="text-sm text-danger-700 dark:text-danger-300 font-medium animate-slide-down">
-                  {errors.name || (nameExists ? "Jenis mobil sudah ada" : "")}
-                </p>
-              )}
-            </div>
-
-            {/* Image URL */}
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
-                URL Gambar
-              </label>
-              <input
-                type="url"
-                value={formData.img_url}
-                onChange={(e) => handleInputChange("img_url", e.target.value)}
-                className="form-input w-full px-4 py-3 rounded-lg text-gray-900 dark:text-gray-100 font-medium placeholder-gray-500 dark:placeholder-gray-400 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
-                placeholder="https://example.com/image.jpg"
-                disabled={isSubmitting}
-              />
-              {formData.img_url && (
-                <div className="flex justify-center animate-fade-in">
-                  <img
-                    src={formData.img_url}
-                    alt="Preview"
-                    className="w-20 h-20 object-cover rounded-lg border border-gray-200 dark:border-gray-600 shadow-card"
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Tipe Kategori */}
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Tipe Kategori *
-              </label>
-              <select
-                value={formData.type}
-                onChange={(e) => handleInputChange("type", e.target.value)}
-                className="form-select w-full px-4 py-3 rounded-lg text-gray-900 dark:text-gray-100 font-medium bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
-                disabled={isSubmitting}
-              >
-                <option
-                  value="regular"
-                  className="text-gray-900 dark:text-gray-100"
-                >
-                  Regular (KF)
-                </option>
-                <option
-                  value="inventory"
-                  className="text-gray-900 dark:text-gray-100"
-                >
-                  Inventory
-                </option>
-              </select>
-            </div>
-
-            {/* Office Dropdown */}
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Office *
-              </label>
-              <div className="relative">
-                <select
-                  value={formData.office_id}
-                  onChange={(e) =>
-                    handleInputChange("office_id", e.target.value)
-                  }
-                  className={`
-                    form-select w-full px-4 py-3 rounded-lg appearance-none transition-all duration-200
-                    text-gray-900 dark:text-gray-100 font-medium 
-                    bg-white dark:bg-gray-700
-                    ${
-                      errors.office_id
-                        ? "border-danger-300 dark:border-danger-600 focus:ring-danger-500"
-                        : "border-gray-300 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"
-                    }
-                  `}
-                  disabled={isSubmitting || officesLoading}
-                >
-                  <option value="" className="text-gray-500 dark:text-gray-400">
-                    {officesLoading ? "Memuat office..." : "Pilih Office"}
-                  </option>
-                  {offices.map((office) => (
-                    <option
-                      key={office.id}
-                      value={office.id}
-                      className="text-gray-900 dark:text-gray-100"
-                    >
-                      {office.name} - {office.location} (
-                      {office.type.toUpperCase()})
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500 pointer-events-none" />
-              </div>
-
-              {/* Show selected office details */}
-              {formData.office_id && !officesLoading && (
-                <div className="p-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-200 dark:border-primary-800 animate-slide-down">
-                  {(() => {
-                    const selectedOffice = offices.find(
-                      (office) => office.id === formData.office_id
-                    );
-                    return selectedOffice ? (
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-primary-900 dark:text-primary-100">
-                            {selectedOffice.name}
-                          </p>
-                          <p className="text-xs text-primary-700 dark:text-primary-300">
-                            {selectedOffice.location}
-                          </p>
-                        </div>
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${getOfficeTypeBadgeColor(
-                            selectedOffice.type
-                          )}`}
-                        >
-                          {selectedOffice.type.toUpperCase()}
-                        </span>
-                      </div>
-                    ) : null;
-                  })()}
-                </div>
-              )}
-
-              {errors.office_id && (
-                <p className="text-sm text-danger-700 dark:text-danger-300 font-medium animate-slide-down">
-                  {errors.office_id}
-                </p>
-              )}
-            </div>
-          </form>
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/20 rounded-b-xl">
-          <button
-            type="button"
-            onClick={handleClose}
+          {/* Tipe Kategori */}
+          <Select
+            label="Tipe Kategori *"
+            options={typeOptions}
+            value={formData.type}
+            onValueChange={(value) =>
+              handleInputChange("type", value as string)
+            }
             disabled={isSubmitting}
-            className="px-5 py-2.5 text-gray-700 dark:text-gray-200 font-medium bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 disabled:opacity-50 transition-all duration-200"
-          >
-            Batal
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={isSubmitting || nameExists || officesLoading}
-            className="px-5 py-2.5 bg-primary-600 dark:bg-primary-500 text-white font-medium rounded-lg hover:bg-primary-700 dark:hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 flex items-center space-x-2 transition-all duration-200 shadow-lg hover:shadow-card-hover"
-          >
-            {isSubmitting ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Save className="w-4 h-4" />
+            size="lg"
+          />
+
+          {/* Office Dropdown */}
+          <div className="space-y-3">
+            <Select
+              label="Office *"
+              options={officeOptions}
+              value={formData.office_id}
+              onValueChange={(value) =>
+                handleInputChange("office_id", value as string)
+              }
+              placeholder={officesLoading ? "Memuat office..." : "Pilih Office"}
+              disabled={isSubmitting || officesLoading}
+              error={errors.office_id}
+              searchable
+              clearable
+              size="lg"
+            />
+
+            {/* Show selected office details */}
+            {selectedOffice && !officesLoading && (
+              <div className="p-4 bg-primary-container border-2 border-primary/40 rounded-lg animate-slide-down">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-primary-container-foreground">
+                      {selectedOffice.name}
+                    </p>
+                    <p className="text-xs text-primary-container-foreground/80">
+                      {selectedOffice.location}
+                    </p>
+                  </div>
+                  <Badge
+                    variant={getOfficeTypeBadgeVariant(selectedOffice.type)}
+                    size="md"
+                  >
+                    {selectedOffice.type.toUpperCase()}
+                  </Badge>
+                </div>
+              </div>
             )}
-            <span>{isSubmitting ? "Menyimpan..." : "Simpan"}</span>
-          </button>
-        </div>
-      </div>
-    </div>
+          </div>
+        </form>
+      </ModalContent>
+
+      <ModalFooter>
+        <Button
+          variant="outline"
+          onClick={handleClose}
+          disabled={isSubmitting}
+          size="md"
+        >
+          Batal
+        </Button>
+        <Button
+          variant="primary"
+          onClick={handleSubmit}
+          disabled={isSubmitting || nameExists || officesLoading}
+          isLoading={isSubmitting}
+          leftIcon={!isSubmitting && <Save className="w-4 h-4" />}
+          size="md"
+        >
+          {isSubmitting ? "Menyimpan..." : "Simpan"}
+        </Button>
+      </ModalFooter>
+    </Modal>
   );
 };

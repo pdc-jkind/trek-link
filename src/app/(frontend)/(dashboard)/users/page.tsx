@@ -9,14 +9,21 @@ import {
   Users,
   RefreshCw,
   AlertCircle,
+  Search,
 } from "lucide-react";
 import {
   Card,
   PageHeader,
-  SearchFilter,
   Table,
-  StatusBadge,
-  ActionButton,
+  Badge,
+  Button,
+  Input,
+  Select,
+  Spinner,
+  Modal,
+  ModalContent,
+  ModalFooter,
+  ContentWrapper,
 } from "@/fe/components/index";
 import { UserAssignmentModal } from "./UserAssignmentModal";
 import { useUser } from "./useUser";
@@ -46,7 +53,11 @@ const UsersPage: React.FC = () => {
   const [roleFilter, setRoleFilter] = useState("all");
   const [officeFilter, setOfficeFilter] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<DeduplicatedUser | null>(
+    null
+  );
+  const [userToDelete, setUserToDelete] = useState<DeduplicatedUser | null>(
     null
   );
 
@@ -75,7 +86,6 @@ const UsersPage: React.FC = () => {
       const existingUser = userMap.get(user.email);
 
       if (existingUser) {
-        // Add office assignment if it exists
         if (user.office_id && user.role_id) {
           existingUser.offices.push({
             office_id: user.office_id,
@@ -89,7 +99,6 @@ const UsersPage: React.FC = () => {
           });
         }
       } else {
-        // Create new deduplicated user
         const newUser: DeduplicatedUser = {
           id: user.id,
           email: user.email,
@@ -99,7 +108,6 @@ const UsersPage: React.FC = () => {
           offices: [],
         };
 
-        // Add office assignment if it exists
         if (user.office_id && user.role_id) {
           newUser.offices.push({
             office_id: user.office_id,
@@ -187,14 +195,14 @@ const UsersPage: React.FC = () => {
       pdc: { label: "PDC", variant: "info" as const },
       distributor: { label: "Distributor", variant: "success" as const },
       grb: { label: "GRB", variant: "warning" as const },
-      unset: { label: "Unassigned", variant: "error" as const },
+      unset: { label: "Unassigned", variant: "danger" as const },
     };
 
     const config = typeMap[type as keyof typeof typeMap] || {
       label: type,
       variant: "default" as const,
     };
-    return <StatusBadge status={config.label} variant={config.variant} />;
+    return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
   const formatDate = (dateString: string | null) => {
@@ -212,21 +220,22 @@ const UsersPage: React.FC = () => {
     setModalOpen(true);
   };
 
-  const handleDeleteAllUserAssignments = async (user: DeduplicatedUser) => {
-    const officeCount = user.offices.length;
-    const confirmMessage =
-      officeCount > 1
-        ? `Apakah Anda yakin ingin menghapus semua ${officeCount} office assignment untuk user ${user.email}?`
-        : `Apakah Anda yakin ingin menghapus office assignment untuk user ${user.email}?`;
+  const handleDeleteClick = (user: DeduplicatedUser) => {
+    setUserToDelete(user);
+    setDeleteModalOpen(true);
+  };
 
-    if (window.confirm(confirmMessage)) {
-      const success = await deleteAllUserOfficeAssignments(user.id);
+  const handleConfirmDelete = async () => {
+    if (!userToDelete) return;
 
-      if (success) {
-        console.log("All user assignments deleted successfully");
-      } else {
-        alert("Gagal menghapus assignment. Silakan coba lagi.");
-      }
+    const success = await deleteAllUserOfficeAssignments(userToDelete.id);
+
+    if (success) {
+      console.log("All user assignments deleted successfully");
+      setDeleteModalOpen(false);
+      setUserToDelete(null);
+    } else {
+      alert("Gagal menghapus assignment. Silakan coba lagi.");
     }
   };
 
@@ -265,28 +274,28 @@ const UsersPage: React.FC = () => {
   const columns = [
     {
       key: "email",
-      label: "Email",
+      title: "Email",
       render: (value: string, row: DeduplicatedUser) => (
         <div className="flex flex-col">
-          <span className="font-medium text-gray-900">{value}</span>
+          <span className="font-medium text-foreground">{value}</span>
           {row.phone && (
-            <span className="text-sm text-gray-500">{row.phone}</span>
+            <span className="text-sm text-foreground-subtle">{row.phone}</span>
           )}
-          <span
-            className={`text-xs ${
-              row.email_confirmed_at ? "text-green-600" : "text-red-600"
-            }`}
+          <Badge
+            variant={row.email_confirmed_at ? "success" : "danger"}
+            size="sm"
+            className="mt-1 w-fit"
           >
             {row.email_confirmed_at
               ? "Email Terkonfirmasi"
               : "Email Belum Terkonfirmasi"}
-          </span>
+          </Badge>
         </div>
       ),
     },
     {
       key: "offices",
-      label: "Office",
+      title: "Office",
       render: (_: any, row: DeduplicatedUser) => (
         <div className="space-y-2">
           {row.offices.length > 0 ? (
@@ -297,7 +306,7 @@ const UsersPage: React.FC = () => {
               >
                 <div className="flex items-center gap-2">
                   {getOfficeTypeBadge(office.office_type)}
-                  <span className="font-medium text-gray-900 text-sm">
+                  <span className="font-medium text-foreground text-sm">
                     {office.office_name}
                   </span>
                 </div>
@@ -306,7 +315,7 @@ const UsersPage: React.FC = () => {
           ) : (
             <div className="flex items-center gap-2">
               {getOfficeTypeBadge("unset")}
-              <span className="text-sm text-gray-500 italic">
+              <span className="text-sm text-foreground-subtle italic">
                 Belum ada assignment
               </span>
             </div>
@@ -316,7 +325,7 @@ const UsersPage: React.FC = () => {
     },
     {
       key: "roles",
-      label: "Role",
+      title: "Role",
       render: (_: any, row: DeduplicatedUser) => (
         <div className="space-y-2">
           {row.offices.length > 0 ? (
@@ -325,11 +334,11 @@ const UsersPage: React.FC = () => {
                 key={`${office.office_id}-${office.role_id}-${index}`}
                 className="flex flex-col py-1"
               >
-                <span className="text-sm font-medium text-gray-900">
+                <span className="text-sm font-medium text-foreground">
                   {office.role_name}
                 </span>
                 {office.role_description && (
-                  <span className="text-xs text-gray-500 mt-1">
+                  <span className="text-xs text-foreground-subtle mt-1">
                     {office.role_description}
                   </span>
                 )}
@@ -337,7 +346,7 @@ const UsersPage: React.FC = () => {
             ))
           ) : (
             <div className="py-1">
-              <span className="text-sm text-gray-500 italic">
+              <span className="text-sm text-foreground-subtle italic">
                 Belum ada role
               </span>
             </div>
@@ -347,21 +356,21 @@ const UsersPage: React.FC = () => {
     },
     {
       key: "assigned_dates",
-      label: "Tanggal Assign",
+      title: "Tanggal Assign",
       render: (_: any, row: DeduplicatedUser) => (
         <div className="space-y-2">
           {row.offices.length > 0 ? (
             row.offices.map((office, index) => (
               <div
                 key={`${office.office_id}-${office.role_id}-${index}`}
-                className="text-sm text-gray-600 py-1"
+                className="text-sm text-foreground-subtle py-1"
               >
                 {formatDate(office.assigned_at)}
               </div>
             ))
           ) : (
             <div className="py-1">
-              <span className="text-sm text-gray-500 italic">-</span>
+              <span className="text-sm text-foreground-subtle italic">-</span>
             </div>
           )}
         </div>
@@ -369,69 +378,67 @@ const UsersPage: React.FC = () => {
     },
     {
       key: "actions",
-      label: "Aksi",
-      render: (_: any, row: DeduplicatedUser) => {
-        const actions: Array<{
-          label: string;
-          onClick: () => void;
-          icon: React.ElementType;
-          variant: "view" | "edit" | "delete";
-        }> = [
-          {
-            label: row.offices.length > 0 ? "Edit Assignment" : "Assign Office",
-            onClick: () => handleEditUser(row),
-            icon: row.offices.length > 0 ? Edit : Plus,
-            variant: row.offices.length > 0 ? "edit" : "view",
-          },
-        ];
+      title: "Aksi",
+      render: (_: any, row: DeduplicatedUser) => (
+        <div className="flex items-center gap-2">
+          <Button
+            variant={row.offices.length > 0 ? "warning" : "info"}
+            size="sm"
+            onClick={() => handleEditUser(row)}
+            leftIcon={
+              row.offices.length > 0 ? (
+                <Edit className="w-4 h-4" />
+              ) : (
+                <Plus className="w-4 h-4" />
+              )
+            }
+          >
+            {row.offices.length > 0 ? "Edit" : "Assign"}
+          </Button>
 
-        // Only show delete action if user has assignments
-        if (row.offices.length > 0) {
-          actions.push({
-            label: "Delete All Assignments",
-            onClick: () => handleDeleteAllUserAssignments(row),
-            icon: Trash2,
-            variant: "delete",
-          });
-        }
-
-        return <ActionButton mode="multiple" onClick={actions} />;
-      },
+          {row.offices.length > 0 && (
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => handleDeleteClick(row)}
+              leftIcon={<Trash2 className="w-4 h-4" />}
+            ></Button>
+          )}
+        </div>
+      ),
     },
   ];
 
   // Loading state
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="flex items-center gap-2">
-          <RefreshCw className="w-5 h-5 animate-spin" />
-          <span>Memuat data users...</span>
+      <ContentWrapper maxWidth="full">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Spinner size="lg" text="Memuat data users..." />
         </div>
-      </div>
+      </ContentWrapper>
     );
   }
 
   // Error state
   if (error) {
     return (
-      <div className="space-y-6">
-        <Card>
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="text-center">
-              <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Terjadi Kesalahan
-              </h3>
-              <p className="text-gray-600 mb-4">{error}</p>
-              <ActionButton onClick={handleRefresh} variant="primary">
-                <RefreshCw className="w-4 h-4" />
-                Coba Lagi
-              </ActionButton>
-            </div>
-          </div>
-        </Card>
-      </div>
+      <ContentWrapper maxWidth="full">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-foreground mb-2">
+            Terjadi Kesalahan
+          </h3>
+          <p className="text-foreground-subtle mb-4">{error}</p>
+          <Button
+            onClick={handleRefresh}
+            variant="primary"
+            leftIcon={<RefreshCw className="w-4 h-4" />}
+          >
+            Coba Lagi
+          </Button>
+        </div>
+      </ContentWrapper>
     );
   }
 
@@ -447,68 +454,75 @@ const UsersPage: React.FC = () => {
     : "Belum ada data user assignment";
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <PageHeader
-          title={`Data User (${deduplicatedUsers.length})`}
-          actions={
-            <ActionButton
-              onClick={handleRefresh}
-              variant="success"
-              disabled={refreshing}
-            >
+    <ContentWrapper maxWidth="full">
+      <PageHeader
+        title={`Data User`}
+        actions={
+          <Button
+            onClick={handleRefresh}
+            variant="success"
+            disabled={refreshing}
+            leftIcon={
               <RefreshCw
                 className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`}
               />
-              Refresh
-            </ActionButton>
-          }
+            }
+          >
+            Refresh
+          </Button>
+        }
+      />
+
+      {/* User Statistics */}
+      <div className="mb-4 text-sm text-foreground-subtle">
+        Total {deduplicatedUsers.length} unique users dengan {users.length}{" "}
+        total assignments
+      </div>
+
+      {/* Search and Filters */}
+      <div className="space-y-4 mb-6">
+        <Input
+          variant="search"
+          placeholder="Cari email, phone, role, atau office..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          clearable
+          onClear={() => setSearchTerm("")}
         />
 
-        {/* User Statistics */}
-        <div className="mb-4 text-sm text-gray-600">
-          Total {deduplicatedUsers.length} unique users dengan {users.length}{" "}
-          total assignments
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Select
+            options={statusOptions}
+            value={statusFilter}
+            onValueChange={(value) => setStatusFilter(value as string)}
+            placeholder="Pilih Status"
+          />
+          <Select
+            options={roleOptions}
+            value={roleFilter}
+            onValueChange={(value) => setRoleFilter(value as string)}
+            placeholder="Pilih Role"
+            searchable
+          />
+          <Select
+            options={officeOptions}
+            value={officeFilter}
+            onValueChange={(value) => setOfficeFilter(value as string)}
+            placeholder="Pilih Office"
+            searchable
+          />
         </div>
+      </div>
 
-        <SearchFilter
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          searchPlaceholder="Cari email, phone, role, atau office..."
-          filters={[
-            {
-              value: statusFilter,
-              onChange: setStatusFilter,
-              options: statusOptions,
-            },
-            {
-              value: roleFilter,
-              onChange: setRoleFilter,
-              options: roleOptions,
-            },
-            {
-              value: officeFilter,
-              onChange: setOfficeFilter,
-              options: officeOptions,
-            },
-          ]}
-        />
+      <Table columns={columns} data={filteredUsers} emptyText={emptyMessage} />
 
-        <Table
-          columns={columns}
-          data={filteredUsers}
-          emptyMessage={emptyMessage}
-          emptyIcon={Users}
-        />
-
-        {/* Results Info */}
-        {hasActiveFilters && (
-          <div className="mt-4 text-sm text-gray-600">
-            Menampilkan {filteredUsers.length} dari {deduplicatedUsers.length}{" "}
-            user
-          </div>
-        )}
-      </Card>
+      {/* Results Info */}
+      {hasActiveFilters && (
+        <div className="mt-4 text-sm text-foreground-subtle">
+          Menampilkan {filteredUsers.length} dari {deduplicatedUsers.length}{" "}
+          user
+        </div>
+      )}
 
       {/* User Assignment Modal */}
       <UserAssignmentModal
@@ -532,7 +546,42 @@ const UsersPage: React.FC = () => {
         onSave={handleModalSave}
         loading={refreshing}
       />
-    </div>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        title="Konfirmasi Hapus Assignment"
+        size="md"
+      >
+        <ModalContent>
+          <div className="space-y-4">
+            <p className="text-foreground">
+              {userToDelete && userToDelete.offices.length > 1
+                ? `Apakah Anda yakin ingin menghapus semua ${userToDelete.offices.length} office assignment untuk user ${userToDelete.email}?`
+                : `Apakah Anda yakin ingin menghapus office assignment untuk user ${userToDelete?.email}?`}
+            </p>
+            <div className="bg-warning-container border-2 border-warning/40 rounded-lg p-4">
+              <p className="text-sm text-on-warning-container font-medium">
+                Peringatan: Tindakan ini tidak dapat dibatalkan!
+              </p>
+            </div>
+          </div>
+        </ModalContent>
+        <ModalFooter>
+          <Button variant="ghost" onClick={() => setDeleteModalOpen(false)}>
+            Batal
+          </Button>
+          <Button
+            variant="danger"
+            onClick={handleConfirmDelete}
+            leftIcon={<Trash2 className="w-4 h-4" />}
+          >
+            Hapus
+          </Button>
+        </ModalFooter>
+      </Modal>
+    </ContentWrapper>
   );
 };
 

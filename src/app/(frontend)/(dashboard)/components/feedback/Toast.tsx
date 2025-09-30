@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useEffect, useState } from "react";
 import { CheckCircle, XCircle, AlertCircle, Info, X } from "lucide-react";
 
@@ -32,6 +34,13 @@ export const Toast: React.FC<ToastProps> = ({
   const [isVisible, setIsVisible] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
 
+  // Get dynamic colors from CSS variables
+  const getColor = (variable: string) => {
+    if (typeof window === "undefined") return "";
+    const style = getComputedStyle(document.documentElement);
+    return `rgb(${style.getPropertyValue(variable).trim()})`;
+  };
+
   useEffect(() => {
     setIsVisible(true);
 
@@ -51,101 +60,131 @@ export const Toast: React.FC<ToastProps> = ({
     }, 200);
   };
 
-  const typeConfig = {
+  // Dynamic type configuration dengan CSS variables
+  const typeConfig: Record<
+    string,
+    {
+      icon: React.FC<{ className?: string }>;
+      container: string;
+      onContainer: string;
+      border: string;
+    }
+  > = {
     success: {
       icon: CheckCircle,
-      // Menggunakan success variables dari globals.css
-      className: "bg-success/10 border-2 border-success/30",
-      iconClassName: "text-success",
-      titleClassName: "text-success",
-      messageClassName: "text-success",
-      actionClassName: "text-success hover:text-success focus:ring-success",
+      container: "--success-container",
+      onContainer: "--on-success-container",
+      border: "--success",
     },
     error: {
       icon: XCircle,
-      // Menggunakan destructive variables dari globals.css
-      className: "bg-destructive/10 border-2 border-destructive/30",
-      iconClassName: "text-destructive",
-      titleClassName: "text-destructive",
-      messageClassName: "text-destructive",
-      actionClassName:
-        "text-destructive hover:text-destructive focus:ring-destructive",
+      container: "--error-container",
+      onContainer: "--on-error-container",
+      border: "--error",
     },
     warning: {
       icon: AlertCircle,
-      // Menggunakan accent variables dari tailwind.config (untuk warning/amber)
-      className: "bg-accent/10 border-2 border-accent/30",
-      iconClassName: "text-accent",
-      titleClassName: "text-accent",
-      messageClassName: "text-accent",
-      actionClassName: "text-accent hover:text-accent focus:ring-accent",
+      container: "--warning-container",
+      onContainer: "--on-warning-container",
+      border: "--warning",
     },
     info: {
       icon: Info,
-      // Menggunakan primary variables dari globals.css
-      className: "bg-primary/10 border-2 border-primary/30",
-      iconClassName: "text-primary",
-      titleClassName: "text-primary",
-      messageClassName: "text-primary",
-      actionClassName: "text-primary hover:text-primary focus:ring-primary",
+      container: "--info-container",
+      onContainer: "--on-info-container",
+      border: "--info",
     },
   };
 
   const config = typeConfig[type];
   const Icon = config.icon;
 
+  const toastStyle = {
+    backgroundColor: getColor(config.container),
+    borderColor: `${getColor(config.border)}60`, // 38% opacity
+    color: getColor(config.onContainer),
+  };
+
+  const iconStyle = {
+    color: getColor(config.border),
+  };
+
+  const actionStyle = {
+    color: getColor(config.border),
+  };
+
   return (
     <div
       className={cn(
-        "flex items-start gap-3 p-4 rounded-lg shadow-elevation-2",
-        "transition-all duration-200 max-w-md min-w-[320px]",
-        "bg-card border border-border", // Base styling menggunakan card variables
-        config.className,
+        "flex items-start gap-3 p-4 rounded-lg shadow-elevation-3",
+        "transition-all duration-200 max-w-md min-w-[320px] border-2",
         isVisible && !isExiting && "animate-fade-in",
         isExiting && "opacity-0 scale-95"
       )}
+      style={toastStyle}
       role="alert"
     >
-      {/* Icon dengan ukuran yang lebih proporsional */}
-      <Icon
-        className={cn("h-5 w-5 flex-shrink-0 mt-0.5", config.iconClassName)}
-      />
+      {/* Icon */}
+      <Icon className="h-5 w-5 flex-shrink-0 mt-0.5" />
 
       {/* Content */}
       <div className="flex-1 min-w-0">
         {title && (
-          <div className={cn("font-bold text-sm mb-1", config.titleClassName)}>
+          <div
+            className="font-bold text-sm mb-1"
+            style={{ color: getColor(config.onContainer) }}
+          >
             {title}
           </div>
         )}
-        <div className={cn("text-sm leading-relaxed", config.messageClassName)}>
+        <div
+          className="text-sm leading-relaxed"
+          style={{ color: getColor(config.onContainer) }}
+        >
           {message}
         </div>
 
         {action && (
           <button
             onClick={action.onClick}
-            className={cn(
-              "mt-2 text-sm font-semibold underline hover:no-underline",
-              "transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 rounded",
-              config.actionClassName
-            )}
+            className="mt-2 text-sm font-semibold underline hover:no-underline transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 rounded"
+            style={actionStyle}
+            onFocus={(e) => {
+              e.currentTarget.style.boxShadow = `0 0 0 3px ${getColor(
+                config.border
+              )}40`;
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.boxShadow = "none";
+            }}
           >
             {action.label}
           </button>
         )}
       </div>
 
-      {/* Close button dengan hover state yang jelas menggunakan muted variables */}
+      {/* Close button */}
       {closable && (
         <button
           onClick={handleClose}
-          className={cn(
-            "flex-shrink-0 p-1 rounded-md transition-all",
-            "text-muted-foreground hover:text-foreground",
-            "hover:bg-muted",
-            "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-          )}
+          className="flex-shrink-0 p-1 rounded-md transition-all focus:outline-none focus:ring-2 focus:ring-offset-2"
+          style={{ color: getColor(config.onContainer) }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = `${getColor(
+              config.border
+            )}20`;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "transparent";
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.boxShadow = `0 0 0 3px ${getColor(
+              config.border
+            )}40`;
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.boxShadow = "none";
+          }}
           aria-label="Close notification"
         >
           <X className="h-4 w-4" />

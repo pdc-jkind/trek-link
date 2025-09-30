@@ -14,13 +14,13 @@ import {
   XCircle,
 } from "lucide-react";
 import {
+  ContentWrapper,
   Card,
   PageHeader,
-  SearchFilter,
-  StatsGrid,
   Table,
-  ActionButton,
-  StatusBadge,
+  Button,
+  Badge,
+  MetricCard,
 } from "@/fe/components/index";
 
 interface OrderItem {
@@ -180,25 +180,6 @@ const OrdersPage: React.FC = () => {
   const [selectedPriority, setSelectedPriority] = useState("");
   const [orders] = useState<Order[]>(dummyOrders);
 
-  // Filter options
-  const statusOptions = [
-    { value: "", label: "Semua Status" },
-    { value: "draft", label: "Draft" },
-    { value: "pending", label: "Pending" },
-    { value: "approved", label: "Disetujui" },
-    { value: "shipped", label: "Dikirim" },
-    { value: "delivered", label: "Diterima" },
-    { value: "cancelled", label: "Dibatalkan" },
-  ];
-
-  const priorityOptions = [
-    { value: "", label: "Semua Prioritas" },
-    { value: "low", label: "Rendah" },
-    { value: "medium", label: "Sedang" },
-    { value: "high", label: "Tinggi" },
-    { value: "urgent", label: "Mendesak" },
-  ];
-
   // Filter data
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
@@ -211,136 +192,131 @@ const OrdersPage: React.FC = () => {
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
-  // Stats data
-  const stats = [
-    {
-      title: "Pending",
-      value: orders.filter((order) => order.status === "pending").length,
-      color: "from-yellow-500 to-yellow-600",
-    },
-    {
-      title: "Disetujui",
-      value: orders.filter((order) => order.status === "approved").length,
-      color: "from-blue-500 to-blue-600",
-    },
-    {
-      title: "Dikirim",
-      value: orders.filter((order) => order.status === "shipped").length,
-      color: "from-purple-500 to-purple-600",
-    },
-    {
-      title: "Selesai",
-      value: orders.filter((order) => order.status === "delivered").length,
-      color: "from-green-500 to-green-600",
-    },
-    {
-      title: "Total Pesanan",
-      value: orders.length,
-      color: "from-gray-500 to-gray-600",
-    },
-  ];
+  // Calculate stats
+  const stats = {
+    pending: orders.filter((o) => o.status === "pending").length,
+    approved: orders.filter((o) => o.status === "approved").length,
+    shipped: orders.filter((o) => o.status === "shipped").length,
+    delivered: orders.filter((o) => o.status === "delivered").length,
+    total: orders.length,
+    activeOrders: orders.filter((order) =>
+      ["pending", "approved", "shipped"].includes(order.status)
+    ).length,
+    urgentOrders: orders.filter(
+      (order) =>
+        order.priority === "urgent" &&
+        ["pending", "approved", "shipped"].includes(order.status)
+    ).length,
+    totalAmount: orders.reduce((sum, order) => sum + order.totalAmount, 0),
+  };
 
   // Table columns
   const columns = [
     {
       key: "orderNumber",
-      label: "No. Pesanan",
+      title: "No. Pesanan",
+      sortable: true,
       render: (value: string, row: Order) => (
         <div>
           <div className="font-mono text-sm font-medium">{value}</div>
-          <div className="text-xs text-gray-500">oleh {row.createdBy}</div>
+          <div className="text-xs opacity-60">oleh {row.createdBy}</div>
         </div>
       ),
     },
     {
       key: "supplier",
-      label: "Supplier",
+      title: "Supplier",
+      sortable: true,
       render: (value: string, row: Order) => (
         <div>
           <div className="font-medium">{value}</div>
-          <div className="text-xs text-gray-500">
-            {row.items.length} item(s)
-          </div>
+          <div className="text-xs opacity-60">{row.items.length} item(s)</div>
         </div>
       ),
     },
     {
       key: "orderDate",
-      label: "Tanggal Pesan",
-      render: (value: string) => new Date(value).toLocaleDateString("id-ID"),
+      title: "Tanggal Pesan",
+      sortable: true,
+      render: (value: string) => (
+        <span>{new Date(value).toLocaleDateString("id-ID")}</span>
+      ),
     },
     {
       key: "expectedDelivery",
-      label: "Target Kirim",
-      render: (value: string) => new Date(value).toLocaleDateString("id-ID"),
+      title: "Target Kirim",
+      sortable: true,
+      render: (value: string) => (
+        <span>{new Date(value).toLocaleDateString("id-ID")}</span>
+      ),
     },
     {
       key: "totalAmount",
-      label: "Total Nilai",
-      className: "text-right",
-      render: (value: number) => formatCurrency(value),
+      title: "Total Nilai",
+      sortable: true,
+      align: "right" as const,
+      render: (value: number) => (
+        <span className="font-semibold">{formatCurrency(value)}</span>
+      ),
     },
     {
       key: "priority",
-      label: "Prioritas",
-      className: "text-center",
+      title: "Prioritas",
+      sortable: true,
+      align: "center" as const,
       render: (value: Order["priority"]) => (
-        <StatusBadge
-          status={getPriorityText(value)}
-          variant={getPriorityVariant(value)}
-        />
+        <Badge variant={getPriorityVariant(value)} size="md">
+          {getPriorityText(value)}
+        </Badge>
       ),
     },
     {
       key: "status",
-      label: "Status",
-      className: "text-center",
+      title: "Status",
+      sortable: true,
+      align: "center" as const,
       render: (value: Order["status"]) => (
-        <div className="flex items-center justify-center space-x-1">
-          {getStatusIcon(value)}
-          <StatusBadge
-            status={getStatusText(value)}
-            variant={getStatusVariant(value)}
-          />
-        </div>
+        <Badge variant={getStatusVariant(value)} size="md" dot>
+          {getStatusText(value)}
+        </Badge>
       ),
     },
     {
       key: "actions",
-      label: "Aksi",
-      className: "text-center",
+      title: "Aksi",
+      align: "center" as const,
       render: (_: any, row: Order) => (
-        <ActionButton
-          mode="multiple"
-          actions={[
-            {
-              label: "View Details",
-              onClick: () => handleViewOrder(row.id),
-              icon: Eye,
-              variant: "view",
-            },
-            ...(["draft", "pending"].includes(row.status)
-              ? [
-                  {
-                    label: "Edit Order",
-                    onClick: () => handleEditOrder(row.id),
-                    icon: Edit,
-                    variant: "edit" as const,
-                  },
-                ]
-              : []),
-            ...(row.status === "draft"
-              ? [
-                  {
-                    label: "Delete Order",
-                    onClick: () => handleDeleteOrder(row.id),
-                    icon: Trash2,
-                    variant: "delete" as const,
-                  },
-                ]
-              : []),
-          ]}
-        />
+        <div className="flex items-center justify-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleViewOrder(row.id)}
+            title="View Details"
+          >
+            <Eye className="w-4 h-4" />
+          </Button>
+          {["draft", "pending"].includes(row.status) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleEditOrder(row.id)}
+              title="Edit Order"
+            >
+              <Edit className="w-4 h-4" />
+            </Button>
+          )}
+          {row.status === "draft" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleDeleteOrder(row.id)}
+              title="Delete Order"
+              className="text-error hover:bg-error-container"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
       ),
     },
   ];
@@ -373,7 +349,7 @@ const OrdersPage: React.FC = () => {
       approved: "info" as const,
       shipped: "info" as const,
       delivered: "success" as const,
-      cancelled: "error" as const,
+      cancelled: "danger" as const,
     };
     return variantMap[status];
   };
@@ -393,21 +369,9 @@ const OrdersPage: React.FC = () => {
       low: "success" as const,
       medium: "warning" as const,
       high: "info" as const,
-      urgent: "error" as const,
+      urgent: "danger" as const,
     };
     return variantMap[priority];
-  };
-
-  const getStatusIcon = (status: Order["status"]) => {
-    const iconMap = {
-      draft: <Edit className="w-4 h-4" />,
-      pending: <Clock className="w-4 h-4" />,
-      approved: <CheckCircle className="w-4 h-4" />,
-      shipped: <Package className="w-4 h-4" />,
-      delivered: <CheckCircle className="w-4 h-4" />,
-      cancelled: <XCircle className="w-4 h-4" />,
-    };
-    return iconMap[status];
   };
 
   // Event handlers
@@ -434,116 +398,119 @@ const OrdersPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <PageHeader
-          title="Pengelolaan Pemesanan"
-          actions={
-            <>
-              {/* <ActionButton variant="blue">Filter</ActionButton> */}
-              <ActionButton variant="primary" onClick={handleAddOrder}>
-                <Plus className="w-5 h-5" />
-                <span>Buat Pesanan</span>
-              </ActionButton>
-            </>
-          }
+    <ContentWrapper maxWidth="full" padding="md">
+      <PageHeader
+        title="Pengelolaan Pemesanan"
+        actions={
+          <Button variant="primary" onClick={handleAddOrder}>
+            <Plus className="w-5 h-5" />
+            <span>Buat Pesanan</span>
+          </Button>
+        }
+      />
+
+      {/* Stats Grid - Menggunakan MetricCard dengan props yang benar */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 py-6">
+        <MetricCard
+          title="Pending"
+          value={stats.pending}
+          icon={Clock}
+          color="warning"
+          subtitle="orders"
         />
-
-        <SearchFilter
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          searchPlaceholder="Cari nomor pesanan, supplier, atau pembuat..."
-          filters={[
-            {
-              value: selectedStatus,
-              onChange: setSelectedStatus,
-              options: statusOptions,
-            },
-            {
-              value: selectedPriority,
-              onChange: setSelectedPriority,
-              options: priorityOptions,
-            },
-          ]}
+        <MetricCard
+          title="Disetujui"
+          value={stats.approved}
+          icon={CheckCircle}
+          color="info"
+          subtitle="orders"
         />
+        <MetricCard
+          title="Dikirim"
+          value={stats.shipped}
+          icon={Package}
+          color="primary"
+          subtitle="orders"
+        />
+        <MetricCard
+          title="Selesai"
+          value={stats.delivered}
+          icon={CheckCircle}
+          color="success"
+          subtitle="orders"
+          trend={{ value: 12, direction: "up" }}
+        />
+        <MetricCard
+          title="Total Pesanan"
+          value={stats.total}
+          icon={ShoppingCart}
+          color="info"
+          subtitle="all time"
+        />
+      </div>
 
-        <StatsGrid stats={stats} columns={5} />
+      {/* Search and Filters */}
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex-1">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Cari nomor pesanan, supplier, atau pembuat..."
+            className="w-full px-4 py-2 rounded-lg border-2 border-outline bg-surface text-on-surface focus:border-primary focus:outline-none transition-colors"
+          />
+        </div>
+        <div className="flex gap-2">
+          <select
+            value={selectedStatus}
+            onChange={(e) => setSelectedStatus(e.target.value)}
+            className="px-4 py-2 rounded-lg border-2 border-outline bg-surface text-on-surface focus:border-primary focus:outline-none transition-colors min-w-[150px]"
+          >
+            <option value="">Semua Status</option>
+            <option value="draft">Draft</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Disetujui</option>
+            <option value="shipped">Dikirim</option>
+            <option value="delivered">Diterima</option>
+            <option value="cancelled">Dibatalkan</option>
+          </select>
+          <select
+            value={selectedPriority}
+            onChange={(e) => setSelectedPriority(e.target.value)}
+            className="px-4 py-2 rounded-lg border-2 border-outline bg-surface text-on-surface focus:border-primary focus:outline-none transition-colors min-w-[150px]"
+          >
+            <option value="">Semua Prioritas</option>
+            <option value="low">Rendah</option>
+            <option value="medium">Sedang</option>
+            <option value="high">Tinggi</option>
+            <option value="urgent">Mendesak</option>
+          </select>
+          {(searchTerm || selectedStatus || selectedPriority) && (
+            <Button variant="secondary" onClick={handleResetFilters}>
+              Reset
+            </Button>
+          )}
+        </div>
+      </div>
 
+      {/* Table */}
+      <div className="py-6">
         <Table
           columns={columns}
           data={filteredOrders}
-          emptyMessage={
+          searchable={false}
+          striped={true}
+          hoverable={true}
+          size="md"
+          emptyText={
             searchTerm || selectedStatus || selectedPriority
               ? "Tidak ada pesanan yang sesuai dengan filter."
               : "Belum ada data pesanan."
           }
-          emptyIcon={ShoppingCart}
+          rowKey="id"
         />
-
-        {(searchTerm || selectedStatus || selectedPriority) &&
-          filteredOrders.length === 0 && (
-            <div className="text-center py-4">
-              <ActionButton variant="secondary" onClick={handleResetFilters}>
-                Reset Filter
-              </ActionButton>
-            </div>
-          )}
-      </Card>
-
-      {/* Summary Card */}
-      <Card>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Ringkasan Pesanan
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg p-4">
-            <h4 className="text-sm font-medium text-indigo-900 mb-2">
-              Total Nilai Pesanan
-            </h4>
-            <p className="text-2xl font-bold text-indigo-600">
-              {formatCurrency(
-                orders.reduce((sum, order) => sum + order.totalAmount, 0)
-              )}
-            </p>
-            <p className="text-xs text-indigo-700 mt-1">
-              Dari {orders.length} pesanan
-            </p>
-          </div>
-          <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg p-4">
-            <h4 className="text-sm font-medium text-emerald-900 mb-2">
-              Pesanan Aktif
-            </h4>
-            <p className="text-2xl font-bold text-emerald-600">
-              {
-                orders.filter((order) =>
-                  ["pending", "approved", "shipped"].includes(order.status)
-                ).length
-              }
-            </p>
-            <p className="text-xs text-emerald-700 mt-1">
-              Menunggu penyelesaian
-            </p>
-          </div>
-          <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg p-4">
-            <h4 className="text-sm font-medium text-amber-900 mb-2">
-              Pesanan Mendesak
-            </h4>
-            <p className="text-2xl font-bold text-amber-600">
-              {
-                orders.filter(
-                  (order) =>
-                    order.priority === "urgent" &&
-                    ["pending", "approved", "shipped"].includes(order.status)
-                ).length
-              }
-            </p>
-            <p className="text-xs text-amber-700 mt-1">
-              Perlu perhatian segera
-            </p>
-          </div>
-        </div>
-      </Card>
-    </div>
+      </div>
+    </ContentWrapper>
   );
 };
 

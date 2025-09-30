@@ -10,118 +10,91 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Primary - Elegant Blue Pastel (Base: #789DBC)
+        // Core Colors
         primary: {
-          50: '#f8fafc',   // Very light blue-gray
-          100: '#f1f4f8',  // Light blue-gray
-          200: '#e3e8f0',  // Lighter blue
-          300: '#b8c5d9',  // Soft blue - VISIBLE NOW
-          400: '#9fb0cc',  // Medium-light blue
-          500: '#789DBC',  // Your base color
-          600: '#6b8aac',  // Slightly darker blue
-          700: '#5a7293',  // Medium dark blue - VISIBLE NOW
-          800: '#475569',  // Dark blue-gray
-          900: '#334155',  // Very dark blue - VISIBLE NOW
-          950: '#1e293b',  // Darkest
-          DEFAULT: '#789DBC',
-          foreground: '#ffffff',
+          DEFAULT: 'rgb(var(--primary) / <alpha-value>)',
+          foreground: 'rgb(var(--on-primary) / <alpha-value>)',
+          container: 'rgb(var(--primary-container) / <alpha-value>)',
+          'container-foreground': 'rgb(var(--on-primary-container) / <alpha-value>)',
         },
-        
-        // Secondary - Warm Pink Pastel (Base: #FFE3E3)
         secondary: {
-          50: '#fef7f7',   // Very light pink
-          100: '#fde8e8',  // Light pink - VISIBLE NOW
-          200: '#fbd5d5',  // Lighter pink
-          300: '#f8b4b4',  // Soft pink
-          400: '#f48888',  // Medium pink
-          500: '#ef5a5a',  // Deeper pink
-          600: '#dc2f2f',  // Strong pink-red - VISIBLE NOW
-          700: '#b91c1c',  // Dark red
-          800: '#991b1b',  // Darker red
-          900: '#7f1d1d',  // Very dark red
-          950: '#450a0a',  // Darkest
-          DEFAULT: '#fde8e8', // Use lighter shade as default
-          foreground: '#7f1d1d',
+          DEFAULT: 'rgb(var(--secondary) / <alpha-value>)',
+          foreground: 'rgb(var(--on-secondary) / <alpha-value>)',
+          container: 'rgb(var(--secondary-container) / <alpha-value>)',
+          'container-foreground': 'rgb(var(--on-secondary-container) / <alpha-value>)',
+        },
+        tertiary: {
+          DEFAULT: 'rgb(var(--tertiary) / <alpha-value>)',
+          foreground: 'rgb(var(--on-tertiary) / <alpha-value>)',
+          container: 'rgb(var(--tertiary-container) / <alpha-value>)',
+          'container-foreground': 'rgb(var(--on-tertiary-container) / <alpha-value>)',
+        },
+        background: 'rgb(var(--background) / <alpha-value>)',
+        foreground: 'rgb(var(--on-background) / <alpha-value>)',
+        surface: {
+          DEFAULT: 'rgb(var(--surface) / <alpha-value>)',
+          foreground: 'rgb(var(--on-surface) / <alpha-value>)',
+          variant: 'rgb(var(--surface-variant) / <alpha-value>)',
+          'variant-foreground': 'rgb(var(--on-surface-variant) / <alpha-value>)',
+        },
+        error: {
+          DEFAULT: 'rgb(var(--error) / <alpha-value>)',
+          foreground: 'rgb(var(--on-error) / <alpha-value>)',
+          container: 'rgb(var(--error-container) / <alpha-value>)',
+          'container-foreground': 'rgb(var(--on-error-container) / <alpha-value>)',
         },
         
-        // Accent - Warm Cream (Base: #FEF9F2)
-        accent: {
-          50: '#fefbf7',   // Very light cream
-          100: '#fdf4e7',  // Light cream
-          200: '#fbe8d0',  // Cream
-          300: '#f7d7b8',  // Warmer cream
-          400: '#f2c29b',  // Light brown
-          500: '#e6a87c',  // Warm brown - VISIBLE NOW
-          600: '#d4915a',  // Medium brown - VISIBLE NOW
-          700: '#b5753f',  // Darker brown
-          800: '#92400e',  // Dark brown
-          900: '#78350f',  // Very dark brown
-          950: '#451a03',  // Darkest
-          DEFAULT: '#fdf4e7',
-          foreground: '#78350f',
+        // Neutral & Outline
+        outline: {
+          DEFAULT: 'rgb(var(--outline) / <alpha-value>)',
+          variant: 'rgb(var(--outline-variant) / <alpha-value>)',
+        },
+        inverse: {
+          surface: 'rgb(var(--inverse-surface) / <alpha-value>)',
+          'surface-foreground': 'rgb(var(--inverse-on-surface) / <alpha-value>)',
+          primary: 'rgb(var(--inverse-primary) / <alpha-value>)',
         },
         
-        // Success - Elegant Green Pastel (Base: #C9E9D2)
+        // State Colors
         success: {
-          50: '#f0fdf4',   // Very light green
-          100: '#dcfce7',  // Light green
-          200: '#bbf7d0',  // Lighter green
-          300: '#a7f3d0',  // Soft green
-          400: '#6ee7b7',  // Medium-light green
-          500: '#34d399',  // Medium green
-          600: '#10b981',  // Strong green - VISIBLE NOW
-          700: '#059669',  // Dark green
-          800: '#065f46',  // Darker green
-          900: '#064e3b',  // Very dark green
-          950: '#022c22',  // Darkest
-          DEFAULT: '#dcfce7', // Use lighter shade as default
-          foreground: '#064e3b',
+          DEFAULT: 'rgb(var(--success) / <alpha-value>)',
+          foreground: 'rgb(var(--on-success) / <alpha-value>)',
+          container: 'rgb(var(--success-container) / <alpha-value>)',
+          'container-foreground': 'rgb(var(--on-success-container) / <alpha-value>)',
         },
-
-        // Semantic Colors
-        background: {
-          DEFAULT: '#fafbfc',
-          subtle: '#f8fafc',
-          muted: '#f1f5f9',
+        warning: {
+          DEFAULT: 'rgb(var(--warning) / <alpha-value>)',
+          foreground: 'rgb(var(--on-warning) / <alpha-value>)',
+          container: 'rgb(var(--warning-container) / <alpha-value>)',
+          'container-foreground': 'rgb(var(--on-warning-container) / <alpha-value>)',
         },
-        foreground: {
-          DEFAULT: '#1a202c',
-          muted: '#4a5568',
-          subtle: '#718096',
+        info: {
+          DEFAULT: 'rgb(var(--info) / <alpha-value>)',
+          foreground: 'rgb(var(--on-info) / <alpha-value>)',
+          container: 'rgb(var(--info-container) / <alpha-value>)',
+          'container-foreground': 'rgb(var(--on-info-container) / <alpha-value>)',
+        },
+        disabled: {
+          DEFAULT: 'rgb(var(--disabled) / <alpha-value>)',
+          foreground: 'rgb(var(--on-disabled) / <alpha-value>)',
         },
         
-        // Borders & Dividers
-        border: {
-          DEFAULT: '#e2e8f0',
-          muted: '#f1f5f9',
+        // Elevation Surfaces
+        elevation: {
+          1: 'rgb(var(--surface-1) / <alpha-value>)',
+          2: 'rgb(var(--surface-2) / <alpha-value>)',
+          3: 'rgb(var(--surface-3) / <alpha-value>)',
+          4: 'rgb(var(--surface-4) / <alpha-value>)',
+          5: 'rgb(var(--surface-5) / <alpha-value>)',
         },
         
-        // Interactive States
+        // Legacy aliases for backward compatibility
+        border: 'rgb(var(--outline) / <alpha-value>)',
         muted: {
-          DEFAULT: '#f8fafc',
-          foreground: '#64748b',
+          DEFAULT: 'rgb(var(--surface-variant) / <alpha-value>)',
+          foreground: 'rgb(var(--on-surface-variant) / <alpha-value>)',
         },
-        
-        // Ring/Focus color
-        ring: {
-          DEFAULT: '#789DBC', // Same as primary for consistency
-        },
-        
-        // Dark Mode Variants (automatically handled by Tailwind)
-        'dark-background': {
-          DEFAULT: '#0f1419',
-          subtle: '#1a1f2e',
-          muted: '#242b3d',
-        },
-        'dark-foreground': {
-          DEFAULT: '#f7fafc',
-          muted: '#cbd5e1',
-          subtle: '#94a3b8',
-        },
-        'dark-border': {
-          DEFAULT: '#2d3748',
-          muted: '#1a202c',
-        },
+        ring: 'rgb(var(--primary) / <alpha-value>)',
       },
       
       fontFamily: {
@@ -149,8 +122,8 @@ const config: Config = {
         'elevation-1': '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
         'elevation-2': '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
         'elevation-3': '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
-        'glow': '0 0 20px rgb(120 157 188 / 0.15)',
-        'glow-lg': '0 0 40px rgb(120 157 188 / 0.2)',
+        'glow': '0 0 20px rgb(var(--primary) / 0.15)',
+        'glow-lg': '0 0 40px rgb(var(--primary) / 0.2)',
       },
       
       animation: {

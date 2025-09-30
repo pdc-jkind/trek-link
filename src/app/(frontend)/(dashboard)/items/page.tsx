@@ -2,19 +2,35 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
-import { ItemModal } from "@/items/components/ItemModal"; //./components/ItemModal
+import {
+  Plus,
+  Filter,
+  Package,
+  Grid,
+  List,
+  Search,
+  Loader2,
+  Trash2,
+  Edit,
+} from "lucide-react";
+import { ItemModal } from "@/items/components/ItemModal";
 import { ItemMasterModal } from "@/items/components/ItemMasterModal";
 import { ItemVariantModal } from "@/items/components/ItemVariantModal";
-import { ItemsHeader } from "@/items/components/ItemsHeader";
-import { ItemsFilters } from "@/items/components/ItemsFilters";
-import { ViewModeToggle } from "@/items/components/ViewModeToggle";
-import { ItemsTable } from "@/items/components/ItemsTable";
-import { ItemsTableFooter } from "@/items/components/ItemsTableFooter";
-import { ItemsStatistics } from "@/items/components/ItemsStatistics";
-import { ItemsLoadingState } from "@/items/components/ItemsLoadingState";
-import { ItemsErrorState } from "@/items/components/ItemsErrorState";
-import { ConfirmDialog } from "@/app/(frontend)/(dashboard)/components/feedback/ConfirmDialog";
-import { Card } from "@/app/(frontend)/(dashboard)/components/layout/Card";
+import { ConfirmModal } from "@/items/components/ConfirmModal";
+import {
+  ContentWrapper,
+  PageHeader,
+  Card,
+  CardHeader,
+  CardContent,
+  CardTitle,
+  CardDescription,
+  Button,
+  Input,
+  Select,
+  Badge,
+  MetricCard,
+} from "@/fe/components/index";
 import {
   useItemsPage,
   useItemMasters,
@@ -22,18 +38,14 @@ import {
   useItems,
 } from "./useItems";
 import type { Tables } from "@/types/database";
+import type { ItemMasterWithOffice } from "./useItems";
 
-// Type definitions based on database schema
+// Type definitions
 type ViewItemsFull = Tables<"view_items_full">;
-type Office = Tables<"offices">;
 type ItemMaster = Tables<"item_masters">;
 type ItemVariant = Tables<"item_variants">;
-type Item = Tables<"items">;
-
-// View modes
 type ViewMode = "items" | "masters" | "variants";
 
-// Interface for grouped items
 interface ItemGroup {
   master: {
     id: string;
@@ -49,7 +61,13 @@ interface ItemGroup {
   };
 }
 
-// Main Component
+interface DeleteState {
+  isOpen: boolean;
+  type: "item" | "master" | "variant" | null;
+  id: string | null;
+  name: string | null;
+}
+
 const ItemsPage: React.FC = () => {
   // State management
   const [searchTerm, setSearchTerm] = useState("");
@@ -69,21 +87,16 @@ const ItemsPage: React.FC = () => {
   );
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
 
-  // Confirm dialog state
-  const [confirmDialog, setConfirmDialog] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    onConfirm: () => void;
-    variant?: "danger" | "warning" | "info";
-  }>({
+  // Delete confirmation state
+  const [deleteState, setDeleteState] = useState<DeleteState>({
     isOpen: false,
-    title: "",
-    message: "",
-    onConfirm: () => {},
+    type: null,
+    id: null,
+    name: null,
   });
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  // ✅ FIXED: Memoize filter object to prevent infinite re-renders
+  // Memoize filters
   const filters = useMemo(
     () => ({
       search: searchTerm || undefined,
@@ -95,7 +108,7 @@ const ItemsPage: React.FC = () => {
     [searchTerm, selectedCategory, selectedOffice]
   );
 
-  // Main hook for page data
+  // Hooks
   const {
     items,
     itemsCount,
@@ -109,38 +122,27 @@ const ItemsPage: React.FC = () => {
     error: mainError,
   } = useItemsPage(filters);
 
-  // Separate hooks for CRUD operations
   const itemMastersHook = useItemMasters();
   const itemVariantsHook = useItemVariants();
   const itemsHook = useItems();
 
-  // ✅ FIXED: Use stable reference for updateItemsFilters and memoize the effect
+  // Update filters with debounce
   const updateFilters = useCallback(() => {
-    const newFilters: any = {
-      page: 1,
-      limit: 50,
-    };
-
+    const newFilters: any = { page: 1, limit: 50 };
     if (searchTerm.trim()) newFilters.search = searchTerm.trim();
     if (selectedCategory) newFilters.item_master_id = selectedCategory;
     if (selectedOffice) newFilters.office_id = selectedOffice;
-
     updateItemsFilters(newFilters);
   }, [searchTerm, selectedCategory, selectedOffice, updateItemsFilters]);
 
-  // ✅ FIXED: Debounce the filter updates to prevent excessive API calls
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      updateFilters();
-    }, 300); // 300ms debounce
-
+    const timeoutId = setTimeout(() => updateFilters(), 300);
     return () => clearTimeout(timeoutId);
   }, [updateFilters]);
 
-  // Group items by category (item_master) - Memoized to prevent recalculation
+  // Group items by category
   const groupedItems = useMemo((): ItemGroup[] => {
     const groups: { [key: string]: ItemGroup } = {};
-
     items.forEach((item) => {
       const masterId = item.item_master_id;
       if (masterId && !groups[masterId]) {
@@ -152,65 +154,49 @@ const ItemsPage: React.FC = () => {
             img_url: item.item_master_img_url,
           },
           items: [],
-          office: {
-            id: item.office_id,
-            name: item.office_name,
-          },
+          office: { id: item.office_id, name: item.office_name },
         };
       }
-      if (masterId) {
-        groups[masterId].items.push(item);
-      }
+      if (masterId) groups[masterId].items.push(item);
     });
 
-    // Enrich office data with location from offices array
     Object.values(groups).forEach((group) => {
       if (group.office.id) {
         const office = offices.find((o) => o.id === group.office.id);
-        if (office) {
-          group.office.location = office.location;
-        }
+        if (office) group.office.location = office.location;
       }
     });
 
     return Object.values(groups);
   }, [items, offices]);
 
-  // ✅ FIXED: Memoize callback functions to prevent unnecessary re-renders
+  // Handlers
   const handleToggleExpand = useCallback((masterId: string) => {
     setExpandedGroups((prev) => {
       const newExpanded = new Set(prev);
-      if (newExpanded.has(masterId)) {
-        newExpanded.delete(masterId);
-      } else {
-        newExpanded.add(masterId);
-      }
+      newExpanded.has(masterId)
+        ? newExpanded.delete(masterId)
+        : newExpanded.add(masterId);
       return newExpanded;
     });
   }, []);
 
-  // Generate sequential item codes for multiple items
   const generateSequentialCodes = useCallback(
     async (baseCode: string, count: number): Promise<string[]> => {
       const codes: string[] = [];
-
-      // Extract prefix and number from base code (e.g., "ITM-001" -> "ITM" and 1)
       const parts = baseCode.split("-");
       const prefix = parts.slice(0, -1).join("-");
       const startNumber = parseInt(parts[parts.length - 1]) || 1;
 
       for (let i = 0; i < count; i++) {
         const number = startNumber + i;
-        const paddedNumber = number.toString().padStart(3, "0");
-        codes.push(`${prefix}-${paddedNumber}`);
+        codes.push(`${prefix}-${number.toString().padStart(3, "0")}`);
       }
-
       return codes;
     },
     []
   );
 
-  // ✅ FIXED: Memoize all modal handlers to prevent re-renders
   const handleAddItem = useCallback(() => {
     setEditingItem(null);
     setModalMode("create");
@@ -229,122 +215,134 @@ const ItemsPage: React.FC = () => {
     setIsVariantModalOpen(true);
   }, []);
 
-  const handleViewItem = useCallback((item: ViewItemsFull) => {
-    console.log("Viewing item:", item);
-    // TODO: Implement view item details modal or page
-  }, []);
-
-  const handleEditItem = useCallback((item: ViewItemsFull) => {
-    setEditingItem(item);
-    setModalMode("edit");
-    setIsItemModalOpen(true);
-  }, []);
-
-  const handleDeleteItem = useCallback(
-    (item: ViewItemsFull) => {
-      setConfirmDialog({
-        isOpen: true,
-        title: "Hapus Item",
-        message: `Apakah Anda yakin ingin menghapus item "${item.item_name}"? Tindakan ini tidak dapat dibatalkan.`,
-        variant: "danger",
-        onConfirm: async () => {
-          if (item.item_id) {
-            const success = await itemsHook.deleteItem(item.item_id);
-            if (success) {
-              refetchItems();
-            }
-          }
-          setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
-        },
-      });
+  // Edit handlers
+  const handleEditItem = useCallback(
+    (item: ViewItemsFull, e: React.MouseEvent) => {
+      e.stopPropagation();
+      setEditingItem(item);
+      setModalMode("edit");
+      setIsItemModalOpen(true);
     },
-    [itemsHook, refetchItems]
+    []
   );
 
-  const handleEditMaster = useCallback((master: ItemMaster) => {
-    setEditingMaster(master);
-    setModalMode("edit");
-    setIsMasterModalOpen(true);
-  }, []);
+  const handleEditMaster = useCallback(
+    (master: ItemMaster, e: React.MouseEvent) => {
+      e.stopPropagation();
+      setEditingMaster(master);
+      setModalMode("edit");
+      setIsMasterModalOpen(true);
+    },
+    []
+  );
+
+  const handleEditVariant = useCallback(
+    (variant: ItemVariant, e: React.MouseEvent) => {
+      e.stopPropagation();
+      setEditingVariant(variant);
+      setModalMode("edit");
+      setIsVariantModalOpen(true);
+    },
+    []
+  );
+
+  // Delete handlers
+  const handleDeleteItem = useCallback(
+    (item: ViewItemsFull, e: React.MouseEvent) => {
+      e.stopPropagation();
+      setDeleteState({
+        isOpen: true,
+        type: "item",
+        id: item.item_id,
+        name: item.item_name,
+      });
+    },
+    []
+  );
 
   const handleDeleteMaster = useCallback(
-    (master: ItemMaster) => {
-      setConfirmDialog({
+    (master: ItemMaster, e: React.MouseEvent) => {
+      e.stopPropagation();
+      setDeleteState({
         isOpen: true,
-        title: "Hapus Kategori",
-        message: `Apakah Anda yakin ingin menghapus kategori "${master.name}"? Semua item dalam kategori ini akan terpengaruh.`,
-        variant: "danger",
-        onConfirm: async () => {
-          const success = await itemMastersHook.deleteItemMaster(master.id);
-          if (success) {
-            refetchItems();
-          }
-          setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
-        },
+        type: "master",
+        id: master.id,
+        name: master.name,
       });
     },
-    [itemMastersHook, refetchItems]
+    []
   );
-
-  const handleEditVariant = useCallback((variant: ItemVariant) => {
-    setEditingVariant(variant);
-    setModalMode("edit");
-    setIsVariantModalOpen(true);
-  }, []);
 
   const handleDeleteVariant = useCallback(
-    (variant: ItemVariant) => {
-      setConfirmDialog({
+    (variant: ItemVariant, e: React.MouseEvent) => {
+      e.stopPropagation();
+      setDeleteState({
         isOpen: true,
-        title: "Hapus Variant",
-        message: `Apakah Anda yakin ingin menghapus variant "${variant.name}"? Semua item dengan variant ini akan terpengaruh.`,
-        variant: "danger",
-        onConfirm: async () => {
-          const success = await itemVariantsHook.deleteItemVariant(variant.id);
-          if (success) {
-            refetchItems();
-          }
-          setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
-        },
+        type: "variant",
+        id: variant.id,
+        name: variant.name,
       });
     },
-    [itemVariantsHook, refetchItems]
+    []
   );
 
-  // ✅ FIXED: Memoize save handlers to prevent re-renders
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deleteState.id || !deleteState.type) return;
+
+    setIsDeleting(true);
+    try {
+      let success = false;
+
+      switch (deleteState.type) {
+        case "item":
+          success = await itemsHook.deleteItem(deleteState.id);
+          break;
+        case "master":
+          success = await itemMastersHook.deleteItemMaster(deleteState.id);
+          break;
+        case "variant":
+          success = await itemVariantsHook.deleteItemVariant(deleteState.id);
+          break;
+      }
+
+      if (success) {
+        refetchItems();
+        setDeleteState({ isOpen: false, type: null, id: null, name: null });
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [deleteState, itemsHook, itemMastersHook, itemVariantsHook, refetchItems]);
+
   const handleSaveItem = useCallback(
     async (data: any) => {
       try {
         let result;
-
-        if (modalMode === "edit" && editingItem && editingItem.item_id) {
-          // Edit single item
+        if (modalMode === "edit" && editingItem?.item_id) {
           result = await itemsHook.updateItem({
             id: editingItem.item_id,
             ...data,
           });
         } else {
-          // Create new item(s)
           if (data.items && Array.isArray(data.items)) {
-            // Multiple items - generate sequential codes
             const baseCode = data.baseItemCode || (await generateItemCode());
-            const sequentialCodes = await generateSequentialCodes(
+            const codes = await generateSequentialCodes(
               baseCode,
               data.items.length
             );
-
             const results = await Promise.all(
               data.items.map((itemData: any, index: number) =>
                 itemsHook.createItem({
                   ...itemData,
-                  item_code: sequentialCodes[index],
+                  item_code: codes[index],
                   item_master_id: data.item_master_id,
                 })
               )
             );
             result = results.every((r) => r !== null);
           } else {
-            // Single item
             result = await itemsHook.createItem({
               ...data,
               item_master_id: data.item_master_id,
@@ -356,9 +354,8 @@ const ItemsPage: React.FC = () => {
           setIsItemModalOpen(false);
           refetchItems();
           return { success: true };
-        } else {
-          return { success: false, error: "Gagal menyimpan item" };
         }
+        return { success: false, error: "Gagal menyimpan item" };
       } catch (error) {
         return {
           success: false,
@@ -379,21 +376,17 @@ const ItemsPage: React.FC = () => {
   const handleSaveMaster = useCallback(
     async (data: any) => {
       try {
-        let result;
-
-        if (modalMode === "edit" && editingMaster) {
-          result = await itemMastersHook.updateItemMaster(data);
-        } else {
-          result = await itemMastersHook.createItemMaster(data);
-        }
+        const result =
+          modalMode === "edit" && editingMaster
+            ? await itemMastersHook.updateItemMaster(data)
+            : await itemMastersHook.createItemMaster(data);
 
         if (result) {
           setIsMasterModalOpen(false);
           refetchItems();
           return { success: true };
-        } else {
-          return { success: false, error: "Gagal menyimpan kategori" };
         }
+        return { success: false, error: "Gagal menyimpan kategori" };
       } catch (error) {
         return {
           success: false,
@@ -407,21 +400,17 @@ const ItemsPage: React.FC = () => {
   const handleSaveVariant = useCallback(
     async (data: any) => {
       try {
-        let result;
-
-        if (modalMode === "edit" && editingVariant) {
-          result = await itemVariantsHook.updateItemVariant(data);
-        } else {
-          result = await itemVariantsHook.createItemVariant(data);
-        }
+        const result =
+          modalMode === "edit" && editingVariant
+            ? await itemVariantsHook.updateItemVariant(data)
+            : await itemVariantsHook.createItemVariant(data);
 
         if (result) {
           setIsVariantModalOpen(false);
           refetchItems();
           return { success: true };
-        } else {
-          return { success: false, error: "Gagal menyimpan variant" };
         }
+        return { success: false, error: "Gagal menyimpan variant" };
       } catch (error) {
         return {
           success: false,
@@ -432,108 +421,438 @@ const ItemsPage: React.FC = () => {
     [modalMode, editingVariant, itemVariantsHook, refetchItems]
   );
 
-  // ✅ FIXED: Memoize filter handlers to prevent re-renders
-  const handleFilter = useCallback(() => {
-    // TODO: Implement advanced filter modal
-    console.log("Advanced filter clicked");
-  }, []);
+  // Transform data for selects
+  const categoryOptions = itemMastersHook.data
+    .filter((m) => m.name)
+    .map((m) => ({
+      value: m.id,
+      label: m.name as string,
+    }));
 
-  const handleSearchChange = useCallback((value: string) => {
-    setSearchTerm(value);
-  }, []);
+  const officeOptions = offices
+    .filter((o) => o.name)
+    .map((o) => ({
+      value: o.id,
+      label: o.location ? `${o.name} - ${o.location}` : (o.name as string),
+    }));
 
-  const handleCategoryChange = useCallback((value: string) => {
-    setSelectedCategory(value);
-  }, []);
+  // Transform itemMasters for ItemModal (exclude offices property)
+  const itemMastersForModal = useMemo(
+    () =>
+      itemMastersHook.data.map((m) => {
+        const { offices, ...itemMaster } = m;
+        return itemMaster as ItemMaster;
+      }),
+    [itemMastersHook.data]
+  );
 
-  const handleOfficeChange = useCallback((value: string) => {
-    setSelectedOffice(value);
-  }, []);
+  // Get delete confirmation message
+  const getDeleteMessage = () => {
+    const { type, name } = deleteState;
+    switch (type) {
+      case "item":
+        return `Item "${name}" akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.`;
+      case "master":
+        return `Kategori "${name}" dan semua item terkait akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.`;
+      case "variant":
+        return `Variant "${name}" akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.`;
+      default:
+        return "Data akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.";
+    }
+  };
 
-  const handleViewModeChange = useCallback((mode: ViewMode) => {
-    setViewMode(mode);
-  }, []);
-
-  // Show loading state for initial load
+  // Loading state
   if (mainLoading && items.length === 0) {
-    return <ItemsLoadingState message="Memuat data items..." />;
+    return (
+      <ContentWrapper>
+        <div className="flex flex-col items-center justify-center py-20">
+          <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+          <p className="text-lg text-surface-variant-foreground">
+            Memuat data items...
+          </p>
+        </div>
+      </ContentWrapper>
+    );
   }
 
-  // Show error state for initial load
+  // Error state
   if (mainError && items.length === 0) {
-    return <ItemsErrorState error={mainError} onRetry={() => refetchItems()} />;
+    return (
+      <ContentWrapper>
+        <Card variant="outline">
+          <CardContent className="text-center py-20">
+            <div className="text-error text-5xl mb-4">⚠️</div>
+            <h3 className="text-xl font-bold text-foreground mb-2">
+              Terjadi Kesalahan
+            </h3>
+            <p className="text-surface-variant-foreground mb-6">{mainError}</p>
+            <Button variant="primary" onClick={() => refetchItems()}>
+              Coba Lagi
+            </Button>
+          </CardContent>
+        </Card>
+      </ContentWrapper>
+    );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Statistics Card */}
-      <ItemsStatistics statistics={statistics} />
+    <ContentWrapper maxWidth="7xl">
+      {/* Page Header */}
+      <PageHeader
+        title="Item Management"
+        subtitle="Kelola kategori, variant, dan item barang"
+        actions={
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="md"
+              leftIcon={<Filter className="w-4 h-4" />}
+              onClick={() => console.log("Filter")}
+            >
+              Filter
+            </Button>
+            <Button
+              variant="primary"
+              size="md"
+              leftIcon={<Plus className="w-4 h-4" />}
+              onClick={handleAddItem}
+            >
+              Tambah Item
+            </Button>
+          </div>
+        }
+      />
 
-      {/* Main Content Card */}
-      <Card className="relative">
-        {/* Header */}
-        <ItemsHeader
-          viewMode={viewMode}
-          onFilter={handleFilter}
-          onAddItem={handleAddItem}
-          onAddMaster={handleAddMaster}
-          onAddVariant={handleAddVariant}
-        />
+      {/* Main Content */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <CardTitle>Item Data</CardTitle>
+              <CardDescription>
+                {viewMode === "items" && `${itemsCount} items total`}
+                {viewMode === "masters" &&
+                  `${itemMastersHook.count} categories`}
+                {viewMode === "variants" &&
+                  `${itemVariantsHook.count} variants`}
+              </CardDescription>
+            </div>
 
-        {/* View Mode Toggle and Filters */}
-        <div className="p-6 border-b border-gray-200 bg-gray-50/50 space-y-4">
-          <ViewModeToggle
-            viewMode={viewMode}
-            onViewModeChange={handleViewModeChange}
-          />
+            {/* View Mode Toggle */}
+            <div className="flex gap-2 bg-surface-variant p-1 rounded-lg border-2 border-outline">
+              <Button
+                variant={viewMode === "items" ? "primary" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("items")}
+              >
+                Items
+              </Button>
+              <Button
+                variant={viewMode === "masters" ? "primary" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("masters")}
+              >
+                Categories
+              </Button>
+              <Button
+                variant={viewMode === "variants" ? "primary" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("variants")}
+              >
+                Variants
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
 
-          <ItemsFilters
-            viewMode={viewMode}
-            searchTerm={searchTerm}
-            onSearchChange={handleSearchChange}
-            selectedCategory={selectedCategory}
-            onCategoryChange={handleCategoryChange}
-            selectedOffice={selectedOffice}
-            onOfficeChange={handleOfficeChange}
-            itemMasters={itemMastersHook.data}
-            offices={offices}
-          />
-        </div>
+        <CardContent>
+          {/* Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <Input
+              placeholder="Search items..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              variant="search"
+              clearable
+              onClear={() => setSearchTerm("")}
+            />
 
-        {/* Items Table */}
-        <ItemsTable
-          viewMode={viewMode}
-          groupedItems={groupedItems}
-          itemMasters={itemMastersHook.data}
-          itemVariants={itemVariantsHook.data}
-          expandedGroups={expandedGroups}
-          loading={itemsLoading}
-          searchTerm={searchTerm}
-          selectedCategory={selectedCategory}
-          selectedOffice={selectedOffice}
-          onToggleExpand={handleToggleExpand}
-          onEditItem={handleEditItem}
-          onDeleteItem={handleDeleteItem}
-          onViewItem={handleViewItem}
-          onEditMaster={handleEditMaster}
-          onDeleteMaster={handleDeleteMaster}
-          onEditVariant={handleEditVariant}
-          onDeleteVariant={handleDeleteVariant}
-        />
+            {viewMode === "items" && (
+              <>
+                <Select
+                  placeholder="All Categories"
+                  options={categoryOptions}
+                  value={selectedCategory}
+                  onValueChange={(val) => setSelectedCategory(val as string)}
+                  clearable
+                />
+                <Select
+                  placeholder="All Offices"
+                  options={officeOptions}
+                  value={selectedOffice}
+                  onValueChange={(val) => setSelectedOffice(val as string)}
+                  clearable
+                />
+              </>
+            )}
+          </div>
 
-        {/* Table Footer */}
-        <ItemsTableFooter
-          viewMode={viewMode}
-          itemsCount={itemsCount}
-          itemsLength={items.length}
-          mastersCount={itemMastersHook.count}
-          mastersLength={itemMastersHook.data.length}
-          variantsCount={itemVariantsHook.count}
-          variantsLength={itemVariantsHook.data.length}
-          onAddMaster={handleAddMaster}
-          onAddVariant={handleAddVariant}
-        />
+          {/* Content based on view mode */}
+          {itemsLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            </div>
+          ) : viewMode === "items" ? (
+            <div className="space-y-4">
+              {groupedItems.length === 0 ? (
+                <div className="text-center py-12">
+                  <Package className="w-16 h-16 text-surface-variant-foreground mx-auto mb-4" />
+                  <p className="text-lg text-foreground font-medium mb-2">
+                    No items found
+                  </p>
+                  <p className="text-surface-variant-foreground mb-6">
+                    Start by adding your first item
+                  </p>
+                  <Button
+                    variant="primary"
+                    onClick={handleAddItem}
+                    leftIcon={<Plus />}
+                  >
+                    Add Item
+                  </Button>
+                </div>
+              ) : (
+                groupedItems.map((group) => (
+                  <Card key={group.master.id} variant="outline" hoverable>
+                    <CardContent>
+                      <div
+                        className="flex items-center justify-between cursor-pointer"
+                        onClick={() => handleToggleExpand(group.master.id)}
+                      >
+                        <div className="flex items-center gap-4">
+                          {group.master.img_url && (
+                            <img
+                              src={group.master.img_url}
+                              alt={group.master.name || ""}
+                              className="w-12 h-12 rounded-lg object-cover border-2 border-outline"
+                            />
+                          )}
+                          <div>
+                            <h3 className="font-semibold text-foreground">
+                              {group.master.name}
+                            </h3>
+                            <p className="text-sm text-surface-variant-foreground">
+                              {group.items.length} items • {group.office.name}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge variant="primary">{group.master.type}</Badge>
+                      </div>
+
+                      {expandedGroups.has(group.master.id) && (
+                        <div className="mt-4 space-y-2 border-t-2 border-outline pt-4">
+                          {group.items.map((item) => (
+                            <div
+                              key={item.item_id}
+                              className="flex items-center justify-between p-3 bg-surface-variant rounded-lg group hover:bg-surface-variant/80 transition-colors"
+                            >
+                              <div className="flex-1">
+                                <p className="font-medium text-foreground">
+                                  {item.item_name}
+                                </p>
+                                <p className="text-sm text-surface-variant-foreground">
+                                  {item.item_code} • {item.unit}
+                                </p>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                {item.variant_name && (
+                                  <Badge variant="info" size="sm">
+                                    {item.variant_name}
+                                  </Badge>
+                                )}
+
+                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => handleEditItem(item, e)}
+                                    className="h-8 w-8 p-0"
+                                  >
+                                    <Edit className="w-4 h-4 text-warning" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => handleDeleteItem(item, e)}
+                                    className="h-8 w-8 p-0"
+                                  >
+                                    <Trash2 className="w-4 h-4 text-error" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          ) : viewMode === "masters" ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {itemMastersHook.data.map((master) => (
+                <Card
+                  key={master.id}
+                  variant="outline"
+                  hoverable
+                  clickable
+                  className="group"
+                >
+                  <CardContent>
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className="font-semibold text-foreground flex-1">
+                        {master.name}
+                      </h3>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity me-4">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => handleEditMaster(master, e)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit className="w-4 h-4 text-warning" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => handleDeleteMaster(master, e)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Trash2 className="w-4 h-4 text-error" />
+                        </Button>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <div className="flex flex-col items-end gap-2">
+                          {master.type && (
+                            <Badge variant="primary" size="sm">
+                              {master.type}
+                            </Badge>
+                          )}
+                          {master.offices?.name && (
+                            <Badge variant="info" size="sm">
+                              {master.offices.name}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {master.img_url && (
+                      <img
+                        src={master.img_url}
+                        alt={master.name || "Item Master"}
+                        className="w-full h-32 object-cover rounded-lg mb-2"
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+
+              <Card
+                variant="outline"
+                hoverable
+                clickable
+                onClick={handleAddMaster}
+                className="border-dashed"
+              >
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Plus className="w-12 h-12 text-surface-variant-foreground mb-2" />
+                  <p className="text-sm text-surface-variant-foreground">
+                    Add Category
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {itemVariantsHook.data.map((variant) => (
+                <Card
+                  key={variant.id}
+                  variant="outline"
+                  hoverable
+                  className="group"
+                >
+                  <CardContent className="text-center pt-4 relative">
+                    <p className="font-semibold text-foreground mb-2">
+                      {variant.name}
+                    </p>
+
+                    <div className="flex gap-1 justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => handleEditVariant(variant, e)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Edit className="w-4 h-4 text-warning" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => handleDeleteVariant(variant, e)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Trash2 className="w-4 h-4 text-error" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              <Card
+                variant="outline"
+                hoverable
+                clickable
+                onClick={handleAddVariant}
+                className="border-dashed"
+              >
+                <CardContent className="flex flex-col items-center justify-center py-1">
+                  <Plus className="w-8 h-8 text-surface-variant-foreground mb-1" />
+                  <p className="text-sm text-surface-variant-foreground">
+                    Add Variant
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </CardContent>
       </Card>
+
+      {/* Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-4">
+        <MetricCard
+          title="Total Items"
+          value={statistics?.totalItems || 0}
+          icon={Package}
+          color="primary"
+          subtitle="items"
+        />
+        <MetricCard
+          title="Categories"
+          value={statistics?.totalItemMasters || 0}
+          icon={Grid}
+          color="success"
+          subtitle="categories"
+        />
+        <MetricCard
+          title="Variants"
+          value={statistics?.totalVariants || 0}
+          icon={List}
+          color="warning"
+          subtitle="variants"
+        />
+      </div>
 
       {/* Modals */}
       <ItemModal
@@ -543,7 +862,7 @@ const ItemsPage: React.FC = () => {
         onCreateMaster={handleAddMaster}
         onCreateVariant={handleAddVariant}
         item={editingItem}
-        itemMasters={itemMastersHook.data}
+        itemMasters={itemMastersForModal}
         itemVariants={itemVariantsHook.data}
         mode={modalMode}
         checkItemCodeExists={itemsHook.checkItemCodeExists}
@@ -571,16 +890,21 @@ const ItemsPage: React.FC = () => {
         checkNameExists={itemVariantsHook.checkNameExists}
       />
 
-      {/* Confirm Dialog */}
-      <ConfirmDialog
-        isOpen={confirmDialog.isOpen}
-        onClose={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
-        onConfirm={confirmDialog.onConfirm}
-        title={confirmDialog.title}
-        message={confirmDialog.message}
-        variant={confirmDialog.variant}
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteState.isOpen}
+        onClose={() =>
+          setDeleteState({ isOpen: false, type: null, id: null, name: null })
+        }
+        onConfirm={handleConfirmDelete}
+        title="Hapus Data"
+        message={getDeleteMessage()}
+        confirmText="Ya, Hapus"
+        cancelText="Batal"
+        variant="danger"
+        isLoading={isDeleting}
       />
-    </div>
+    </ContentWrapper>
   );
 };
 

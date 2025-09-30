@@ -1,8 +1,18 @@
+"use client";
+
 import React from "react";
 
 interface SpinnerProps {
   size?: "sm" | "md" | "lg" | "xl";
-  color?: "primary" | "secondary" | "success" | "warning" | "danger" | "muted";
+  color?:
+    | "primary"
+    | "secondary"
+    | "tertiary"
+    | "success"
+    | "warning"
+    | "danger"
+    | "info"
+    | "muted";
   className?: string;
   text?: string;
 }
@@ -17,6 +27,13 @@ export const Spinner: React.FC<SpinnerProps> = ({
   className,
   text,
 }) => {
+  // Get dynamic colors from CSS variables
+  const getColor = (variable: string) => {
+    if (typeof window === "undefined") return "";
+    const style = getComputedStyle(document.documentElement);
+    return `rgb(${style.getPropertyValue(variable).trim()})`;
+  };
+
   const sizeClasses = {
     sm: "w-4 h-4 border-2",
     md: "w-6 h-6 border-2",
@@ -24,38 +41,62 @@ export const Spinner: React.FC<SpinnerProps> = ({
     xl: "w-12 h-12 border-[3px]",
   };
 
-  // Menggunakan CSS variables dari globals.css dan tailwind.config
-  const colorClasses = {
-    primary: "border-border border-t-primary",
-    secondary: "border-border border-t-secondary",
-    success: "border-border border-t-success",
-    warning: "border-border border-t-accent", // menggunakan accent dari tailwind.config
-    danger: "border-border border-t-destructive",
-    muted: "border-border-muted border-t-muted-foreground",
+  // Color mapping berdasarkan CSS variables
+  const colorConfig: Record<string, { border: string; spinner: string }> = {
+    primary: {
+      border: "--outline-variant",
+      spinner: "--primary",
+    },
+    secondary: {
+      border: "--outline-variant",
+      spinner: "--secondary",
+    },
+    tertiary: {
+      border: "--outline-variant",
+      spinner: "--tertiary",
+    },
+    success: {
+      border: "--outline-variant",
+      spinner: "--success",
+    },
+    warning: {
+      border: "--outline-variant",
+      spinner: "--warning",
+    },
+    info: {
+      border: "--outline-variant",
+      spinner: "--info",
+    },
+    danger: {
+      border: "--outline-variant",
+      spinner: "--error",
+    },
+    muted: {
+      border: "--outline-variant",
+      spinner: "--on-surface-variant",
+    },
   };
 
-  const textColorClasses = {
-    primary: "text-primary",
-    secondary: "text-secondary",
-    success: "text-success",
-    warning: "text-accent", // menggunakan accent dari tailwind.config
-    danger: "text-destructive",
-    muted: "text-muted-foreground",
+  const currentColor = colorConfig[color];
+
+  const spinnerStyle = {
+    borderColor: getColor(currentColor.border),
+    borderTopColor: getColor(currentColor.spinner),
   };
 
   if (text) {
     return (
       <div className={cn("flex items-center gap-3", className)}>
         <div
-          className={cn(
-            "animate-spin rounded-full",
-            sizeClasses[size],
-            colorClasses[color]
-          )}
+          className={cn("animate-spin rounded-full", sizeClasses[size])}
+          style={spinnerStyle}
           role="status"
           aria-label="Loading"
         />
-        <span className={cn("text-sm font-medium", textColorClasses[color])}>
+        <span
+          className="text-sm font-medium"
+          style={{ color: getColor(currentColor.spinner) }}
+        >
           {text}
         </span>
       </div>
@@ -64,12 +105,8 @@ export const Spinner: React.FC<SpinnerProps> = ({
 
   return (
     <div
-      className={cn(
-        "animate-spin rounded-full",
-        sizeClasses[size],
-        colorClasses[color],
-        className
-      )}
+      className={cn("animate-spin rounded-full", sizeClasses[size], className)}
+      style={spinnerStyle}
       role="status"
       aria-label="Loading"
     />

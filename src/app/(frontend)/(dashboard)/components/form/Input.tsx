@@ -1,4 +1,3 @@
-// ===== /form/Input.tsx =====
 "use client";
 
 import React, { forwardRef, useState } from "react";
@@ -82,14 +81,14 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       <div className="relative">
         {/* Left Icon */}
         {leftIcon && (
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-variant-foreground">
             {leftIcon}
           </div>
         )}
 
         {/* Search Icon */}
         {variant === "search" && !leftIcon && (
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-variant-foreground" />
         )}
 
         {/* Input Field */}
@@ -101,12 +100,24 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               : props.type || "text"
           }
           className={cn(
-            "input",
+            // Base styles - menggunakan elevation-1 untuk kontras lebih baik
+            "flex w-full rounded-lg transition-all duration-200",
+            "surface border-2 border-outline",
+            "text-foreground placeholder:text-surface-variant-foreground",
+            "shadow-sm hover:shadow-md",
+            // Focus styles - menggunakan primary untuk highlight
+            "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
+            "focus:bg-background focus:shadow-elevation-2",
+            // Disabled styles
+            "disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-disabled",
+            // Size
             sizeClasses[inputSize],
+            // Icon padding
             leftIcon || variant === "search" ? "pl-10" : "",
             rightIcon || clearable || variant === "password" ? "pr-10" : "",
+            // Error state - menggunakan secondary sebagai error
             error &&
-              "border-destructive focus:ring-destructive focus:border-destructive",
+              "border-secondary focus:ring-secondary/20 focus:border-secondary bg-secondary-container/20",
             className
           )}
           value={value}
@@ -120,9 +131,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         {variant === "password" && (
           <button
             type="button"
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md
-              text-muted-foreground hover:text-foreground hover:bg-muted
-              transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-md
+              text-surface-variant-foreground hover:text-primary hover:bg-primary/10
+              transition-all duration-200"
             onClick={() => setShowPassword(!showPassword)}
             tabIndex={-1}
           >
@@ -138,9 +149,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         {clearable && value && (
           <button
             type="button"
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md
-              text-muted-foreground hover:text-foreground hover:bg-muted
-              transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-md
+              text-surface-variant-foreground hover:text-secondary hover:bg-secondary/10
+              transition-all duration-200"
             onClick={onClear}
             tabIndex={-1}
           >
@@ -150,7 +161,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 
         {/* Right Icon */}
         {rightIcon && !clearable && variant !== "password" && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-variant-foreground">
             {rightIcon}
           </div>
         )}
@@ -158,18 +169,19 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         {/* Suggestions Dropdown */}
         {showSuggestions && filteredSuggestions.length > 0 && (
           <div
-            className="absolute top-full left-0 right-0 mt-1 z-50 max-h-48 overflow-y-auto
-            surface rounded-lg shadow-elevation-2 scrollbar-thin"
+            className="absolute top-full left-0 right-0 mt-2 z-50 max-h-48 overflow-y-auto
+            surface border-2 border-outline-variant rounded-lg shadow-elevation-3 scrollbar-thin"
           >
             {filteredSuggestions.map((suggestion, index) => (
               <button
                 key={index}
                 type="button"
                 className={cn(
-                  "w-full text-left px-3 py-2.5 text-sm transition-colors",
-                  "text-foreground hover:bg-muted",
+                  "w-full text-left px-4 py-3 text-sm transition-all duration-200",
+                  "text-foreground hover:bg-primary/10 hover:text-primary",
                   "first:rounded-t-lg last:rounded-b-lg",
-                  "border-b border-border-muted last:border-b-0"
+                  "border-b border-outline-variant last:border-b-0",
+                  "font-medium"
                 )}
                 onClick={() => handleSuggestionClick(suggestion)}
               >
@@ -184,13 +196,20 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     if (label || error || hint) {
       return (
         <div className="space-y-2">
-          {label && <label className="label">{label}</label>}
+          {label && (
+            <label className="text-sm font-semibold text-foreground block">
+              {label}
+            </label>
+          )}
           {renderInput()}
           {error && (
-            <p className="text-sm font-medium text-destructive">{error}</p>
+            <p className="text-sm font-medium text-secondary flex items-center gap-1.5">
+              <span className="inline-block w-1 h-1 rounded-full bg-secondary"></span>
+              {error}
+            </p>
           )}
           {hint && !error && (
-            <p className="text-sm text-muted-foreground">{hint}</p>
+            <p className="text-sm text-surface-variant-foreground">{hint}</p>
           )}
         </div>
       );

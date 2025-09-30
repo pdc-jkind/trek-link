@@ -49,6 +49,13 @@ export const Table = <T extends Record<string, any>>({
   const [sortOrder, setSortOrder] = useState<SortOrder>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
+  // Get dynamic colors from CSS variables
+  const getColor = (variable: string) => {
+    if (typeof window === "undefined") return "";
+    const style = getComputedStyle(document.documentElement);
+    return `rgb(${style.getPropertyValue(variable).trim()})`;
+  };
+
   const sizeClasses = {
     sm: "text-xs",
     md: "text-sm",
@@ -114,22 +121,44 @@ export const Table = <T extends Record<string, any>>({
       {/* Search */}
       {searchable && (
         <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none"
+            style={{ color: getColor("--on-surface-variant") }}
+          />
           <input
             type="text"
             placeholder={searchPlaceholder}
-            className="w-full h-11 pl-10 pr-4 rounded-lg border-2 border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+            className="w-full h-11 pl-10 pr-4 rounded-lg border-2 transition-all focus:outline-none focus:ring-2"
+            style={{
+              backgroundColor: getColor("--surface"),
+              borderColor: getColor("--outline"),
+              color: getColor("--on-surface"),
+            }}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            onFocus={(e) => {
+              e.target.style.borderColor = getColor("--primary");
+              e.target.style.boxShadow = `0 0 0 3px ${getColor("--primary")}20`;
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = getColor("--outline");
+              e.target.style.boxShadow = "none";
+            }}
           />
         </div>
       )}
 
       {/* Table */}
-      <div className="bg-card rounded-xl overflow-hidden border-2 border-border shadow-elevation-2">
+      <div
+        className="rounded-xl overflow-hidden border-2 shadow-elevation-2"
+        style={{
+          backgroundColor: getColor("--surface"),
+          borderColor: getColor("--outline"),
+        }}
+      >
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-muted border-b-2 border-border">
+            <thead className="border-b-2  bg-primary-container font-semibold">
               <tr>
                 {columns.map((column) => (
                   <th
@@ -137,14 +166,27 @@ export const Table = <T extends Record<string, any>>({
                     className={cn(
                       paddingClasses[size],
                       sizeClasses[size],
-                      "font-bold text-foreground text-left",
+                      "font-bold text-left",
                       column.align === "center" && "text-center",
                       column.align === "right" && "text-right",
                       column.sortable &&
-                        "cursor-pointer hover:bg-muted/80 select-none transition-colors",
+                        "cursor-pointer select-none transition-colors",
                       column.width && `w-${column.width}`
                     )}
+                    style={{ color: getColor("--on-surface") }}
                     onClick={() => column.sortable && handleSort(column.key)}
+                    onMouseEnter={(e) => {
+                      if (column.sortable) {
+                        e.currentTarget.style.backgroundColor = `${getColor(
+                          "--surface-variant"
+                        )}dd`;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (column.sortable) {
+                        e.currentTarget.style.backgroundColor = "transparent";
+                      }
+                    }}
                   >
                     <div
                       className={cn(
@@ -159,20 +201,24 @@ export const Table = <T extends Record<string, any>>({
                       {column.sortable && (
                         <div className="flex flex-col">
                           <ChevronUp
-                            className={cn(
-                              "h-3.5 w-3.5 transition-colors",
-                              sortKey === column.key && sortOrder === "asc"
-                                ? "text-primary-600"
-                                : "text-muted-foreground"
-                            )}
+                            className={cn("h-3.5 w-3.5 transition-colors")}
+                            style={{
+                              color:
+                                sortKey === column.key && sortOrder === "asc"
+                                  ? getColor("--primary")
+                                  : getColor("--on-surface-variant"),
+                            }}
                           />
                           <ChevronDown
                             className={cn(
-                              "h-3.5 w-3.5 -mt-1.5 transition-colors",
-                              sortKey === column.key && sortOrder === "desc"
-                                ? "text-primary-600"
-                                : "text-muted-foreground"
+                              "h-3.5 w-3.5 -mt-1.5 transition-colors"
                             )}
+                            style={{
+                              color:
+                                sortKey === column.key && sortOrder === "desc"
+                                  ? getColor("--primary")
+                                  : getColor("--on-surface-variant"),
+                            }}
                           />
                         </div>
                       )}
@@ -181,7 +227,7 @@ export const Table = <T extends Record<string, any>>({
                 ))}
               </tr>
             </thead>
-            <tbody>
+            <tbody className="bg-surface">
               {loading ? (
                 <tr>
                   <td
@@ -197,10 +243,8 @@ export const Table = <T extends Record<string, any>>({
                 <tr>
                   <td
                     colSpan={columns.length}
-                    className={cn(
-                      paddingClasses[size],
-                      "text-center text-muted-foreground"
-                    )}
+                    className={cn(paddingClasses[size], "text-center")}
+                    style={{ color: getColor("--on-surface-variant") }}
                   >
                     <div className="py-12 font-medium">{emptyText}</div>
                   </td>
@@ -209,13 +253,30 @@ export const Table = <T extends Record<string, any>>({
                 sortedData.map((record, index) => (
                   <tr
                     key={getRowKey(record, index)}
-                    className={cn(
-                      "border-b border-border last:border-b-0 transition-colors",
-                      striped && index % 2 === 0 && "bg-background-subtle",
-                      hoverable && "hover:bg-muted/70",
-                      onRowClick && "cursor-pointer active:bg-muted"
-                    )}
+                    className={cn("border-b last:border-b-0 transition-colors")}
+                    style={{
+                      borderColor: getColor("--outline-variant"),
+                      backgroundColor:
+                        striped && index % 2 === 0
+                          ? `${getColor("--surface-1")}40`
+                          : "transparent",
+                    }}
                     onClick={() => onRowClick?.(record, index)}
+                    onMouseEnter={(e) => {
+                      if (hoverable) {
+                        e.currentTarget.style.backgroundColor = `${getColor(
+                          "--surface-variant"
+                        )}60`;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (hoverable) {
+                        e.currentTarget.style.backgroundColor =
+                          striped && index % 2 === 0
+                            ? `${getColor("--surface-1")}40`
+                            : "transparent";
+                      }
+                    }}
                   >
                     {columns.map((column) => (
                       <td
@@ -223,10 +284,12 @@ export const Table = <T extends Record<string, any>>({
                         className={cn(
                           paddingClasses[size],
                           sizeClasses[size],
-                          "text-foreground font-medium",
+                          "font-medium",
                           column.align === "center" && "text-center",
-                          column.align === "right" && "text-right"
+                          column.align === "right" && "text-right",
+                          onRowClick && "cursor-pointer"
                         )}
+                        style={{ color: getColor("--on-surface") }}
                       >
                         {column.render
                           ? column.render(record[column.key], record, index)
@@ -243,7 +306,10 @@ export const Table = <T extends Record<string, any>>({
 
       {/* Results count */}
       {!loading && sortedData.length > 0 && (
-        <div className="text-sm text-muted-foreground font-medium">
+        <div
+          className="text-sm font-medium"
+          style={{ color: getColor("--on-surface-variant") }}
+        >
           Showing {sortedData.length} of {data.length}{" "}
           {sortedData.length === 1 ? "result" : "results"}
         </div>

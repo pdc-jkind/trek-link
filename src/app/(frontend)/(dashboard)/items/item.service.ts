@@ -59,7 +59,12 @@ interface PaginatedResponse<T> {
   error?: string;
 }
 
-type ItemMastersResponse = PaginatedResponse<ItemMaster>;
+type ItemMasterWithOffice = ItemMaster & {
+  offices: Office | null;
+};
+
+// Update response type
+type ItemMastersWithOfficeResponse = PaginatedResponse<ItemMasterWithOffice>;
 type ItemVariantsResponse = PaginatedResponse<ItemVariant>;
 type ItemsResponse = PaginatedResponse<Item>;
 type ViewItemsFullResponse = PaginatedResponse<ViewItemsFull>;
@@ -246,67 +251,76 @@ class ItemService {
   // ITEM_MASTERS CRUD
   // ================================
 
-  async getItemMasters(filters: ItemMasterFilters = {}): Promise<ItemMastersResponse> {
-    console.log('Item Masters service: Getting masters with filters:', filters);
-    
-    try {
-      let query = this.supabase
-        .from('item_masters')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false });
+  async getItemMasters(filters: ItemMasterFilters = {}): Promise<ItemMastersWithOfficeResponse> {
+  console.log('Item Masters service: Getting masters with filters:', filters);
+  
+  try {
+    let query = this.supabase
+      .from('item_masters')
+      .select(`
+        *,
+        offices (
+          id,
+          name,
+          type,
+          location,
+          created_at
+        )
+      `, { count: 'exact' })
+      .order('created_at', { ascending: false });
 
-      // Apply filters
-      if (filters.search) {
-        console.log('Applying search filter:', filters.search);
-        query = query.ilike('name', `%${filters.search}%`);
-      }
-
-      if (filters.type) {
-        query = query.eq('type', filters.type);
-      }
-
-      if (filters.office_id) {
-        query = query.eq('office_id', filters.office_id);
-      }
-
-      // Apply pagination
-      const page = filters.page || 1;
-      const limit = filters.limit || 50;
-      const from = (page - 1) * limit;
-      const to = from + limit - 1;
-
-      query = query.range(from, to);
-      
-      const startTime = performance.now();
-      const { data, error, count } = await query;
-      const endTime = performance.now();
-
-      console.log(`Item Masters query executed in ${(endTime - startTime).toFixed(2)}ms`);
-      console.log('Query result:', {
-        count: data?.length || 0,
-        totalCount: count,
-        hasError: !!error
-      });
-
-      if (error) {
-        console.error('Supabase error in getItemMasters:', error);
-        throw error;
-      }
-      
-      return {
-        data: data || [],
-        count: count || 0,
-      };
-      
-    } catch (error) {
-      console.error('Exception in getItemMasters:', error);
-      return {
-        data: [],
-        count: 0,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
+    // Apply filters
+    if (filters.search) {
+      console.log('Applying search filter:', filters.search);
+      query = query.ilike('name', `%${filters.search}%`);
     }
+
+    if (filters.type) {
+      query = query.eq('type', filters.type);
+    }
+
+    if (filters.office_id) {
+      query = query.eq('office_id', filters.office_id);
+    }
+
+    // Apply pagination
+    const page = filters.page || 1;
+    const limit = filters.limit || 50;
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    query = query.range(from, to);
+    
+    const startTime = performance.now();
+    const { data, error, count } = await query;
+    const endTime = performance.now();
+
+    console.log(`Item Masters query executed in ${(endTime - startTime).toFixed(2)}ms`);
+    console.log('Query result:', {
+      count: data?.length || 0,
+      totalCount: count,
+      hasError: !!error
+    });
+
+    if (error) {
+      console.error('Supabase error in getItemMasters:', error);
+      throw error;
+    }
+    
+    return {
+      data: data || [],
+      count: count || 0,
+    };
+    
+  } catch (error) {
+    console.error('Exception in getItemMasters:', error);
+    return {
+      data: [],
+      count: 0,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
   }
+}
 
   async getItemMasterById(id: string): Promise<ItemMaster | null> {
     console.log('Item Masters service: Getting master by ID:', id);
@@ -1094,7 +1108,8 @@ export type {
   ItemVariantFilters,
   ItemFilters,
   ViewItemsFullFilters,
-  ItemMastersResponse,
+  ItemMasterWithOffice,
+  ItemMastersWithOfficeResponse,
   ItemVariantsResponse,
   ItemsResponse,
   ViewItemsFullResponse,

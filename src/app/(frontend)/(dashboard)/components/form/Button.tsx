@@ -1,15 +1,18 @@
-// src/components/form/Button.tsx
+"use client";
+
 import React, { ButtonHTMLAttributes, forwardRef } from "react";
 import { cn } from "@/fe/lib/utils";
 
 export type ButtonVariant =
   | "primary"
   | "secondary"
-  | "accent"
+  | "tertiary"
   | "success"
   | "ghost"
   | "outline"
-  | "danger";
+  | "danger"
+  | "warning"
+  | "info";
 
 export type ButtonSize = "sm" | "md" | "lg";
 
@@ -41,48 +44,17 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
+    // Get dynamic colors from CSS variables
+    const getColor = (variable: string) => {
+      if (typeof window === "undefined") return "";
+      const style = getComputedStyle(document.documentElement);
+      return `rgb(${style.getPropertyValue(variable).trim()})`;
+    };
+
     const baseStyles =
       "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-semibold " +
       "transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 " +
-      "focus-visible:ring-primary focus-visible:ring-offset-2 " +
-      "disabled:pointer-events-none disabled:opacity-50";
-
-    // Menggunakan CSS variables dari globals.css dan tailwind.config
-    const variantStyles: Record<ButtonVariant, string> = {
-      // Primary menggunakan primary variables
-      primary:
-        "bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 " +
-        "shadow-sm hover:shadow-elevation-2 hover:-translate-y-0.5 active:translate-y-0",
-
-      // Secondary menggunakan secondary variables
-      secondary:
-        "bg-secondary text-secondary-foreground hover:bg-secondary/90 active:bg-secondary/80 " +
-        "border border-border hover:border-border/60",
-
-      // Accent menggunakan accent variables dari tailwind.config
-      accent:
-        "bg-accent text-accent-foreground hover:bg-accent/90 active:bg-accent/80 " +
-        "shadow-sm hover:shadow-elevation-2 hover:-translate-y-0.5 active:translate-y-0",
-
-      // Success menggunakan success variables
-      success:
-        "bg-success text-success-foreground hover:bg-success/90 active:bg-success/80 " +
-        "shadow-sm hover:shadow-elevation-2 hover:-translate-y-0.5 active:translate-y-0",
-
-      // Ghost menggunakan muted dan foreground variables
-      ghost:
-        "text-foreground hover:bg-muted hover:text-foreground active:bg-muted/80",
-
-      // Outline menggunakan border dan foreground variables
-      outline:
-        "border-2 border-border bg-transparent text-foreground " +
-        "hover:bg-muted hover:border-primary active:bg-muted/80",
-
-      // Danger menggunakan destructive variables
-      danger:
-        "bg-destructive text-destructive-foreground hover:bg-destructive/90 active:bg-destructive/80 " +
-        "shadow-sm hover:shadow-elevation-2 hover:-translate-y-0.5 active:translate-y-0",
-    };
+      "focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
 
     const sizeStyles: Record<ButtonSize, string> = {
       sm: "px-4 py-2 text-xs h-9",
@@ -91,6 +63,141 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     };
 
     const widthStyles = fullWidth ? "w-full" : "";
+
+    // Dynamic styles per variant
+    const getVariantStyles = (): React.CSSProperties => {
+      const variantConfig: Record<
+        string,
+        {
+          bg: string;
+          text: string;
+          border?: string;
+        }
+      > = {
+        primary: {
+          bg: "--primary",
+          text: "--on-primary",
+        },
+        secondary: {
+          bg: "--secondary",
+          text: "--on-secondary",
+        },
+        tertiary: {
+          bg: "--tertiary",
+          text: "--on-tertiary",
+        },
+        success: {
+          bg: "--success",
+          text: "--on-success",
+        },
+        warning: {
+          bg: "--warning",
+          text: "--on-warning",
+        },
+        info: {
+          bg: "--info",
+          text: "--on-info",
+        },
+        danger: {
+          bg: "--error",
+          text: "--on-error",
+        },
+        ghost: {
+          bg: "transparent",
+          text: "--on-surface",
+        },
+        outline: {
+          bg: "transparent",
+          text: "--on-surface",
+          border: "--outline",
+        },
+      };
+
+      const config = variantConfig[variant];
+
+      if (variant === "ghost") {
+        return {
+          backgroundColor: "transparent",
+          color: getColor(config.text),
+        };
+      }
+
+      if (variant === "outline") {
+        return {
+          backgroundColor: "transparent",
+          color: getColor(config.text),
+          border: `2px solid ${getColor(config.border!)}`,
+        };
+      }
+
+      return {
+        backgroundColor: getColor(config.bg),
+        color: getColor(config.text),
+      };
+    };
+
+    const handleMouseEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
+      if (disabled || isLoading) return;
+
+      if (variant === "ghost") {
+        e.currentTarget.style.backgroundColor = getColor("--surface-variant");
+      } else if (variant === "outline") {
+        e.currentTarget.style.backgroundColor = getColor("--surface-variant");
+        e.currentTarget.style.borderColor = getColor("--primary");
+      } else {
+        const config: Record<string, string> = {
+          primary: "--primary",
+          secondary: "--secondary",
+          tertiary: "--tertiary",
+          success: "--success",
+          warning: "--warning",
+          info: "--info",
+          danger: "--error",
+        };
+
+        const colorVar = config[variant];
+        e.currentTarget.style.backgroundColor = `${getColor(colorVar)}e6`; // 90% opacity
+        e.currentTarget.style.transform = "translateY(-2px)";
+        e.currentTarget.style.boxShadow = `0 4px 8px -2px ${getColor(
+          colorVar
+        )}40`;
+      }
+    };
+
+    const handleMouseLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
+      if (disabled || isLoading) return;
+
+      if (variant === "ghost") {
+        e.currentTarget.style.backgroundColor = "transparent";
+      } else if (variant === "outline") {
+        e.currentTarget.style.backgroundColor = "transparent";
+        e.currentTarget.style.borderColor = getColor("--outline");
+      } else {
+        const config: Record<string, string> = {
+          primary: "--primary",
+          secondary: "--secondary",
+          tertiary: "--tertiary",
+          success: "--success",
+          warning: "--warning",
+          info: "--info",
+          danger: "--error",
+        };
+
+        e.currentTarget.style.backgroundColor = getColor(config[variant]);
+        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.boxShadow = "none";
+      }
+    };
+
+    const handleMouseDown = (e: React.MouseEvent<HTMLButtonElement>) => {
+      if (disabled || isLoading) return;
+      e.currentTarget.style.transform = "translateY(0) scale(0.98)";
+    };
+
+    const handleMouseUp = (e: React.MouseEvent<HTMLButtonElement>) => {
+      if (disabled || isLoading) return;
+      e.currentTarget.style.transform = "translateY(-2px) scale(1)";
+    };
 
     const LoadingSpinner = () => (
       <svg
@@ -121,13 +228,31 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         type={type}
         disabled={disabled || isLoading}
-        className={cn(
-          baseStyles,
-          variantStyles[variant],
-          sizeStyles[size],
-          widthStyles,
-          className
-        )}
+        className={cn(baseStyles, sizeStyles[size], widthStyles, className)}
+        style={getVariantStyles()}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onFocus={(e) => {
+          const config: Record<string, string> = {
+            primary: "--primary",
+            secondary: "--secondary",
+            tertiary: "--tertiary",
+            success: "--success",
+            warning: "--warning",
+            info: "--info",
+            danger: "--error",
+            ghost: "--primary",
+            outline: "--primary",
+          };
+          e.currentTarget.style.boxShadow = `0 0 0 3px ${getColor(
+            config[variant]
+          )}40`;
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.boxShadow = "none";
+        }}
         {...props}
       >
         {isLoading && <LoadingSpinner />}

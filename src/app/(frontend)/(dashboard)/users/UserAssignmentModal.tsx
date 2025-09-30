@@ -1,6 +1,13 @@
-// src\app\(dashboard)\users\UserAssignmentModal.tsx
+// src/app/(dashboard)/users/UserAssignmentModal.tsx
 import React, { useState, useEffect } from "react";
-import { X, Save, Plus, Trash2, AlertCircle } from "lucide-react";
+import { Save, Plus, Trash2, AlertCircle } from "lucide-react";
+import {
+  Modal,
+  ModalContent,
+  ModalFooter,
+  Button,
+  Select,
+} from "@/fe/components/index";
 
 interface Office {
   id: string;
@@ -63,12 +70,10 @@ export const UserAssignmentModal: React.FC<UserAssignmentModalProps> = ({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize editable assignments when modal opens - Fixed null value handling
+  // Initialize editable assignments when modal opens
   useEffect(() => {
     if (isOpen) {
-      // Handle case where user has no assignments
       if (!assignments || assignments.length === 0) {
-        // Start with one empty assignment for new users
         setEditableAssignments([
           {
             id: generateId(),
@@ -78,7 +83,6 @@ export const UserAssignmentModal: React.FC<UserAssignmentModalProps> = ({
           },
         ]);
       } else {
-        // Map existing assignments with proper fallback values
         setEditableAssignments(
           assignments.map((assignment, index) => ({
             id: `existing-${index}-${assignment.record_id || Date.now()}`,
@@ -91,6 +95,18 @@ export const UserAssignmentModal: React.FC<UserAssignmentModalProps> = ({
       setError(null);
     }
   }, [isOpen, assignments]);
+
+  // Convert offices to Select options
+  const officeOptions = offices.map((office) => ({
+    value: office.id,
+    label: `${office.name} (${office.location})`,
+  }));
+
+  // Convert roles to Select options
+  const roleOptions = roles.map((role) => ({
+    value: role.id,
+    label: role.name,
+  }));
 
   const handleAddAssignment = () => {
     const newId = generateId();
@@ -108,7 +124,6 @@ export const UserAssignmentModal: React.FC<UserAssignmentModalProps> = ({
   const handleRemoveAssignment = (id: string) => {
     setEditableAssignments((prev) => {
       const filtered = prev.filter((a) => a.id !== id);
-      // Ensure at least one assignment remains for editing
       if (filtered.length === 0) {
         return [
           {
@@ -126,26 +141,28 @@ export const UserAssignmentModal: React.FC<UserAssignmentModalProps> = ({
   const handleAssignmentChange = (
     id: string,
     field: "office_id" | "role_id",
-    value: string
+    value: string | string[]
   ) => {
+    // Convert to string if array (shouldn't happen since we're not using multiple)
+    const stringValue = Array.isArray(value) ? value[0] || "" : value;
+
     setEditableAssignments((prev) =>
       prev.map((assignment) =>
-        assignment.id === id ? { ...assignment, [field]: value } : assignment
+        assignment.id === id
+          ? { ...assignment, [field]: stringValue }
+          : assignment
       )
     );
-    // Clear error when user makes changes
     if (error) {
       setError(null);
     }
   };
 
   const validateAssignments = () => {
-    // Filter out empty assignments
     const validAssignments = editableAssignments.filter(
       (a) => a.office_id && a.role_id
     );
 
-    // Check if at least one valid assignment exists
     if (validAssignments.length === 0) {
       setError(
         "Minimal satu assignment harus diisi dengan office dan role yang valid"
@@ -153,7 +170,6 @@ export const UserAssignmentModal: React.FC<UserAssignmentModalProps> = ({
       return false;
     }
 
-    // Check for incomplete assignments (partially filled)
     const hasIncompleteAssignments = editableAssignments.some(
       (a) => (a.office_id && !a.role_id) || (!a.office_id && a.role_id)
     );
@@ -164,7 +180,6 @@ export const UserAssignmentModal: React.FC<UserAssignmentModalProps> = ({
       return false;
     }
 
-    // Check for duplicate office assignments
     const officeIds = validAssignments.map((a) => a.office_id);
     const uniqueOfficeIds = new Set(officeIds);
     if (officeIds.length !== uniqueOfficeIds.size) {
@@ -184,7 +199,6 @@ export const UserAssignmentModal: React.FC<UserAssignmentModalProps> = ({
     setError(null);
 
     try {
-      // Only include assignments that have both office and role selected
       const assignmentsData = editableAssignments
         .filter((assignment) => assignment.office_id && assignment.role_id)
         .map((assignment) => ({
@@ -212,185 +226,165 @@ export const UserAssignmentModal: React.FC<UserAssignmentModalProps> = ({
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Enhanced Backdrop with blur effect */}
-      <div
-        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-        onClick={onClose}
-        style={{
-          backdropFilter: "blur(8px)",
-          WebkitBackdropFilter: "blur(8px)",
-        }}
-      />
-
-      {/* Modal Container with enhanced styling */}
-      <div className="relative bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden border border-white/20 transform transition-all duration-300 scale-100 hover:scale-[1.01]">
-        {/* Gradient Header */}
-        <div className="relative bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-600 p-6 border-b border-purple-300/30">
-          {/* Background pattern */}
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Ccircle cx='12' cy='12' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-30" />
-
-          <div className="relative flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-white drop-shadow-sm">
-                {assignments && assignments.length > 0
-                  ? "Edit Office Assignment"
-                  : "Assign Office"}
-              </h2>
-              <p className="text-purple-100 text-sm mt-1 font-medium">
-                {userEmail}
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-white/80 hover:text-white hover:bg-white/20 transition-all duration-200 p-2 rounded-full backdrop-blur-sm"
-              disabled={saving}
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        assignments && assignments.length > 0
+          ? "Edit Office Assignment"
+          : "Assign Office"
+      }
+      size="lg"
+    >
+      <ModalContent>
+        {/* User Email Info */}
+        <div className="mb-6 pb-4 border-b border-outline">
+          <p className="text-sm text-foreground-subtle">User</p>
+          <p className="font-medium text-foreground">{userEmail}</p>
         </div>
 
-        {/* Content with glass effect */}
-        <div className="p-6 max-h-[60vh] overflow-y-auto bg-gradient-to-b from-white/80 to-gray-50/80">
-          {error && (
-            <div className="mb-6 p-4 bg-red-50/90 backdrop-blur-sm border border-red-200/50 rounded-xl flex items-center gap-3 shadow-sm">
-              <div className="p-1 bg-red-100 rounded-full">
-                <AlertCircle className="w-4 h-4 text-red-500" />
-              </div>
-              <p className="text-sm text-red-700 font-medium">{error}</p>
-            </div>
-          )}
-
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                <div className="w-2 h-6 bg-gradient-to-b from-purple-500 to-indigo-500 rounded-full" />
-                Office Assignments
-              </h3>
-              <button
-                onClick={handleAddAssignment}
-                disabled={saving}
-                className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-sm font-medium rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 disabled:opacity-50 shadow-lg hover:shadow-xl transform hover:scale-105"
-              >
-                <Plus className="w-4 h-4" />
-                Tambah Office
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {editableAssignments.map((assignment, _) => (
-                <div
-                  key={assignment.id}
-                  className="group relative overflow-hidden rounded-xl border border-gray-200/60 bg-gradient-to-r from-white/90 to-gray-50/90 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-300 hover:border-purple-300/60"
-                >
-                  {/* Animated gradient border on hover */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-indigo-500/20 to-purple-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl" />
-
-                  <div className="relative flex items-start gap-4 p-5">
-                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
-                          Office
-                        </label>
-                        <select
-                          value={assignment.office_id}
-                          onChange={(e) =>
-                            handleAssignmentChange(
-                              assignment.id,
-                              "office_id",
-                              e.target.value
-                            )
-                          }
-                          disabled={saving}
-                          className="w-full px-4 py-3 text-sm border border-gray-300/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 bg-white/90 text-gray-900 shadow-sm transition-all duration-200 hover:bg-white"
-                        >
-                          <option value="">Pilih Office</option>
-                          {offices.map((office) => (
-                            <option key={office.id} value={office.id}>
-                              {office.name} ({office.location})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full" />
-                          Role
-                        </label>
-                        <select
-                          value={assignment.role_id}
-                          onChange={(e) =>
-                            handleAssignmentChange(
-                              assignment.id,
-                              "role_id",
-                              e.target.value
-                            )
-                          }
-                          disabled={saving}
-                          className="w-full px-4 py-3 text-sm border border-gray-300/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 bg-white/90 text-gray-900 shadow-sm transition-all duration-200 hover:bg-white"
-                        >
-                          <option value="">Pilih Role</option>
-                          {roles.map((role) => (
-                            <option key={role.id} value={role.id}>
-                              {role.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleRemoveAssignment(assignment.id)}
-                      disabled={saving || editableAssignments.length === 1}
-                      className="flex items-center justify-center w-10 h-10 text-red-500 hover:text-red-700 hover:bg-red-50/80 rounded-xl transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed mt-8 group-hover:bg-red-50/60 backdrop-blur-sm border border-transparent hover:border-red-200/50"
-                      title={
-                        editableAssignments.length === 1
-                          ? "Minimal satu assignment harus ada"
-                          : "Hapus assignment"
-                      }
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+        {/* Error Alert */}
+        {error && (
+          <div className="mb-6 p-4 bg-error-container border border-error rounded-lg flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-on-error-container">{error}</p>
           </div>
+        )}
+
+        {/* Header with Add Button */}
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-base font-semibold text-foreground">
+            Office Assignments
+          </h3>
+          <Button
+            onClick={handleAddAssignment}
+            disabled={saving}
+            variant="success"
+            size="sm"
+            leftIcon={<Plus className="w-4 h-4" />}
+          >
+            Tambah Office
+          </Button>
         </div>
 
-        {/* Enhanced Footer with gradient */}
-        <div className="relative bg-gradient-to-r from-gray-50/90 to-white/90 backdrop-blur-sm border-t border-gray-200/50 p-6">
-          {/* Subtle pattern overlay */}
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23f3f4f6' fill-opacity='0.4'%3E%3Cpath d='M20 20h20v20H20V20zM0 0h20v20H0V0z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-20" />
-
-          <div className="relative flex items-center justify-end gap-4">
-            <button
-              onClick={onClose}
-              disabled={saving}
-              className="px-6 py-3 text-sm font-medium text-gray-700 bg-white/80 backdrop-blur-sm border border-gray-300/60 rounded-xl hover:bg-gray-50/80 hover:border-gray-400/60 transition-all duration-200 disabled:opacity-50 shadow-sm hover:shadow-md"
-            >
-              Batal
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={
-                saving ||
-                editableAssignments.every((a) => !a.office_id || !a.role_id)
+        {/* Assignments List - FIXED: Removed overflow-y-auto and max-h */}
+        <div className="space-y-4 pr-2">
+          {editableAssignments.map((assignment) => (
+            <AssignmentRow
+              key={assignment.id}
+              assignment={assignment}
+              officeOptions={officeOptions}
+              roleOptions={roleOptions}
+              onOfficeChange={(value) =>
+                handleAssignmentChange(assignment.id, "office_id", value)
               }
-              className="flex items-center gap-3 px-6 py-3 text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 disabled:opacity-50 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:hover:scale-100"
-            >
-              {saving ? (
-                <div className="w-4 h-4 border-2 border-white/70 border-t-white rounded-full animate-spin" />
-              ) : (
-                <Save className="w-4 h-4" />
-              )}
-              {saving ? "Menyimpan..." : "Simpan"}
-            </button>
+              onRoleChange={(value) =>
+                handleAssignmentChange(assignment.id, "role_id", value)
+              }
+              onRemove={() => handleRemoveAssignment(assignment.id)}
+              disabled={saving}
+              canRemove={editableAssignments.length > 1}
+            />
+          ))}
+        </div>
+      </ModalContent>
+
+      <ModalFooter>
+        <Button variant="ghost" onClick={onClose} disabled={saving}>
+          Batal
+        </Button>
+        <Button
+          onClick={handleSave}
+          disabled={
+            saving ||
+            editableAssignments.every((a) => !a.office_id || !a.role_id)
+          }
+          variant="warning"
+          leftIcon={<Save className="w-4 h-4" />}
+        >
+          {saving ? "Menyimpan..." : "Simpan"}
+        </Button>
+      </ModalFooter>
+    </Modal>
+  );
+};
+
+// Assignment Row Component
+interface AssignmentRowProps {
+  assignment: {
+    id: string;
+    office_id: string;
+    role_id: string;
+  };
+  officeOptions: Array<{ value: string; label: string }>;
+  roleOptions: Array<{ value: string; label: string }>;
+  onOfficeChange: (value: string | string[]) => void;
+  onRoleChange: (value: string | string[]) => void;
+  onRemove: () => void;
+  disabled: boolean;
+  canRemove: boolean;
+}
+
+const AssignmentRow: React.FC<AssignmentRowProps> = ({
+  assignment,
+  officeOptions,
+  roleOptions,
+  onOfficeChange,
+  onRoleChange,
+  onRemove,
+  disabled,
+  canRemove,
+}) => {
+  return (
+    <div className="p-4 bg-surface-variant border border-outline rounded-lg hover:border-primary/40 transition-colors">
+      <div className="flex items-start gap-3">
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Office Select */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">
+              Office
+            </label>
+            <Select
+              options={[{ value: "", label: "Pilih Office" }, ...officeOptions]}
+              value={assignment.office_id}
+              onValueChange={onOfficeChange}
+              disabled={disabled}
+              searchable
+              placeholder="Pilih Office"
+            />
           </div>
+
+          {/* Role Select */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Role</label>
+            <Select
+              options={[{ value: "", label: "Pilih Role" }, ...roleOptions]}
+              value={assignment.role_id}
+              onValueChange={onRoleChange}
+              disabled={disabled}
+              searchable
+              placeholder="Pilih Role"
+            />
+          </div>
+        </div>
+
+        {/* Remove Button */}
+        <div className="pt-7">
+          <Button
+            onClick={onRemove}
+            disabled={disabled || !canRemove}
+            variant="danger"
+            size="sm"
+            leftIcon={<Trash2 className="w-4 h-4" />}
+            title={
+              canRemove
+                ? "Hapus assignment"
+                : "Minimal satu assignment harus ada"
+            }
+          >
+            Hapus
+          </Button>
         </div>
       </div>
     </div>

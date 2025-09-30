@@ -33,22 +33,22 @@ export interface TopBarProps {
   onOfficeSelect: (office: Office) => void;
 }
 
-// Enhanced PageTitle with gradient
+// Enhanced PageTitle with new color system
 const PageTitle: React.FC<{ title: string; subtitle: string }> = ({
   title,
   subtitle,
 }) => (
   <div className="flex flex-col items-start min-w-0">
-    <h1 className="text-lg lg:text-xl font-bold text-gradient truncate">
+    <h1 className="text-lg lg:text-xl font-bold bg-gradient-to-r from-primary to-tertiary bg-clip-text text-transparent truncate">
       {title}
     </h1>
-    <p className="text-xs lg:text-sm text-muted-foreground truncate">
+    <p className="text-xs lg:text-sm text-surface-variant-foreground truncate">
       {subtitle}
     </p>
   </div>
 );
 
-// Enhanced OfficeToggleSwitch
+// Enhanced OfficeToggleSwitch with new color system
 const OfficeToggleSwitch: React.FC<{
   offices: Office[];
   selectedOffice: Office | null;
@@ -59,8 +59,8 @@ const OfficeToggleSwitch: React.FC<{
 
   if (toggleOffices.length < 2) {
     return (
-      <div className="px-3 py-1.5 gradient-primary surface rounded-full shadow-sm">
-        <span className="text-sm font-semibold text-primary">
+      <div className="px-3 py-1.5 bg-primary-container rounded-full shadow-sm">
+        <span className="text-sm font-semibold text-primary-container-foreground">
           {currentOffice?.name || "Office"}
         </span>
       </div>
@@ -68,7 +68,7 @@ const OfficeToggleSwitch: React.FC<{
   }
 
   return (
-    <div className="relative glass-effect rounded-full p-1 shadow-elevation-1">
+    <div className="relative bg-surface-variant rounded-full p-1 shadow-elevation-1 border border-outline">
       {/* Sliding background */}
       <div
         className="absolute top-1 bottom-1 bg-primary rounded-full shadow-elevation-2 transition-all duration-300 ease-out"
@@ -85,8 +85,8 @@ const OfficeToggleSwitch: React.FC<{
           onClick={() => onOfficeSelect(office)}
           className={`relative z-10 px-3 py-1.5 text-sm font-semibold transition-all duration-300 rounded-full ${
             selectedOffice?.id === office.id
-              ? "text-white shadow-sm"
-              : "text-muted-foreground hover:text-primary"
+              ? "text-primary-foreground"
+              : "text-surface-variant-foreground hover:text-primary"
           }`}
           style={{ minWidth: "60px" }}
         >
@@ -97,19 +97,19 @@ const OfficeToggleSwitch: React.FC<{
   );
 };
 
-// Enhanced NotificationBell
+// Enhanced NotificationBell with new color system
 const NotificationBell: React.FC = () => (
   <div className="relative group">
-    <button className="relative p-2 rounded-xl gradient-primary surface border border-border hover:border-primary transition-all duration-300 hover:shadow-elevation-2">
-      <Bell className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors duration-300" />
-      <div className="absolute -top-1 -right-1 w-5 h-5 bg-destructive rounded-full flex items-center justify-center shadow-elevation-1 animate-pulse">
-        <span className="text-white text-xs font-bold">3</span>
+    <button className="relative p-2 rounded-xl bg-surface-variant border border-outline hover:border-primary transition-all duration-300 hover:shadow-elevation-2">
+      <Bell className="w-4 h-4 text-surface-variant-foreground group-hover:text-primary transition-colors duration-300" />
+      <div className="absolute -top-1 -right-1 w-5 h-5 bg-secondary rounded-full flex items-center justify-center shadow-elevation-1 animate-pulse">
+        <span className="text-secondary-foreground text-xs font-bold">3</span>
       </div>
     </button>
   </div>
 );
 
-// Enhanced UserAvatar
+// Enhanced UserAvatar with new color system
 const UserAvatar: React.FC<{ userName: string; userImage?: string }> = ({
   userName,
   userImage,
@@ -134,12 +134,12 @@ const UserAvatar: React.FC<{ userName: string; userImage?: string }> = ({
         userImage ? "hidden" : ""
       }`}
     >
-      <User className="w-4 h-4 text-white" />
+      <User className="w-4 h-4 text-primary-foreground" />
     </div>
   </div>
 );
 
-// Enhanced UserDropdown
+// Enhanced UserDropdown with new color system
 const UserDropdown: React.FC<{
   userName: string;
   userRole: UserRole;
@@ -153,15 +153,17 @@ const UserDropdown: React.FC<{
   onChangePassword,
   onShowLogoutModal,
 }) => (
-  <div className="absolute right-0 mt-3 w-64 glass-effect rounded-2xl shadow-elevation-3 border border-border py-2 z-50 animate-scale-in overflow-hidden">
+  <div className="absolute right-0 mt-3 w-64 bg-surface rounded-2xl shadow-elevation-3 border border-outline py-2 z-50 animate-scale-in overflow-hidden">
     {/* User Info Section */}
-    <div className="px-4 py-3 gradient-primary border-b border-border">
-      <div className="font-semibold text-foreground text-sm">{userName}</div>
-      <div className="text-xs text-muted-foreground font-medium">
+    <div className="px-4 py-3 bg-gradient-to-br from-primary-container/40 to-tertiary-container/30 border-b border-outline">
+      <div className="font-semibold text-surface-foreground text-sm">
+        {userName}
+      </div>
+      <div className="text-xs text-surface-variant-foreground font-medium">
         {userRole}
       </div>
       {currentOffice && (
-        <div className="text-xs text-primary mt-1.5 flex items-center gap-1.5 bg-primary/10 px-2 py-1 rounded-full w-fit">
+        <div className="text-xs text-primary-container-foreground mt-1.5 flex items-center gap-1.5 bg-primary-container px-2 py-1 rounded-full w-fit">
           <Building className="w-3 h-3" />
           <span className="font-medium">{currentOffice.name}</span>
         </div>
@@ -172,20 +174,20 @@ const UserDropdown: React.FC<{
     <div className="py-1">
       <button
         onClick={onChangePassword}
-        className="w-full text-left px-4 py-3 hover:bg-muted transition-all duration-300 flex items-center gap-3 text-foreground group"
+        className="w-full text-left px-4 py-3 hover:bg-surface-variant transition-all duration-300 flex items-center gap-3 text-surface-foreground group"
       >
-        <div className="w-8 h-8 bg-accent/20 rounded-lg flex items-center justify-center group-hover:bg-accent/30 transition-all duration-300">
-          <Lock className="w-4 h-4 text-accent" />
+        <div className="w-8 h-8 bg-tertiary-container rounded-lg flex items-center justify-center group-hover:bg-tertiary transition-all duration-300">
+          <Lock className="w-4 h-4 text-tertiary-container-foreground group-hover:text-tertiary-foreground transition-colors duration-300" />
         </div>
         <span className="text-sm font-medium">Ganti Password</span>
       </button>
 
       <button
         onClick={onShowLogoutModal}
-        className="w-full text-left px-4 py-3 transition-all duration-300 flex items-center gap-3 text-destructive hover:bg-destructive/5 group"
+        className="w-full text-left px-4 py-3 transition-all duration-300 flex items-center gap-3 text-error hover:bg-error-container/50 group"
       >
-        <div className="w-8 h-8 bg-destructive/10 rounded-lg flex items-center justify-center group-hover:bg-destructive/20 transition-all duration-300">
-          <LogOut className="w-4 text-destructive" />
+        <div className="w-8 h-8 bg-error-container rounded-lg flex items-center justify-center group-hover:bg-error transition-all duration-300">
+          <LogOut className="w-4 text-error-container-foreground group-hover:text-error-foreground transition-colors duration-300" />
         </div>
         <span className="text-sm font-medium">Logout</span>
       </button>
@@ -193,34 +195,34 @@ const UserDropdown: React.FC<{
   </div>
 );
 
-// Enhanced LogoutModal
+// Enhanced LogoutModal with new color system
 const LogoutModal: React.FC<{
   onLogout: () => void;
   onHideLogoutModal: () => void;
 }> = ({ onLogout, onHideLogoutModal }) => (
-  <div className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-md z-50 transition-all duration-300 animate-fade-in">
-    <div className="glass-effect rounded-2xl shadow-elevation-3 p-8 w-96 text-center transform transition-all duration-300 scale-100 animate-scale-in border border-border mx-4">
+  <div className="fixed inset-0 flex items-center justify-center bg-inverse-surface/40 backdrop-blur-md z-50 transition-all duration-300 animate-fade-in">
+    <div className="bg-surface rounded-2xl shadow-elevation-3 p-8 w-96 text-center transform transition-all duration-300 scale-100 animate-scale-in border border-outline mx-4">
       <div className="mb-6">
-        <div className="w-16 h-16 bg-destructive rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-elevation-2">
-          <LogOut className="w-8 h-8 text-white" />
+        <div className="w-16 h-16 bg-error rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-elevation-2">
+          <LogOut className="w-8 h-8 text-error-foreground" />
         </div>
       </div>
-      <h2 className="text-xl font-bold text-foreground mb-3">
+      <h2 className="text-xl font-bold text-surface-foreground mb-3">
         Konfirmasi Logout
       </h2>
-      <p className="text-muted-foreground mb-8 leading-relaxed">
+      <p className="text-surface-variant-foreground mb-8 leading-relaxed">
         Apakah kamu yakin ingin logout dari sistem?
       </p>
       <div className="flex justify-center gap-4">
         <button
           onClick={onLogout}
-          className="bg-destructive hover:opacity-90 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 shadow-elevation-1 hover:shadow-elevation-2 transform hover:scale-105"
+          className="bg-error hover:opacity-90 text-error-foreground font-semibold px-6 py-3 rounded-xl transition-all duration-300 shadow-elevation-1 hover:shadow-elevation-2 transform hover:scale-105"
         >
           Ya, Logout
         </button>
         <button
           onClick={onHideLogoutModal}
-          className="glass-effect border border-border text-foreground font-semibold px-6 py-3 rounded-xl hover:bg-muted transition-all duration-300 transform hover:scale-105"
+          className="bg-surface-variant border border-outline text-surface-foreground font-semibold px-6 py-3 rounded-xl hover:bg-surface transition-all duration-300 transform hover:scale-105"
         >
           Batal
         </button>
@@ -253,14 +255,14 @@ const TopBar: React.FC<TopBarProps> = ({
 
   return (
     <>
-      <header className="sticky top-0 z-30 glass-effect border-b border-border shadow-elevation-1 transition-all duration-300">
+      <header className="sticky top-0 z-30 bg-surface/95 backdrop-blur-xl border-b border-outline shadow-elevation-1 transition-all duration-300">
         <div className="px-4 lg:px-6 py-4">
           <div className="flex items-center justify-between">
             {/* Left Side - Menu & Page Info */}
             <div className="flex items-center space-x-4">
               <button
                 onClick={onMenuToggle}
-                className="lg:hidden p-2 rounded-xl gradient-primary surface border border-border hover:border-primary transition-all duration-300 hover:shadow-elevation-1"
+                className="lg:hidden p-2 rounded-xl bg-surface-variant border border-outline hover:border-primary transition-all duration-300 hover:shadow-elevation-1"
               >
                 <Menu className="w-5 h-5 text-primary" />
               </button>
@@ -290,7 +292,7 @@ const TopBar: React.FC<TopBarProps> = ({
                 <button
                   onClick={onToggleUserDropdown}
                   disabled={isLoggingOut}
-                  className={`flex items-center gap-2 py-2 px-3 rounded-xl gradient-primary surface border border-border hover:border-primary transition-all duration-300 ${
+                  className={`flex items-center gap-2 py-2 px-3 rounded-xl bg-surface-variant border border-outline hover:border-primary transition-all duration-300 ${
                     isLoggingOut
                       ? "opacity-50 cursor-not-allowed"
                       : "hover:shadow-elevation-2 transform hover:scale-105"

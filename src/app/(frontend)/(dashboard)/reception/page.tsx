@@ -2,15 +2,24 @@
 "use client";
 
 import React, { useState } from "react";
-import { Package, Plus, Eye, Edit, Trash2 } from "lucide-react";
 import {
+  Package,
+  Plus,
+  Eye,
+  Edit,
+  Trash2,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+} from "lucide-react";
+import {
+  ContentWrapper,
   Card,
   PageHeader,
-  SearchFilter,
-  StatsGrid,
   Table,
-  ActionButton,
-  StatusBadge,
+  Button,
+  Badge,
+  MetricCard,
 } from "@/fe/components/index";
 
 interface ReceptionItem {
@@ -83,14 +92,6 @@ const ReceptionPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [receptionItems] = useState<ReceptionItem[]>(dummyReceptionItems);
 
-  // Filter options
-  const categoryOptions = [
-    { value: "", label: "All Categories" },
-    { value: "Electronics", label: "Electronics" },
-    { value: "Furniture", label: "Furniture" },
-    { value: "Stationery", label: "Stationery" },
-  ];
-
   // Filter data
   const filteredItems = receptionItems.filter((item) => {
     const matchesSearch =
@@ -101,102 +102,99 @@ const ReceptionPage: React.FC = () => {
     return matchesSearch && matchesCategory;
   });
 
-  // Stats data
-  const stats = [
-    {
-      title: "Total Diterima",
-      value: receptionItems.filter((item) => item.status === "received").length,
-      color: "from-green-500 to-green-600",
-    },
-    {
-      title: "Pending",
-      value: receptionItems.filter((item) => item.status === "pending").length,
-      color: "from-yellow-500 to-yellow-600",
-    },
-    {
-      title: "Ditolak",
-      value: receptionItems.filter((item) => item.status === "rejected").length,
-      color: "from-red-500 to-red-600",
-    },
-    {
-      title: "Total Items",
-      value: receptionItems.length,
-      color: "from-blue-500 to-blue-600",
-    },
-  ];
+  // Calculate stats
+  const stats = {
+    received: receptionItems.filter((i) => i.status === "received").length,
+    pending: receptionItems.filter((i) => i.status === "pending").length,
+    rejected: receptionItems.filter((i) => i.status === "rejected").length,
+    total: receptionItems.length,
+  };
 
-  // Table columns
+  // Table columns - menggunakan format yang benar sesuai TableColumn interface
   const columns = [
     {
       key: "id",
-      label: "ID Barang",
+      title: "ID Barang",
+      sortable: true,
       render: (value: string) => (
         <span className="font-mono text-sm">{value}</span>
       ),
     },
     {
       key: "name",
-      label: "Nama Barang",
+      title: "Nama Barang",
+      sortable: true,
       render: (value: string) => <span className="font-medium">{value}</span>,
     },
     {
       key: "category",
-      label: "Kategori",
+      title: "Kategori",
+      sortable: true,
     },
     {
       key: "quantity",
-      label: "Quantity",
-      className: "text-right",
-      render: (value: string, row: ReceptionItem) => `${value} ${row.unit}`,
+      title: "Quantity",
+      align: "right" as const,
+      sortable: true,
+      render: (value: number, record: ReceptionItem) => (
+        <span className="font-semibold">{`${value} ${record.unit}`}</span>
+      ),
     },
     {
       key: "supplier",
-      label: "Supplier",
+      title: "Supplier",
+      sortable: true,
     },
     {
       key: "receivedDate",
-      label: "Tanggal Terima",
-      render: (value: string) => new Date(value).toLocaleDateString("id-ID"),
+      title: "Tanggal Terima",
+      sortable: true,
+      render: (value: string) => (
+        <span>{new Date(value).toLocaleDateString("id-ID")}</span>
+      ),
     },
     {
       key: "status",
-      label: "Status",
-      className: "text-center",
+      title: "Status",
+      align: "center" as const,
       render: (value: ReceptionItem["status"]) => (
-        <StatusBadge
-          status={getStatusText(value)}
-          variant={getStatusVariant(value)}
-        />
+        <Badge variant={getStatusVariant(value)} dot>
+          {getStatusText(value)}
+        </Badge>
       ),
     },
     {
       key: "actions",
-      label: "Aksi",
-      className: "text-center",
+      title: "Aksi",
+      align: "center" as const,
       render: (_: any, row: ReceptionItem) => (
-        <ActionButton
-          mode="multiple"
-          actions={[
-            {
-              label: "View Details",
-              onClick: () => handleViewItem(row.id),
-              icon: Eye,
-              variant: "view",
-            },
-            {
-              label: "Edit Item",
-              onClick: () => handleEditItem(row.id),
-              icon: Edit,
-              variant: "edit",
-            },
-            {
-              label: "Delete Item",
-              onClick: () => handleDeleteItem(row.id),
-              icon: Trash2,
-              variant: "delete",
-            },
-          ]}
-        />
+        <div className="flex items-center justify-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleViewItem(row.id)}
+            title="View Details"
+          >
+            <Eye className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleEditItem(row.id)}
+            title="Edit Item"
+          >
+            <Edit className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleDeleteItem(row.id)}
+            title="Delete Item"
+            className="text-error hover:bg-error-container"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
       ),
     },
   ];
@@ -215,7 +213,7 @@ const ReceptionPage: React.FC = () => {
     const variantMap = {
       received: "success" as const,
       pending: "warning" as const,
-      rejected: "error" as const,
+      rejected: "danger" as const,
     };
     return variantMap[status];
   };
@@ -243,56 +241,99 @@ const ReceptionPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <Card>
+    <ContentWrapper maxWidth="full" padding="md">
+      <div className="space-y-6">
         <PageHeader
           title="Penerimaan Barang"
           actions={
-            <>
-              {/* <ActionButton variant="blue">Filter</ActionButton> */}
-              <ActionButton variant="primary" onClick={handleAddItem}>
-                <Plus className="w-5 h-5" />
-                <span>Tambah Barang</span>
-              </ActionButton>
-            </>
+            <Button variant="primary" onClick={handleAddItem}>
+              <Plus className="w-5 h-5" />
+              <span>Tambah Barang</span>
+            </Button>
           }
         />
 
-        <SearchFilter
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          searchPlaceholder="Cari barang atau supplier..."
-          filters={[
-            {
-              value: selectedCategory,
-              onChange: setSelectedCategory,
-              options: categoryOptions,
-            },
-          ]}
-        />
+        {/* Search and Filters */}
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Cari barang atau supplier..."
+              className="w-full px-4 py-2 rounded-lg border-2 border-outline bg-surface text-on-surface focus:border-primary focus:outline-none transition-colors"
+            />
+          </div>
+          <div className="flex gap-2">
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="px-4 py-2 rounded-lg border-2 border-outline bg-surface text-on-surface focus:border-primary focus:outline-none transition-colors min-w-[180px]"
+            >
+              <option value="">Semua Kategori</option>
+              <option value="Electronics">Electronics</option>
+              <option value="Furniture">Furniture</option>
+              <option value="Stationery">Stationery</option>
+            </select>
+            {(searchTerm || selectedCategory) && (
+              <Button variant="secondary" onClick={handleResetFilters}>
+                Reset
+              </Button>
+            )}
+          </div>
+        </div>
 
-        <StatsGrid stats={stats} columns={4} />
-
+        {/* Table - Menggunakan Table component dengan props yang benar */}
         <Table
           columns={columns}
           data={filteredItems}
-          emptyMessage={
+          searchable={false}
+          striped={true}
+          hoverable={true}
+          size="md"
+          emptyText={
             searchTerm || selectedCategory
               ? "Tidak ada barang yang sesuai dengan filter."
               : "Belum ada data penerimaan barang."
           }
-          emptyIcon={Package}
         />
 
-        {(searchTerm || selectedCategory) && filteredItems.length === 0 && (
-          <div className="text-center py-4">
-            <ActionButton variant="success" onClick={handleResetFilters}>
-              Reset Filter
-            </ActionButton>
-          </div>
-        )}
-      </Card>
-    </div>
+        {/* Stats Grid - Menggunakan MetricCard dengan props yang benar */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <MetricCard
+            title="Total Diterima"
+            value={stats.received}
+            icon={CheckCircle2}
+            color="success"
+            trend={{ value: 12, direction: "up" }}
+            change="Meningkat dari bulan lalu"
+          />
+          <MetricCard
+            title="Pending"
+            value={stats.pending}
+            icon={Clock}
+            color="warning"
+            trend={{ value: 5, direction: "down" }}
+            change="Menurun dari bulan lalu"
+          />
+          <MetricCard
+            title="Ditolak"
+            value={stats.rejected}
+            icon={AlertCircle}
+            color="danger"
+            change="Perlu ditindaklanjuti"
+          />
+          <MetricCard
+            title="Total Items"
+            value={stats.total}
+            icon={Package}
+            color="info"
+            trend={{ value: 8, direction: "up" }}
+            change="Total semua items"
+          />
+        </div>
+      </div>
+    </ContentWrapper>
   );
 };
 

@@ -4,81 +4,139 @@
 
 @layer base {
   :root {
-    /* Light Mode Colors - Enhanced Contrast & Warmth */
-    --background: 248 249 250; /* Softer white with warm undertone */
-    --background-subtle: 241 243 245; /* Subtle gray for depth */
-    --background-muted: 229 231 235; /* More visible muted areas */
+    /* Core Colors - Light Mode */
+    --primary: 120 157 188; /* #789DBC */
+    --on-primary: 255 255 255; /* #FFFFFF */
+    --primary-container: 171 199 234; /* #E3E8F0 */
+    --on-primary-container: 51 65 85; /* #334155 */
 
-    --foreground: 17 24 39; /* Deep charcoal - stronger contrast */
-    --foreground-muted: 55 65 81; /* Medium gray - better readability */
-    --foreground-subtle: 107 114 128; /* Subtle text - still readable */
+    --secondary: 239 90 90; /* #EF5A5A */
+    --on-secondary: 255 255 255; /* #FFFFFF */
+    --secondary-container: 253 232 232; /* #FDE8E8 */
+    --on-secondary-container: 127 29 29; /* #7F1D1D */
 
-    --border: 209 213 219; /* Visible borders */
-    --border-muted: 229 231 235; /* Subtle borders */
+    --tertiary: 230 168 124; /* #E6A87C */
+    --on-tertiary: 255 255 255; /* #FFFFFF */
+    --tertiary-container: 253 244 231; /* #FDF4E7 */
+    --on-tertiary-container: 120 53 15; /* #78350F */
 
-    --muted: 243 244 246; /* Soft muted background */
-    --muted-foreground: 75 85 99; /* Strong muted text */
+    --background: 241 243 245; /* #F1F3F5 */
+    --on-background: 26 32 44; /* #1A202C */
 
-    --card: 255 255 255; /* Pure white cards for elevation */
-    --card-foreground: 17 24 39; /* Deep text on cards */
+    --surface: 229 231 235; /* #E5E7EB */
+    --on-surface: 26 32 44; /* #1A202C */
+    --surface-variant: 209 213 219; /* #D1D5DB */
+    --on-surface-variant: 74 85 104; /* #4A5568 */
 
-    --primary: 59 130 246; /* Vibrant blue - more saturated */
-    --primary-foreground: 255 255 255;
+    --error: 239 68 68; /* #EF4444 */
+    --on-error: 255 255 255; /* #FFFFFF */
+    --error-container: 254 226 226; /* #FEE2E2 */
+    --on-error-container: 153 27 27; /* #991B1B */
 
-    --secondary: 236 72 153; /* Vibrant pink - eye-catching */
-    --secondary-foreground: 255 255 255;
+    /* Neutral & Outline - Light Mode */
+    --outline: 100 116 139; /* #E2E8F0 */
+    --outline-variant: 241 245 249; /* #F1F5F9 */
+    --inverse-surface: 51 65 85; /* #334155 */
+    --inverse-on-surface: 248 250 252; /* #F8FAFC */
+    --inverse-primary: 159 176 204; /* #9FB0CC */
 
-    --accent: 245 158 11; /* Warm amber - energetic */
-    --accent-foreground: 255 255 255;
+    /* State Colors - Light Mode */
+    --success: 16 185 129; /* #10B981 */
+    --on-success: 255 255 255; /* #FFFFFF */
+    --success-container: 220 252 231; /* #DCFCE7 */
+    --on-success-container: 6 78 59; /* #064E3B */
 
-    --success: 34 197 94; /* Vibrant green - clear signal */
-    --success-foreground: 255 255 255;
+    --warning: 249 115 22; /* #F97316 */
+    --on-warning: 255 255 255; /* #FFFFFF */
+    --warning-container: 255 237 213; /* #FFEDD5 */
+    --on-warning-container: 154 52 18; /* #9A3412 */
 
-    --destructive: 239 68 68; /* Clear red - strong warning */
-    --destructive-foreground: 255 255 255;
+    --info: 14 165 233; /* #0EA5E9 */
+    --on-info: 255 255 255; /* #FFFFFF */
+    --info-container: 224 242 254; /* #E0F2FE */
+    --on-info-container: 7 89 133; /* #075985 */
+
+    --disabled: 229 231 235; /* #E5E7EB */
+    --on-disabled: 156 163 175; /* #9CA3AF */
+
+    /* Elevation Surfaces - Light Mode */
+    --surface-1: 248 249 250; /* #F8F9FA */
+    --surface-2: 241 243 245; /* #F1F3F5 */
+    --surface-3: 229 231 235; /* #E5E7EB */
+    --surface-4: 209 213 219; /* #D1D5DB */
+    --surface-5: 156 163 175; /* #9CA3AF */
 
     color-scheme: light;
   }
 
   .dark {
-    /* Dark Mode Colors - Maximum Contrast & Depth */
-    --background: 10 10 13; /* True deep dark */
-    --background-subtle: 24 24 27; /* Clear elevation step */
-    --background-muted: 39 39 42; /* Distinct muted areas */
+    /* Core Colors - Dark Mode */
+    --primary: 159 176 204; /* #9FB0CC */
+    --on-primary: 24 24 27; /* #18181B */
+    --primary-container: 71 85 105; /* #475569 */
+    --on-primary-container: 227 232 240; /* #E3E8F0 */
 
-    --foreground: 250 250 250; /* Near-white for maximum readability */
-    --foreground-muted: 212 212 216; /* Strong secondary text */
-    --foreground-subtle: 161 161 170; /* Tertiary text - still visible */
+    --secondary: 244 136 136; /* #F48888 */
+    --on-secondary: 24 24 27; /* #18181B */
+    --secondary-container: 127 29 29; /* #7F1D1D */
+    --on-secondary-container: 251 213 213; /* #FBD5D5 */
 
-    --border: 63 63 70; /* Clearly visible borders */
-    --border-muted: 39 39 42; /* Subtle borders */
+    --tertiary: 242 194 155; /* #F2C29B */
+    --on-tertiary: 24 24 27; /* #18181B */
+    --tertiary-container: 146 64 14; /* #92400E */
+    --on-tertiary-container: 251 232 208; /* #FBE8D0 */
 
-    --muted: 24 24 27; /* Distinct muted background */
-    --muted-foreground: 161 161 170; /* Visible muted text */
+    --background: 24 24 27; /* #18181B */
+    --on-background: 247 250 252; /* #F7FAFC */
 
-    --card: 24 24 27; /* Clear elevation from background */
-    --card-foreground: 250 250 250; /* Maximum contrast text */
+    --surface: 39 39 42; /* #27272A */
+    --on-surface: 247 250 252; /* #F7FAFC */
+    --surface-variant: 63 63 70; /* #3F3F46 */
+    --on-surface-variant: 212 212 216; /* #D4D4D8 */
 
-    --primary: 96 165 250; /* Lighter blue for dark bg */
-    --primary-foreground: 10 10 13;
+    --error: 244 136 136; /* #F48888 */
+    --on-error: 24 24 27; /* #18181B */
+    --error-container: 127 29 29; /* #7F1D1D */
+    --on-error-container: 251 213 213; /* #FBD5D5 */
 
-    --secondary: 244 114 182; /* Lighter pink for dark bg */
-    --secondary-foreground: 10 10 13;
+    /* Neutral & Outline - Dark Mode */
+    --outline: 82 82 91; /* #52525B */
+    --outline-variant: 63 63 70; /* #3F3F46 */
+    --inverse-surface: 229 231 235; /* #E5E7EB */
+    --inverse-on-surface: 39 39 42; /* #27272A */
+    --inverse-primary: 90 114 147; /* #5A7293 */
 
-    --accent: 251 191 36; /* Brighter amber for dark bg */
-    --accent-foreground: 10 10 13;
+    /* State Colors - Dark Mode */
+    --success: 110 231 183; /* #6EE7B7 */
+    --on-success: 24 24 27; /* #18181B */
+    --success-container: 6 95 70; /* #065F46 */
+    --on-success-container: 187 247 208; /* #BBF7D0 */
 
-    --success: 74 222 128; /* Brighter green for dark bg */
-    --success-foreground: 10 10 13;
+    --warning: 251 146 60; /* #FB923C */
+    --on-warning: 24 24 27; /* #18181B */
+    --warning-container: 154 52 18; /* #9A3412 */
+    --on-warning-container: 255 237 213; /* #FFEDD5 */
 
-    --destructive: 248 113 113; /* Softer red for dark bg */
-    --destructive-foreground: 10 10 13;
+    --info: 125 211 252; /* #7DD3FC */
+    --on-info: 24 24 27; /* #18181B */
+    --info-container: 7 89 133; /* #075985 */
+    --on-info-container: 186 230 253; /* #BAE6FD */
+
+    --disabled: 63 63 70; /* #3F3F46 */
+    --on-disabled: 161 161 170; /* #A1A1AA */
+
+    /* Elevation Surfaces - Dark Mode */
+    --surface-1: 39 39 42; /* #27272A */
+    --surface-2: 63 63 70; /* #3F3F46 */
+    --surface-3: 82 82 91; /* #52525B */
+    --surface-4: 113 113 122; /* #71717A */
+    --surface-5: 161 161 170; /* #A1A1AA */
 
     color-scheme: dark;
   }
 
   * {
-    border-color: rgb(var(--border));
+    border-color: rgb(var(--outline));
   }
 
   html {
@@ -89,7 +147,7 @@
 
   body {
     background: rgb(var(--background));
-    color: rgb(var(--foreground));
+    color: rgb(var(--on-background));
     font-family: "Inter", system-ui, -apple-system, sans-serif;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
@@ -99,7 +157,7 @@
   /* Enhanced Selection Styles */
   ::selection {
     background-color: rgb(var(--primary) / 0.3);
-    color: rgb(var(--foreground));
+    color: rgb(var(--on-background));
   }
 
   /* Improved Scrollbar Styles */
@@ -108,17 +166,17 @@
   }
 
   ::-webkit-scrollbar-track {
-    background: rgb(var(--background-muted));
+    background: rgb(var(--surface-variant));
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgb(var(--border));
+    background: rgb(var(--outline));
     border-radius: 5px;
     border: 2px solid rgb(var(--background));
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: rgb(var(--foreground-subtle));
+    background: rgb(var(--on-surface-variant));
   }
 
   /* Thin scrollbar */
@@ -139,14 +197,14 @@
 }
 
 @layer components {
-  /* Surface Components - Enhanced Contrast */
+  /* Surface Components */
   .surface {
-    background: rgb(var(--card));
-    color: rgb(var(--card-foreground));
-    border: 1px solid rgb(var(--border));
+    background: rgb(var(--surface));
+    color: rgb(var(--on-surface));
+    border: 1px solid rgb(var(--outline));
   }
 
-  /* Button Components - Vibrant & Clear */
+  /* Button Components */
   .btn {
     @apply inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-semibold 
            transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 
@@ -156,7 +214,7 @@
 
   .btn-primary {
     background: rgb(var(--primary));
-    color: rgb(var(--primary-foreground));
+    color: rgb(var(--on-primary));
     @apply px-6 py-2.5 shadow-sm hover:shadow-md active:shadow-sm;
   }
 
@@ -167,7 +225,7 @@
 
   .btn-secondary {
     background: rgb(var(--secondary));
-    color: rgb(var(--secondary-foreground));
+    color: rgb(var(--on-secondary));
     @apply px-6 py-2.5 shadow-sm hover:shadow-md;
   }
 
@@ -177,13 +235,23 @@
   }
 
   .btn-ghost {
-    @apply px-6 py-2.5 hover:bg-muted;
-    color: rgb(var(--foreground));
+    @apply px-6 py-2.5;
+    background: transparent;
+    color: rgb(var(--on-surface));
+  }
+
+  .btn-ghost:hover {
+    background: rgb(var(--surface-variant));
   }
 
   .btn-outline {
-    @apply px-6 py-2.5 border-2 border-border bg-transparent hover:bg-muted;
-    color: rgb(var(--foreground));
+    @apply px-6 py-2.5 border-2 bg-transparent;
+    border-color: rgb(var(--outline));
+    color: rgb(var(--on-surface));
+  }
+
+  .btn-outline:hover {
+    background: rgb(var(--surface-variant));
   }
 
   .btn-sm {
@@ -194,7 +262,7 @@
     @apply px-8 py-3 text-base;
   }
 
-  /* Card Components - Clear Elevation */
+  /* Card Components */
   .card {
     @apply surface rounded-xl shadow-md p-6;
     box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
@@ -210,12 +278,12 @@
 
   .card-title {
     @apply text-xl font-bold leading-none tracking-tight;
-    color: rgb(var(--card-foreground));
+    color: rgb(var(--on-surface));
   }
 
   .card-description {
     @apply text-sm;
-    color: rgb(var(--muted-foreground));
+    color: rgb(var(--on-surface-variant));
   }
 
   .card-content {
@@ -226,49 +294,59 @@
     @apply flex items-center pt-6;
   }
 
-  /* Form Components - Enhanced Visibility */
+  /* Form Components */
   .input {
-    @apply flex h-11 w-full rounded-lg border-2 border-border bg-transparent px-3 py-2 text-sm 
-           transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary
+    @apply flex h-11 w-full rounded-lg border-2 bg-transparent px-3 py-2 text-sm 
+           transition-colors focus:outline-none focus:ring-2 focus:ring-primary
            disabled:cursor-not-allowed disabled:opacity-50;
-    color: rgb(var(--foreground));
+    border-color: rgb(var(--outline));
+    color: rgb(var(--on-surface));
+  }
+
+  .input:focus {
+    border-color: rgb(var(--primary));
   }
 
   .input::placeholder {
-    color: rgb(var(--muted-foreground));
+    color: rgb(var(--on-surface-variant));
   }
 
   .textarea {
-    @apply flex min-h-[80px] w-full rounded-lg border-2 border-border bg-transparent px-3 py-2 text-sm 
-           transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary
+    @apply flex min-h-[80px] w-full rounded-lg border-2 bg-transparent px-3 py-2 text-sm 
+           transition-colors focus:outline-none focus:ring-2 focus:ring-primary
            disabled:cursor-not-allowed disabled:opacity-50 resize-none;
-    color: rgb(var(--foreground));
+    border-color: rgb(var(--outline));
+    color: rgb(var(--on-surface));
+  }
+
+  .textarea:focus {
+    border-color: rgb(var(--primary));
   }
 
   .textarea::placeholder {
-    color: rgb(var(--muted-foreground));
+    color: rgb(var(--on-surface-variant));
   }
 
   .label {
     @apply text-sm font-semibold leading-none;
-    color: rgb(var(--foreground));
+    color: rgb(var(--on-surface));
   }
 
-  /* Utility Components - Enhanced Glass Effects */
+  /* Utility Components - Glass Effects */
   .backdrop-blur-glass {
     backdrop-filter: blur(16px) saturate(180%);
-    background: rgb(var(--card) / 0.7);
-    border: 1px solid rgb(var(--border) / 0.8);
+    background: rgb(var(--surface) / 0.7);
+    border: 1px solid rgb(var(--outline) / 0.8);
   }
 
   .glass-effect {
     background: linear-gradient(
       135deg,
-      rgb(var(--card) / 0.95),
-      rgb(var(--background-subtle) / 0.9)
+      rgb(var(--surface) / 0.95),
+      rgb(var(--surface-1) / 0.9)
     );
     backdrop-filter: blur(20px);
-    border: 1px solid rgb(var(--border) / 0.5);
+    border: 1px solid rgb(var(--outline) / 0.5);
   }
 
   .gradient-primary {
@@ -326,48 +404,6 @@
 
   .section-padding {
     @apply py-12 sm:py-16 lg:py-20;
-  }
-
-  /* Enhanced Color Classes */
-  .text-primary {
-    color: rgb(var(--primary));
-  }
-
-  .bg-primary {
-    background-color: rgb(var(--primary));
-  }
-
-  .border-primary {
-    border-color: rgb(var(--primary));
-  }
-
-  .text-foreground {
-    color: rgb(var(--foreground));
-  }
-
-  .text-muted-foreground {
-    color: rgb(var(--muted-foreground));
-  }
-
-  .bg-muted {
-    background-color: rgb(var(--muted));
-  }
-
-  /* Status Colors */
-  .text-success {
-    color: rgb(var(--success));
-  }
-
-  .bg-success {
-    background-color: rgb(var(--success));
-  }
-
-  .text-destructive {
-    color: rgb(var(--destructive));
-  }
-
-  .bg-destructive {
-    background-color: rgb(var(--destructive));
   }
 }
 
