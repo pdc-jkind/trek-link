@@ -36,6 +36,13 @@ export const Popover: React.FC<PopoverProps> = ({
   const triggerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
+  // Get dynamic colors from CSS variables
+  const getColor = (variable: string) => {
+    if (typeof window === "undefined") return "";
+    const style = getComputedStyle(document.documentElement);
+    return `rgb(${style.getPropertyValue(variable).trim()})`;
+  };
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -87,26 +94,76 @@ export const Popover: React.FC<PopoverProps> = ({
     return placementClasses[placement];
   };
 
-  const getArrowClasses = () => {
-    if (!arrow) return "";
+  const getArrowStyles = () => {
+    if (!arrow) return {};
 
-    const arrowClasses = {
-      top: "after:absolute after:top-full after:left-1/2 after:-translate-x-1/2 after:border-[6px] after:border-transparent after:border-t-card",
-      bottom:
-        "after:absolute after:bottom-full after:left-1/2 after:-translate-x-1/2 after:border-[6px] after:border-transparent after:border-b-card",
-      left: "after:absolute after:left-full after:top-1/2 after:-translate-y-1/2 after:border-[6px] after:border-transparent after:border-l-card",
-      right:
-        "after:absolute after:right-full after:top-1/2 after:-translate-y-1/2 after:border-[6px] after:border-transparent after:border-r-card",
-      "top-start":
-        "after:absolute after:top-full after:left-4 after:border-[6px] after:border-transparent after:border-t-card",
-      "top-end":
-        "after:absolute after:top-full after:right-4 after:border-[6px] after:border-transparent after:border-t-card",
-      "bottom-start":
-        "after:absolute after:bottom-full after:left-4 after:border-[6px] after:border-transparent after:border-b-card",
-      "bottom-end":
-        "after:absolute after:bottom-full after:right-4 after:border-[6px] after:border-transparent after:border-b-card",
+    const surfaceColor = getColor("--surface");
+    const borderColor = getColor("--outline");
+
+    const arrowPositions = {
+      top: {
+        top: "100%",
+        left: "50%",
+        transform: "translateX(-50%)",
+        borderTop: `8px solid ${surfaceColor}`,
+        borderLeft: "8px solid transparent",
+        borderRight: "8px solid transparent",
+      },
+      bottom: {
+        bottom: "100%",
+        left: "50%",
+        transform: "translateX(-50%)",
+        borderBottom: `8px solid ${surfaceColor}`,
+        borderLeft: "8px solid transparent",
+        borderRight: "8px solid transparent",
+      },
+      left: {
+        left: "100%",
+        top: "50%",
+        transform: "translateY(-50%)",
+        borderLeft: `8px solid ${surfaceColor}`,
+        borderTop: "8px solid transparent",
+        borderBottom: "8px solid transparent",
+      },
+      right: {
+        right: "100%",
+        top: "50%",
+        transform: "translateY(-50%)",
+        borderRight: `8px solid ${surfaceColor}`,
+        borderTop: "8px solid transparent",
+        borderBottom: "8px solid transparent",
+      },
+      "top-start": {
+        top: "100%",
+        left: "1rem",
+        borderTop: `8px solid ${surfaceColor}`,
+        borderLeft: "8px solid transparent",
+        borderRight: "8px solid transparent",
+      },
+      "top-end": {
+        top: "100%",
+        right: "1rem",
+        borderTop: `8px solid ${surfaceColor}`,
+        borderLeft: "8px solid transparent",
+        borderRight: "8px solid transparent",
+      },
+      "bottom-start": {
+        bottom: "100%",
+        left: "1rem",
+        borderBottom: `8px solid ${surfaceColor}`,
+        borderLeft: "8px solid transparent",
+        borderRight: "8px solid transparent",
+      },
+      "bottom-end": {
+        bottom: "100%",
+        right: "1rem",
+        borderBottom: `8px solid ${surfaceColor}`,
+        borderLeft: "8px solid transparent",
+        borderRight: "8px solid transparent",
+      },
     };
-    return arrowClasses[placement];
+
+    return arrowPositions[placement];
   };
 
   return (
@@ -125,16 +182,25 @@ export const Popover: React.FC<PopoverProps> = ({
         <div
           ref={contentRef}
           className={cn(
-            "absolute z-50 bg-card border-2 border-border rounded-lg shadow-elevation-3 p-4 min-w-max",
+            "absolute z-50 rounded-lg border-2 shadow-elevation-3 p-4 min-w-max",
             "animate-in fade-in slide-in-from-bottom-2 duration-200",
             getPlacementClasses(),
-            getArrowClasses(),
             contentClassName
           )}
+          style={{
+            backgroundColor: getColor("--surface"),
+            borderColor: getColor("--outline"),
+            color: getColor("--on-surface"),
+          }}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
-          <div className="text-card-foreground text-sm">{content}</div>
+          {/* Arrow */}
+          {arrow && (
+            <div className="absolute w-0 h-0" style={getArrowStyles()} />
+          )}
+
+          <div className="text-sm">{content}</div>
         </div>
       )}
     </div>

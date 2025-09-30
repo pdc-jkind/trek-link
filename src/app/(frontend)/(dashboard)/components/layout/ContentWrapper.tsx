@@ -31,9 +31,9 @@ export const ContentWrapper: React.FC<ContentWrapperProps> = ({
 
   const paddingClasses = {
     none: "",
-    sm: "p-4",
-    md: "p-6 sm:p-8",
-    lg: "p-8 sm:p-12",
+    sm: "p-2",
+    md: "p-4 sm:p-6",
+    lg: "p-6 sm:p-8",
   };
 
   return (
@@ -43,8 +43,10 @@ export const ContentWrapper: React.FC<ContentWrapperProps> = ({
         maxWidthClasses[maxWidth],
         paddingClasses[padding],
         center && "mx-auto",
-        "m-2 sm:m-4",
+        "mx-2 sm:mx-4",
         "rounded-lg",
+        "bg-surface-variant",
+        "border border-outline",
         "shadow-elevation-2",
         className
       )}

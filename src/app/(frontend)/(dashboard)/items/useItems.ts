@@ -1,10 +1,11 @@
 // src/app/(frontend)/(dashboard)/items/useItems.ts
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   itemService,
   type Office,
   type ItemMaster,
+  type ItemMasterWithOffice,
   type ItemVariant,
   type Item,
   type ViewItemsFull,
@@ -56,7 +57,7 @@ export const useOffices = () => {
 
   useEffect(() => {
     fetchOffices();
-  }, [fetchOffices]);
+  }, []);
 
   return {
     offices,
@@ -77,29 +78,29 @@ export const useViewItemsFull = (initialFilters: ViewItemsFullFilters = {}) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<ViewItemsFullFilters>(initialFilters);
+  
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
 
-  const fetchItems = useCallback(
-    async (newFilters?: ViewItemsFullFilters) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const filtersToUse = newFilters || filters;
-        const response = await itemService.getViewItemsFull(filtersToUse);
-        setData(response.data);
-        setCount(response.count);
-        if (response.error) {
-          setError(response.error);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch items");
-        setData([]);
-        setCount(0);
-      } finally {
-        setLoading(false);
+  const fetchItems = useCallback(async (newFilters?: ViewItemsFullFilters) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const filtersToUse = newFilters || filtersRef.current;
+      const response = await itemService.getViewItemsFull(filtersToUse);
+      setData(response.data);
+      setCount(response.count);
+      if (response.error) {
+        setError(response.error);
       }
-    },
-    [filters]
-  );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch items");
+      setData([]);
+      setCount(0);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const updateFilters = useCallback(
     (newFilters: ViewItemsFullFilters) => {
@@ -135,7 +136,7 @@ export const useViewItemsFull = (initialFilters: ViewItemsFullFilters = {}) => {
 
   useEffect(() => {
     fetchItems();
-  }, [fetchItems]);
+  }, []);
 
   return {
     data,
@@ -151,40 +152,38 @@ export const useViewItemsFull = (initialFilters: ViewItemsFullFilters = {}) => {
 };
 
 // ================================
-// ITEM MASTERS HOOKS
+// ITEM MASTERS HOOKS - FIXED
 // ================================
 
 export const useItemMasters = (initialFilters: ItemMasterFilters = {}) => {
-  const [data, setData] = useState<ItemMaster[]>([]);
+  const [data, setData] = useState<ItemMasterWithOffice[]>([]);
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<ItemMasterFilters>(initialFilters);
+  
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
 
-  const fetchItemMasters = useCallback(
-    async (newFilters?: ItemMasterFilters) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const filtersToUse = newFilters || filters;
-        const response = await itemService.getItemMasters(filtersToUse);
-        setData(response.data);
-        setCount(response.count);
-        if (response.error) {
-          setError(response.error);
-        }
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to fetch item masters"
-        );
-        setData([]);
-        setCount(0);
-      } finally {
-        setLoading(false);
+  const fetchItemMasters = useCallback(async (newFilters?: ItemMasterFilters) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const filtersToUse = newFilters || filtersRef.current;
+      const response = await itemService.getItemMasters(filtersToUse);
+      setData(response.data);
+      setCount(response.count);
+      if (response.error) {
+        setError(response.error);
       }
-    },
-    [filters]
-  );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch item masters");
+      setData([]);
+      setCount(0);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const updateFilters = useCallback(
     (newFilters: ItemMasterFilters) => {
@@ -201,13 +200,11 @@ export const useItemMasters = (initialFilters: ItemMasterFilters = {}) => {
       try {
         const result = await itemService.createItemMaster(payload);
         if (result) {
-          await fetchItemMasters(); // Refresh data
+          await fetchItemMasters();
         }
         return result;
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to create item master"
-        );
+        setError(err instanceof Error ? err.message : "Failed to create item master");
         return null;
       } finally {
         setLoading(false);
@@ -223,13 +220,11 @@ export const useItemMasters = (initialFilters: ItemMasterFilters = {}) => {
       try {
         const result = await itemService.updateItemMaster(payload);
         if (result) {
-          await fetchItemMasters(); // Refresh data
+          await fetchItemMasters();
         }
         return result;
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to update item master"
-        );
+        setError(err instanceof Error ? err.message : "Failed to update item master");
         return null;
       } finally {
         setLoading(false);
@@ -245,13 +240,11 @@ export const useItemMasters = (initialFilters: ItemMasterFilters = {}) => {
       try {
         const result = await itemService.deleteItemMaster(id);
         if (result) {
-          await fetchItemMasters(); // Refresh data
+          await fetchItemMasters();
         }
         return result;
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to delete item master"
-        );
+        setError(err instanceof Error ? err.message : "Failed to delete item master");
         return false;
       } finally {
         setLoading(false);
@@ -265,9 +258,7 @@ export const useItemMasters = (initialFilters: ItemMasterFilters = {}) => {
       try {
         return await itemService.getItemMasterById(id);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to fetch item master"
-        );
+        setError(err instanceof Error ? err.message : "Failed to fetch item master");
         return null;
       }
     },
@@ -279,9 +270,7 @@ export const useItemMasters = (initialFilters: ItemMasterFilters = {}) => {
       try {
         return await itemService.checkItemMasterNameExists(name, excludeId);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to check name existence"
-        );
+        setError(err instanceof Error ? err.message : "Failed to check name existence");
         return false;
       }
     },
@@ -290,7 +279,7 @@ export const useItemMasters = (initialFilters: ItemMasterFilters = {}) => {
 
   useEffect(() => {
     fetchItemMasters();
-  }, [fetchItemMasters]);
+  }, []);
 
   return {
     data,
@@ -318,31 +307,29 @@ export const useItemVariants = (initialFilters: ItemVariantFilters = {}) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<ItemVariantFilters>(initialFilters);
+  
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
 
-  const fetchItemVariants = useCallback(
-    async (newFilters?: ItemVariantFilters) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const filtersToUse = newFilters || filters;
-        const response = await itemService.getItemVariants(filtersToUse);
-        setData(response.data);
-        setCount(response.count);
-        if (response.error) {
-          setError(response.error);
-        }
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to fetch item variants"
-        );
-        setData([]);
-        setCount(0);
-      } finally {
-        setLoading(false);
+  const fetchItemVariants = useCallback(async (newFilters?: ItemVariantFilters) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const filtersToUse = newFilters || filtersRef.current;
+      const response = await itemService.getItemVariants(filtersToUse);
+      setData(response.data);
+      setCount(response.count);
+      if (response.error) {
+        setError(response.error);
       }
-    },
-    [filters]
-  );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch item variants");
+      setData([]);
+      setCount(0);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const updateFilters = useCallback(
     (newFilters: ItemVariantFilters) => {
@@ -359,13 +346,11 @@ export const useItemVariants = (initialFilters: ItemVariantFilters = {}) => {
       try {
         const result = await itemService.createItemVariant(payload);
         if (result) {
-          await fetchItemVariants(); // Refresh data
+          await fetchItemVariants();
         }
         return result;
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to create item variant"
-        );
+        setError(err instanceof Error ? err.message : "Failed to create item variant");
         return null;
       } finally {
         setLoading(false);
@@ -381,13 +366,11 @@ export const useItemVariants = (initialFilters: ItemVariantFilters = {}) => {
       try {
         const result = await itemService.updateItemVariant(payload);
         if (result) {
-          await fetchItemVariants(); // Refresh data
+          await fetchItemVariants();
         }
         return result;
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to update item variant"
-        );
+        setError(err instanceof Error ? err.message : "Failed to update item variant");
         return null;
       } finally {
         setLoading(false);
@@ -403,13 +386,11 @@ export const useItemVariants = (initialFilters: ItemVariantFilters = {}) => {
       try {
         const result = await itemService.deleteItemVariant(id);
         if (result) {
-          await fetchItemVariants(); // Refresh data
+          await fetchItemVariants();
         }
         return result;
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to delete item variant"
-        );
+        setError(err instanceof Error ? err.message : "Failed to delete item variant");
         return false;
       } finally {
         setLoading(false);
@@ -423,9 +404,7 @@ export const useItemVariants = (initialFilters: ItemVariantFilters = {}) => {
       try {
         return await itemService.getItemVariantById(id);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to fetch item variant"
-        );
+        setError(err instanceof Error ? err.message : "Failed to fetch item variant");
         return null;
       }
     },
@@ -437,9 +416,7 @@ export const useItemVariants = (initialFilters: ItemVariantFilters = {}) => {
       try {
         return await itemService.checkItemVariantNameExists(name, excludeId);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to check name existence"
-        );
+        setError(err instanceof Error ? err.message : "Failed to check name existence");
         return false;
       }
     },
@@ -448,7 +425,7 @@ export const useItemVariants = (initialFilters: ItemVariantFilters = {}) => {
 
   useEffect(() => {
     fetchItemVariants();
-  }, [fetchItemVariants]);
+  }, []);
 
   return {
     data,
@@ -476,29 +453,29 @@ export const useItems = (initialFilters: ItemFilters = {}) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<ItemFilters>(initialFilters);
+  
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
 
-  const fetchItems = useCallback(
-    async (newFilters?: ItemFilters) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const filtersToUse = newFilters || filters;
-        const response = await itemService.getItems(filtersToUse);
-        setData(response.data);
-        setCount(response.count);
-        if (response.error) {
-          setError(response.error);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch items");
-        setData([]);
-        setCount(0);
-      } finally {
-        setLoading(false);
+  const fetchItems = useCallback(async (newFilters?: ItemFilters) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const filtersToUse = newFilters || filtersRef.current;
+      const response = await itemService.getItems(filtersToUse);
+      setData(response.data);
+      setCount(response.count);
+      if (response.error) {
+        setError(response.error);
       }
-    },
-    [filters]
-  );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch items");
+      setData([]);
+      setCount(0);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const updateFilters = useCallback(
     (newFilters: ItemFilters) => {
@@ -515,7 +492,7 @@ export const useItems = (initialFilters: ItemFilters = {}) => {
       try {
         const result = await itemService.createItem(payload);
         if (result) {
-          await fetchItems(); // Refresh data
+          await fetchItems();
         }
         return result;
       } catch (err) {
@@ -535,7 +512,7 @@ export const useItems = (initialFilters: ItemFilters = {}) => {
       try {
         const result = await itemService.updateItem(payload);
         if (result) {
-          await fetchItems(); // Refresh data
+          await fetchItems();
         }
         return result;
       } catch (err) {
@@ -555,7 +532,7 @@ export const useItems = (initialFilters: ItemFilters = {}) => {
       try {
         const result = await itemService.deleteItem(id);
         if (result) {
-          await fetchItems(); // Refresh data
+          await fetchItems();
         }
         return result;
       } catch (err) {
@@ -594,11 +571,7 @@ export const useItems = (initialFilters: ItemFilters = {}) => {
       try {
         return await itemService.checkItemCodeExists(itemCode, excludeId);
       } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to check item code existence"
-        );
+        setError(err instanceof Error ? err.message : "Failed to check item code existence");
         return false;
       }
     },
@@ -607,7 +580,7 @@ export const useItems = (initialFilters: ItemFilters = {}) => {
 
   useEffect(() => {
     fetchItems();
-  }, [fetchItems]);
+  }, []);
 
   return {
     data,
@@ -642,9 +615,7 @@ export const useItemUtilities = () => {
         const result = await itemService.getItemsByMaster(itemMasterId);
         return result;
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to fetch items by master"
-        );
+        setError(err instanceof Error ? err.message : "Failed to fetch items by master");
         return [];
       } finally {
         setLoading(false);
@@ -661,11 +632,7 @@ export const useItemUtilities = () => {
         const result = await itemService.getItemsByVariant(variantId);
         return result;
       } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to fetch items by variant"
-        );
+        setError(err instanceof Error ? err.message : "Failed to fetch items by variant");
         return [];
       } finally {
         setLoading(false);
@@ -679,9 +646,7 @@ export const useItemUtilities = () => {
       try {
         return await itemService.generateItemCode(prefix);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to generate item code"
-        );
+        setError(err instanceof Error ? err.message : "Failed to generate item code");
         return `${prefix}-001`;
       }
     },
@@ -692,9 +657,7 @@ export const useItemUtilities = () => {
     try {
       return await itemService.getAvailableUnits();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to fetch available units"
-      );
+      setError(err instanceof Error ? err.message : "Failed to fetch available units");
       return ["pcs", "kg", "ltr", "box"];
     }
   }, []);
@@ -703,9 +666,7 @@ export const useItemUtilities = () => {
     try {
       return await itemService.getItemMasterTypes();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to fetch item master types"
-      );
+      setError(err instanceof Error ? err.message : "Failed to fetch item master types");
       return ["consumable", "equipment", "material", "service"];
     }
   }, []);
@@ -747,9 +708,7 @@ export const useItemStatistics = () => {
       const result = await itemService.getItemStatistics();
       setStatistics(result);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to fetch statistics"
-      );
+      setError(err instanceof Error ? err.message : "Failed to fetch statistics");
     } finally {
       setLoading(false);
     }
@@ -757,7 +716,7 @@ export const useItemStatistics = () => {
 
   useEffect(() => {
     fetchStatistics();
-  }, [fetchStatistics]);
+  }, []);
 
   return {
     statistics,
@@ -772,27 +731,23 @@ export const useItemStatistics = () => {
 // ================================
 
 export const useItemsPage = (initialFilters: ViewItemsFullFilters = {}) => {
-  // Primary data hook for the main items view
   const itemsHook = useViewItemsFull(initialFilters);
-
-  // Supporting data hooks
   const officesHook = useOffices();
   const statisticsHook = useItemStatistics();
   const utilitiesHook = useItemUtilities();
 
-  // Combined loading state
-  const loading =
-    itemsHook.loading || officesHook.loading || statisticsHook.loading;
+  const loading = itemsHook.loading || officesHook.loading || statisticsHook.loading;
+  const error = itemsHook.error || officesHook.error || statisticsHook.error || utilitiesHook.error;
 
-  // Combined error state
-  const error =
-    itemsHook.error ||
-    officesHook.error ||
-    statisticsHook.error ||
-    utilitiesHook.error;
+  const refetchAll = useCallback(async () => {
+    await Promise.all([
+      itemsHook.refetch(),
+      officesHook.refetch(),
+      statisticsHook.refetch(),
+    ]);
+  }, [itemsHook.refetch, officesHook.refetch, statisticsHook.refetch]);
 
   return {
-    // Items data
     items: itemsHook.data,
     itemsCount: itemsHook.count,
     itemsLoading: itemsHook.loading,
@@ -802,42 +757,24 @@ export const useItemsPage = (initialFilters: ViewItemsFullFilters = {}) => {
     refetchItems: itemsHook.refetch,
     getItemById: itemsHook.getItemById,
     getItemByCode: itemsHook.getItemByCode,
-
-    // Offices data
     offices: officesHook.offices,
     officesLoading: officesHook.loading,
     officesError: officesHook.error,
     refetchOffices: officesHook.refetch,
     getOfficeById: officesHook.getOfficeById,
-
-    // Statistics data
     statistics: statisticsHook.statistics,
     statisticsLoading: statisticsHook.loading,
     statisticsError: statisticsHook.error,
     refetchStatistics: statisticsHook.refetch,
-
-    // Utilities
     getItemsByMaster: utilitiesHook.getItemsByMaster,
     getItemsByVariant: utilitiesHook.getItemsByVariant,
     generateItemCode: utilitiesHook.generateItemCode,
     getAvailableUnits: utilitiesHook.getAvailableUnits,
     getItemMasterTypes: utilitiesHook.getItemMasterTypes,
-
-    // Combined states
     loading,
     error,
-
-    // Refetch all data
-    refetchAll: useCallback(async () => {
-      await Promise.all([
-        itemsHook.refetch(),
-        officesHook.refetch(),
-        statisticsHook.refetch(),
-      ]);
-    }, [
-      itemsHook,
-      officesHook,
-      statisticsHook,
-    ]),
+    refetchAll,
   };
 };
+
+export type { ItemMasterWithOffice };

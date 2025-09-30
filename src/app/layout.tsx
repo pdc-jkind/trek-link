@@ -25,7 +25,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="id" className="scheme-light-dark" suppressHydrationWarning>
+    <html
+      lang="id"
+      data-scroll-behavior="smooth"
+      className="scheme-light-dark"
+      suppressHydrationWarning
+    >
       <head>
         <script
           dangerouslySetInnerHTML={{

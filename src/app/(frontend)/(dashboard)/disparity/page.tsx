@@ -2,37 +2,42 @@
 "use client";
 
 import React, { useState } from "react";
-import { Calendar, Download, Filter } from "lucide-react";
 import {
-  Card,
-  StatsGrid,
-  ActionButton,
-  Table,
-  StatusBadge,
-  PageHeader,
-} from "@/fe/components/index";
+  Calendar,
+  Download,
+  Filter,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react";
+import { Button, Badge, Table, Card } from "@/fe/components/index";
+import { ContentWrapper } from "@/fe/components/layout/ContentWrapper";
+import { PageHeader } from "@/fe/components/layout/PageHeader";
 
 // Dummy data
 const statsData = [
   {
     title: "Total Target",
     value: "405",
-    color: "from-blue-500 to-blue-600",
+    trend: "+5%",
+    icon: TrendingUp,
   },
   {
     title: "Total Actual",
     value: "395",
-    color: "from-green-500 to-green-600",
+    trend: "-2.5%",
+    icon: TrendingDown,
   },
   {
     title: "Achievement",
     value: "97.5%",
-    color: "from-yellow-500 to-yellow-600",
+    trend: "+1.2%",
+    icon: TrendingUp,
   },
   {
     title: "Variance",
     value: "-10",
-    color: "from-purple-500 to-purple-600",
+    trend: "-5",
+    icon: TrendingDown,
   },
 ];
 
@@ -80,40 +85,46 @@ const disparityData = [
 ];
 
 // Chart Component
-const DisparityChart = () => (
-  <Card>
-    <div className="flex items-center justify-between mb-4">
-      <h3 className="text-lg font-semibold text-gray-900">
+const DisparityChart: React.FC = () => (
+  <div className="bg-surface rounded-xl p-6 border border-outline">
+    <div className="flex items-center justify-between mb-6">
+      <h3 className="text-lg font-semibold text-foreground">
         Disparitas by Region
       </h3>
-      <Filter className="w-5 h-5 text-gray-500 cursor-pointer hover:text-gray-700" />
+      <Button
+        variant="ghost"
+        size="sm"
+        leftIcon={<Filter className="w-4 h-4" />}
+      >
+        Filter
+      </Button>
     </div>
 
     <div className="space-y-4">
-      {disparityData.map((item, index) => (
-        <div key={index} className="flex items-center space-x-4">
-          <div className="w-20 text-sm font-medium text-gray-700">
+      {disparityData.map((item) => (
+        <div key={item.id} className="flex items-center space-x-4">
+          <div className="w-24 text-sm font-medium text-foreground">
             {item.region}
           </div>
           <div className="flex-1">
-            <div className="flex items-center space-x-2">
-              <div className="flex-1 bg-gray-200 rounded-full h-3 relative">
+            <div className="flex items-center space-x-3">
+              <div className="flex-1 bg-surface-variant rounded-full h-3 relative overflow-hidden">
                 <div
-                  className={`h-3 rounded-full ${
+                  className={`h-3 rounded-full transition-all duration-500 ${
                     item.percentage >= 100
-                      ? "bg-gradient-to-r from-green-400 to-green-600"
+                      ? "bg-gradient-to-r from-success to-success/80"
                       : item.percentage >= 80
-                      ? "bg-gradient-to-r from-yellow-400 to-yellow-600"
-                      : "bg-gradient-to-r from-red-400 to-red-600"
+                      ? "bg-gradient-to-r from-warning to-warning/80"
+                      : "bg-gradient-to-r from-error to-error/80"
                   }`}
                   style={{ width: `${Math.min(item.percentage, 100)}%` }}
-                ></div>
+                />
               </div>
-              <div className="w-16 text-sm font-medium text-gray-700 text-right">
+              <div className="w-16 text-sm font-semibold text-foreground text-right">
                 {item.percentage}%
               </div>
             </div>
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
+            <div className="flex justify-between text-xs text-surface-variant-foreground mt-2">
               <span>Target: {item.target}</span>
               <span>Actual: {item.actual}</span>
             </div>
@@ -121,61 +132,89 @@ const DisparityChart = () => (
         </div>
       ))}
     </div>
-  </Card>
+  </div>
 );
 
 // Summary Table Component
-const SummaryTable = () => {
-  const getStatusVariant = (status: string) => {
-    switch (status) {
-      case "Exceeded":
-        return "success";
-      case "On Track":
-        return "warning";
-      case "Below Target":
-        return "error";
-      default:
-        return "default";
-    }
+const SummaryTable: React.FC = () => {
+  const getStatusBadge = (status: string) => {
+    const variants = {
+      Exceeded: "success",
+      "On Track": "warning",
+      "Below Target": "error",
+    };
+    return variants[status as keyof typeof variants] || "default";
   };
 
   const columns = [
-    { key: "region", label: "Region" },
-    { key: "target", label: "Target", className: "text-right" },
-    { key: "actual", label: "Actual", className: "text-right" },
+    {
+      key: "region",
+      title: "Region",
+      sortable: true,
+    },
+    {
+      key: "target",
+      title: "Target",
+      align: "right" as const,
+      sortable: true,
+    },
+    {
+      key: "actual",
+      title: "Actual",
+      align: "right" as const,
+      sortable: true,
+    },
     {
       key: "variance",
-      label: "Variance",
-      className: "text-right",
-      render: (value: any, row: any) => row.actual - row.target,
+      title: "Variance",
+      align: "right" as const,
+      sortable: true,
+      render: (_: any, row: any) => {
+        const variance = row.actual - row.target;
+        return (
+          <span className={variance >= 0 ? "text-success" : "text-error"}>
+            {variance > 0 ? "+" : ""}
+            {variance}
+          </span>
+        );
+      },
     },
     {
       key: "percentage",
-      label: "Achievement (%)",
-      className: "text-right font-medium",
-      render: (value: any) => `${value}%`,
+      title: "Achievement (%)",
+      align: "right" as const,
+      sortable: true,
+      render: (value: any) => <span className="font-semibold">{value}%</span>,
     },
     {
       key: "status",
-      label: "Status",
-      className: "text-center",
+      title: "Status",
+      align: "center" as const,
       render: (value: any) => (
-        <StatusBadge status={value} variant={getStatusVariant(value)} />
+        <Badge variant={getStatusBadge(value) as any}>{value}</Badge>
       ),
     },
   ];
 
   return (
-    <Card>
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">
-        Ringkasan Detail
-      </h3>
+    <div className="rounded-xl overflow-hidden">
+      <div className="py-1">
+        <Card>
+          <h3 className="text-lg font-semibold text-foreground">
+            Ringkasan Detail
+          </h3>
+        </Card>
+      </div>
+
       <Table
         columns={columns}
         data={disparityData}
-        emptyMessage="Tidak ada data disparitas"
+        emptyText="Tidak ada data disparitas"
+        hoverable
+        striped
+        size="md"
       />
-    </Card>
+    </div>
   );
 };
 
@@ -188,47 +227,69 @@ const DisparityPage: React.FC = () => {
 
   const handleExport = async () => {
     setIsExporting(true);
-    // Simulate export process
     await new Promise((resolve) => setTimeout(resolve, 2000));
     console.log("Exporting disparity report");
     setIsExporting(false);
   };
 
-  const headerActions = (
-    <>
-      <ActionButton onClick={handlePeriodChange} variant="primary">
-        <Calendar className="w-4 h-4" />
-        <span>Periode</span>
-      </ActionButton>
-
-      <ActionButton
-        onClick={handleExport}
-        variant="secondary"
-        disabled={isExporting}
-      >
-        <Download className={`w-4 h-4 ${isExporting ? "animate-pulse" : ""}`} />
-        <span>{isExporting ? "Exporting..." : "Export"}</span>
-      </ActionButton>
-    </>
-  );
-
   return (
-    <div className="space-y-6">
-      <Card>
-        <PageHeader title="Laporan Disparitas" actions={headerActions} />
+    <ContentWrapper>
+      <PageHeader
+        title="Laporan Disparitas"
+        subtitle="Analisis perbandingan target dan actual per region"
+        actions={
+          <>
+            <Button
+              onClick={handlePeriodChange}
+              variant="ghost"
+              leftIcon={<Calendar className="w-4 h-4" />}
+            >
+              Periode
+            </Button>
+            <Button
+              onClick={handleExport}
+              variant="primary"
+              disabled={isExporting}
+              isLoading={isExporting}
+              leftIcon={<Download className="w-4 h-4" />}
+            >
+              {isExporting ? "Exporting..." : "Export"}
+            </Button>
+          </>
+        }
+      />
 
+      <div className="space-y-6">
         {/* Stats Overview */}
-        <StatsGrid stats={statsData} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {statsData.map((stat, index) => (
+            <div
+              key={index}
+              className="surface rounded-xl p-5 border-2 border-outline hover:shadow-lg transition-all"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-surface-variant-foreground">
+                  {stat.title}
+                </span>
+                <stat.icon className="w-5 h-5 text-primary" />
+              </div>
+              <div className="text-3xl font-bold text-foreground mb-1">
+                {stat.value}
+              </div>
+              <div className="text-xs text-surface-variant-foreground">
+                Trend: {stat.trend}
+              </div>
+            </div>
+          ))}
+        </div>
 
         {/* Chart */}
-        <div className="mb-6">
-          <DisparityChart />
-        </div>
+        <DisparityChart />
 
         {/* Summary Table */}
         <SummaryTable />
-      </Card>
-    </div>
+      </div>
+    </ContentWrapper>
   );
 };
 

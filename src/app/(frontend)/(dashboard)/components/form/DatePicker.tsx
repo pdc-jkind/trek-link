@@ -1,4 +1,3 @@
-// ===== /form/DatePicker.tsx =====
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
@@ -35,6 +34,13 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     value ? new Date(value.getFullYear(), value.getMonth()) : new Date()
   );
   const datePickerRef = useRef<HTMLDivElement>(null);
+
+  // Get dynamic colors from CSS variables
+  const getColor = (variable: string) => {
+    if (typeof window === "undefined") return "";
+    const style = getComputedStyle(document.documentElement);
+    return `rgb(${style.getPropertyValue(variable).trim()})`;
+  };
 
   const sizeClasses = {
     sm: "h-9 px-3 text-sm",
@@ -123,34 +129,69 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     <div ref={datePickerRef} className="relative">
       <div
         className={cn(
-          "input cursor-pointer flex items-center justify-between",
+          "cursor-pointer flex items-center justify-between rounded-lg border-2 transition-all",
           sizeClasses[size],
-          error &&
-            "border-destructive focus:ring-destructive focus:border-destructive",
           disabled && "opacity-50 cursor-not-allowed",
-          isOpen && "ring-2 ring-primary border-primary",
           className
         )}
+        style={{
+          backgroundColor: getColor("--surface"),
+          borderColor: error
+            ? getColor("--error")
+            : isOpen
+            ? getColor("--primary")
+            : getColor("--outline"),
+          color: value
+            ? getColor("--on-surface")
+            : getColor("--on-surface-variant"),
+        }}
         onClick={() => !disabled && setIsOpen(!isOpen)}
+        onFocus={(e) => {
+          if (isOpen) {
+            e.currentTarget.style.boxShadow = `0 0 0 3px ${getColor(
+              "--primary"
+            )}40`;
+          }
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.boxShadow = "none";
+        }}
       >
-        <span className={cn("truncate", !value ? "text-muted-foreground" : "")}>
+        <span className="truncate">
           {value ? formatDate(value) : placeholder}
         </span>
-        <Calendar className="h-4 w-4 text-muted-foreground" />
+        <Calendar className="h-4 w-4 flex-shrink-0" />
       </div>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1 surface shadow-elevation-2 z-50 p-4 rounded-lg min-w-[280px]">
-          {/* Header dengan kontras yang baik */}
+        <div
+          className="absolute top-full left-0 mt-2 shadow-elevation-3 z-50 p-4 rounded-xl min-w-[280px] border-2"
+          style={{
+            backgroundColor: getColor("--surface"),
+            borderColor: getColor("--outline"),
+          }}
+        >
+          {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <button
               type="button"
               onClick={() => navigateMonth("prev")}
-              className="p-1 hover:bg-muted rounded text-foreground transition-colors"
+              className="p-1.5 rounded-lg transition-all"
+              style={{ color: getColor("--on-surface") }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor =
+                  getColor("--surface-variant");
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "transparent";
+              }}
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <h3 className="text-sm font-medium text-foreground">
+            <h3
+              className="text-sm font-bold"
+              style={{ color: getColor("--on-surface") }}
+            >
               {currentMonth.toLocaleDateString("en-US", {
                 month: "long",
                 year: "numeric",
@@ -159,43 +200,80 @@ export const DatePicker: React.FC<DatePickerProps> = ({
             <button
               type="button"
               onClick={() => navigateMonth("next")}
-              className="p-1 hover:bg-muted rounded text-foreground transition-colors"
+              className="p-1.5 rounded-lg transition-all"
+              style={{ color: getColor("--on-surface") }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor =
+                  getColor("--surface-variant");
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "transparent";
+              }}
             >
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
 
-          {/* Week Days menggunakan muted-foreground */}
+          {/* Week Days */}
           <div className="grid grid-cols-7 gap-1 mb-2">
             {weekDays.map((day) => (
               <div
                 key={day}
-                className="text-xs text-muted-foreground text-center p-2 font-medium"
+                className="text-xs text-center p-2 font-semibold"
+                style={{ color: getColor("--on-surface-variant") }}
               >
                 {day}
               </div>
             ))}
           </div>
 
-          {/* Calendar Days dengan CSS variables */}
+          {/* Calendar Days */}
           <div className="grid grid-cols-7 gap-1">
-            {days.map((date, index) => (
-              <button
-                key={index}
-                type="button"
-                onClick={() => selectDate(date)}
-                className={cn(
-                  "p-2 text-sm hover:bg-muted rounded text-center transition-colors",
-                  "text-foreground focus:outline-none focus:ring-2 focus:ring-primary",
-                  !isDateInCurrentMonth(date) &&
-                    "text-muted-foreground opacity-50",
-                  isDateSelected(date) &&
-                    "bg-primary text-primary-foreground hover:bg-primary/90"
-                )}
-              >
-                {date.getDate()}
-              </button>
-            ))}
+            {days.map((date, index) => {
+              const selected = isDateSelected(date);
+              const inMonth = isDateInCurrentMonth(date);
+
+              return (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => selectDate(date)}
+                  className="p-2 text-sm rounded-lg text-center transition-all focus:outline-none focus:ring-2"
+                  style={{
+                    backgroundColor: selected
+                      ? getColor("--primary")
+                      : "transparent",
+                    color: selected
+                      ? getColor("--on-primary")
+                      : inMonth
+                      ? getColor("--on-surface")
+                      : getColor("--on-surface-variant"),
+                    opacity: inMonth ? 1 : 0.5,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!selected) {
+                      e.currentTarget.style.backgroundColor =
+                        getColor("--surface-variant");
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!selected) {
+                      e.currentTarget.style.backgroundColor = "transparent";
+                    }
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.boxShadow = `0 0 0 2px ${getColor(
+                      "--primary"
+                    )}60`;
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
+                >
+                  {date.getDate()}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -205,11 +283,30 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   if (label || error || hint) {
     return (
       <div className="space-y-2">
-        {label && <label className="label">{label}</label>}
+        {label && (
+          <label
+            className="text-sm font-semibold leading-none"
+            style={{ color: getColor("--on-surface") }}
+          >
+            {label}
+          </label>
+        )}
         {renderDatePicker()}
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {error && (
+          <p
+            className="text-sm font-medium"
+            style={{ color: getColor("--error") }}
+          >
+            {error}
+          </p>
+        )}
         {hint && !error && (
-          <p className="text-sm text-muted-foreground">{hint}</p>
+          <p
+            className="text-sm"
+            style={{ color: getColor("--on-surface-variant") }}
+          >
+            {hint}
+          </p>
         )}
       </div>
     );
