@@ -2,8 +2,17 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Save, AlertCircle, Plus, Minus, Info } from "lucide-react";
+import { Save, AlertCircle, Plus, Minus, Info } from "lucide-react";
 import { Tables } from "@/types/database";
+import {
+  Modal,
+  ModalContent,
+  ModalFooter,
+  Input,
+  Select,
+  Button,
+  Badge,
+} from "@/fe/components/index";
 
 type ItemMaster = Tables<"item_masters">;
 type ItemVariant = Tables<"item_variants">;
@@ -59,7 +68,7 @@ export const ItemModal: React.FC<ItemModalProps> = ({
     {
       item_name: "",
       variant_id: "",
-      unit: "",
+      unit: "lembar",
       alt_unit: "",
       conversion_to_base: "",
     },
@@ -72,17 +81,17 @@ export const ItemModal: React.FC<ItemModalProps> = ({
 
   // Common units for dropdown
   const commonUnits = [
-    "lembar",
-    "box",
-    "set",
-    "pack",
-    "pcs",
-    "kg",
-    "liter",
-    "galon",
-    "meter",
-    "roll",
-    "unit",
+    { value: "lembar", label: "lembar" },
+    { value: "box", label: "box" },
+    { value: "set", label: "set" },
+    { value: "pack", label: "pack" },
+    { value: "pcs", label: "pcs" },
+    { value: "kg", label: "kg" },
+    { value: "liter", label: "liter" },
+    { value: "galon", label: "galon" },
+    { value: "meter", label: "meter" },
+    { value: "roll", label: "roll" },
+    { value: "unit", label: "unit" },
   ];
 
   // Reset form when modal opens/closes or item changes
@@ -190,7 +199,7 @@ export const ItemModal: React.FC<ItemModalProps> = ({
       {
         item_name: "",
         variant_id: "",
-        unit: "pcs",
+        unit: "lembar",
         alt_unit: "",
         conversion_to_base: "",
       },
@@ -316,468 +325,340 @@ export const ItemModal: React.FC<ItemModalProps> = ({
     }
   };
 
-  if (!isOpen) return null;
+  // Transform item masters to select options
+  const masterOptions = itemMasters.map((master) => ({
+    value: master.id,
+    label: master.name,
+  }));
+
+  // Transform item variants to select options
+  const variantOptions = itemVariants.map((variant) => ({
+    value: variant.id,
+    label: variant.name,
+  }));
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50">
-      {/* Enhanced backdrop with blur effect */}
-      <div
-        className="absolute inset-0 bg-black/30 dark:bg-black/50 backdrop-blur-xs animate-fade-in"
-        onClick={handleClose}
-      />
-
-      {/* Modal content */}
-      <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-modal w-full max-w-5xl mx-4 max-h-[95vh] border border-gray-200/50 dark:border-gray-700/50 animate-scale-in">
-        {/* Fixed Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 sticky top-0 z-10 rounded-t-xl">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-            {mode === "create" ? "Tambah Barang" : "Edit Barang"}
-          </h2>
-          <button
-            onClick={handleClose}
-            disabled={isSubmitting}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-400"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Scrollable Form Content */}
-        <div className="overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800 max-h-[calc(95vh-140px)]">
-          <form onSubmit={handleSubmit} className="p-6 space-y-8">
-            {errors.submit && (
-              <div className="bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800 rounded-lg p-4 flex items-start space-x-3 animate-slide-down">
-                <AlertCircle className="w-5 h-5 text-danger-500 flex-shrink-0 mt-0.5" />
-                <span className="text-danger-800 dark:text-danger-200 text-sm font-medium">
-                  {errors.submit}
-                </span>
-              </div>
-            )}
-
-            {/* Top Section - Item Code and Category */}
-            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                Informasi Dasar
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Item Code */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    Kode Barang *
-                  </label>
-                  <div className="flex space-x-3">
-                    <input
-                      type="text"
-                      value={formData.item_code}
-                      onChange={(e) => handleCodeChange(e.target.value)}
-                      className={`
-                        form-input flex-1 px-4 py-3 rounded-lg transition-all duration-200
-                        text-gray-900 dark:text-gray-100 font-medium 
-                        placeholder-gray-500 dark:placeholder-gray-400
-                        bg-white dark:bg-gray-700
-                        ${
-                          errors.item_code || codeExists
-                            ? "border-danger-300 dark:border-danger-600 focus:ring-danger-500 bg-danger-50 dark:bg-danger-900/20"
-                            : "border-gray-300 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"
-                        }
-                      `}
-                      placeholder="Masukkan kode barang"
-                      disabled={isSubmitting}
-                    />
-                    {generateItemCode && (
-                      <button
-                        type="button"
-                        onClick={handleGenerateCode}
-                        disabled={isSubmitting || isGeneratingCode}
-                        className="px-4 py-3 bg-gradient-to-r from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/30 text-primary-800 dark:text-primary-200 font-medium border border-primary-300 dark:border-primary-600 rounded-lg hover:from-primary-200 hover:to-primary-300 dark:hover:from-primary-800/50 dark:hover:to-primary-700/50 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 transition-all duration-200 shadow-card hover:shadow-card-hover"
-                        title="Generate Code"
-                      >
-                        {isGeneratingCode ? (
-                          <div className="w-4 h-4 border-2 border-primary-600 dark:border-primary-400 border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <span className="text-sm font-semibold">Auto</span>
-                        )}
-                      </button>
-                    )}
-                  </div>
-                  {(errors.item_code || codeExists) && (
-                    <p className="text-sm text-danger-700 dark:text-danger-300 font-medium animate-slide-down">
-                      {errors.item_code ||
-                        (codeExists ? "Kode barang sudah ada" : "")}
-                    </p>
-                  )}
-
-                  {/* Enhanced Info about sequential codes */}
-                  {mode === "create" &&
-                    itemGroups.length > 1 &&
-                    formData.item_code && (
-                      <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg p-4 animate-slide-down">
-                        <div className="flex items-start space-x-3">
-                          <Info className="w-5 h-5 text-primary-600 dark:text-primary-400 flex-shrink-0 mt-0.5" />
-                          <div>
-                            <p className="text-sm font-medium text-primary-800 dark:text-primary-200 mb-2">
-                              Kode berurutan akan di-generate otomatis:
-                            </p>
-                            <div className="space-y-2">
-                              {itemGroups.slice(0, 3).map((_, index) => {
-                                const parts = formData.item_code.split("-");
-                                const prefix = parts.slice(0, -1).join("-");
-                                const startNumber =
-                                  parseInt(parts[parts.length - 1]) || 1;
-                                const number = startNumber + index;
-                                const paddedNumber = number
-                                  .toString()
-                                  .padStart(3, "0");
-                                const code = `${prefix}-${paddedNumber}`;
-                                return (
-                                  <div
-                                    key={index}
-                                    className="flex justify-between items-center bg-white dark:bg-gray-800 px-3 py-2 rounded border border-primary-200 dark:border-primary-800"
-                                  >
-                                    <span className="text-sm text-primary-700 dark:text-primary-300">
-                                      Item {index + 1}:
-                                    </span>
-                                    <span className="font-mono text-sm font-semibold text-primary-900 dark:text-primary-100 bg-primary-100 dark:bg-primary-900/40 px-2 py-1 rounded">
-                                      {code}
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                              {itemGroups.length > 3 && (
-                                <div className="text-sm text-primary-600 dark:text-primary-400 text-center py-2">
-                                  ... dan {itemGroups.length - 3} lainnya
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                </div>
-
-                {/* Category */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    Kategori *
-                  </label>
-                  <div className="flex space-x-3">
-                    <select
-                      value={formData.item_master_id}
-                      onChange={(e) =>
-                        handleInputChange("item_master_id", e.target.value)
-                      }
-                      className={`
-                        form-select flex-1 px-4 py-3 rounded-lg transition-all duration-200
-                        text-gray-900 dark:text-gray-100 font-medium 
-                        bg-white dark:bg-gray-700
-                        ${
-                          errors.item_master_id
-                            ? "border-danger-300 dark:border-danger-600 focus:ring-danger-500 bg-danger-50 dark:bg-danger-900/20"
-                            : "border-gray-300 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"
-                        }
-                      `}
-                      disabled={isSubmitting}
-                    >
-                      <option
-                        value=""
-                        className="text-gray-500 dark:text-gray-400"
-                      >
-                        Pilih kategori
-                      </option>
-                      {itemMasters.map((master) => (
-                        <option
-                          key={master.id}
-                          value={master.id}
-                          className="text-gray-900 dark:text-gray-100"
-                        >
-                          {master.name}
-                        </option>
-                      ))}
-                    </select>
-                    {onCreateMaster && (
-                      <button
-                        type="button"
-                        onClick={onCreateMaster}
-                        disabled={isSubmitting}
-                        className="px-4 py-3 bg-gradient-to-r from-success-100 to-success-200 dark:from-success-900/30 dark:to-success-800/30 text-success-800 dark:text-success-200 font-medium border border-success-300 dark:border-success-600 rounded-lg hover:from-success-200 hover:to-success-300 dark:hover:from-success-800/50 dark:hover:to-success-700/50 focus:outline-none focus:ring-2 focus:ring-success-500 disabled:opacity-50 flex items-center space-x-2 transition-all duration-200 shadow-card hover:shadow-card-hover"
-                        title="Tambah Kategori Baru"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span className="hidden sm:inline">Kategori</span>
-                      </button>
-                    )}
-                  </div>
-                  {errors.item_master_id && (
-                    <p className="text-sm text-danger-700 dark:text-danger-300 font-medium animate-slide-down">
-                      {errors.item_master_id}
-                    </p>
-                  )}
-                </div>
-              </div>
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title={mode === "create" ? "Tambah Barang" : "Edit Barang"}
+      size="xl"
+      closable={!isSubmitting}
+      closeOnOverlayClick={!isSubmitting}
+    >
+      <ModalContent>
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Error Alert */}
+          {errors.submit && (
+            <div className="bg-error-container border-2 border-error/40 rounded-lg p-4 flex items-start space-x-3 animate-slide-down">
+              <AlertCircle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" />
+              <span className="text-error-container-foreground text-sm font-medium">
+                {errors.submit}
+              </span>
             </div>
+          )}
 
-            {/* Item Groups Section */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  Detail Barang ({itemGroups.length} item)
-                </h3>
-                {mode === "create" && (
-                  <button
-                    type="button"
-                    onClick={addItemGroup}
+          {/* Top Section - Item Code and Category */}
+          <div className="bg-surface-variant rounded-lg p-6 border-2 border-outline">
+            <h3 className="text-lg font-semibold text-foreground mb-4">
+              Informasi Dasar
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Item Code with Auto Generate */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-foreground">
+                  Kode Barang *
+                </label>
+                <div className="flex space-x-3">
+                  <Input
+                    value={formData.item_code}
+                    onChange={(e) => handleCodeChange(e.target.value)}
+                    placeholder="Masukkan kode barang"
                     disabled={isSubmitting}
-                    className="px-4 py-2 bg-primary-600 dark:bg-primary-500 text-white font-medium rounded-lg hover:bg-primary-700 dark:hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 flex items-center space-x-2 transition-all duration-200 shadow-card hover:shadow-card-hover"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Tambah Item</span>
-                  </button>
-                )}
-              </div>
+                    error={
+                      errors.item_code ||
+                      (codeExists ? "Kode barang sudah ada" : "")
+                    }
+                    inputSize="lg"
+                    className="flex-1"
+                  />
+                  {generateItemCode && (
+                    <Button
+                      type="button"
+                      onClick={handleGenerateCode}
+                      disabled={isSubmitting || isGeneratingCode}
+                      variant="primary"
+                      size="lg"
+                      isLoading={isGeneratingCode}
+                      className="px-4"
+                    >
+                      Auto
+                    </Button>
+                  )}
+                </div>
 
-              {itemGroups.map((group, index) => (
-                <div
-                  key={index}
-                  className="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-card animate-fade-in"
-                  style={{ animationDelay: `${index * 100}ms` }}
-                >
-                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900/50 dark:to-gray-800/50 px-6 py-4 rounded-t-lg border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                    <h4 className="text-base font-semibold text-gray-800 dark:text-gray-200">
-                      Item {index + 1}
-                    </h4>
-                    {mode === "create" && itemGroups.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeItemGroup(index)}
-                        disabled={isSubmitting}
-                        className="text-danger-600 dark:text-danger-400 hover:text-danger-800 dark:hover:text-danger-200 p-2 rounded-lg hover:bg-danger-100 dark:hover:bg-danger-900/20 transition-all duration-200"
-                        title="Hapus Item"
-                      >
-                        <Minus className="w-5 h-5" />
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="p-6 space-y-6">
-                    {/* Item Name and Variant */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Nama Barang *
-                        </label>
-                        <input
-                          type="text"
-                          value={group.item_name}
-                          onChange={(e) =>
-                            handleItemGroupChange(
-                              index,
-                              "item_name",
-                              e.target.value
-                            )
-                          }
-                          className={`
-                            form-input w-full px-4 py-3 rounded-lg transition-all duration-200
-                            text-gray-900 dark:text-gray-100 
-                            placeholder-gray-500 dark:placeholder-gray-400
-                            bg-white dark:bg-gray-700
-                            ${
-                              errors[`group_${index}_item_name`]
-                                ? "border-danger-300 dark:border-danger-600 focus:ring-danger-500 bg-danger-50 dark:bg-danger-900/20"
-                                : "border-gray-300 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"
-                            }
-                          `}
-                          placeholder="Masukkan nama barang"
-                          disabled={isSubmitting}
-                        />
-                        {errors[`group_${index}_item_name`] && (
-                          <p className="text-xs text-danger-700 dark:text-danger-300 animate-slide-down">
-                            {errors[`group_${index}_item_name`]}
+                {/* Sequential codes preview */}
+                {mode === "create" &&
+                  itemGroups.length > 1 &&
+                  formData.item_code && (
+                    <div className="bg-info-container border-2 border-info/40 rounded-lg p-4 animate-slide-down">
+                      <div className="flex items-start space-x-3">
+                        <Info className="w-5 h-5 text-info flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-info-container-foreground mb-2">
+                            Kode berurutan akan di-generate otomatis:
                           </p>
-                        )}
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Variant
-                        </label>
-                        <div className="flex space-x-2">
-                          <select
-                            value={group.variant_id}
-                            onChange={(e) =>
-                              handleItemGroupChange(
-                                index,
-                                "variant_id",
-                                e.target.value
-                              )
-                            }
-                            className="form-select flex-1 px-4 py-3 rounded-lg border-gray-300 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 transition-all duration-200"
-                            disabled={isSubmitting}
-                          >
-                            <option
-                              value=""
-                              className="text-gray-500 dark:text-gray-400"
-                            >
-                              Pilih variant
-                            </option>
-                            {itemVariants.map((variant) => (
-                              <option
-                                key={variant.id}
-                                value={variant.id}
-                                className="text-gray-900 dark:text-gray-100"
-                              >
-                                {variant.name}
-                              </option>
-                            ))}
-                          </select>
-                          {onCreateVariant && (
-                            <button
-                              type="button"
-                              onClick={onCreateVariant}
-                              disabled={isSubmitting}
-                              className="px-4 py-3 bg-gradient-to-r from-warning-100 to-warning-200 dark:from-warning-900/30 dark:to-warning-800/30 text-warning-800 dark:text-warning-200 font-medium border border-warning-300 dark:border-warning-600 rounded-lg hover:from-warning-200 hover:to-warning-300 dark:hover:from-warning-800/50 dark:hover:to-warning-700/50 focus:outline-none focus:ring-2 focus:ring-warning-500 disabled:opacity-50 flex items-center transition-all duration-200 shadow-card hover:shadow-card-hover"
-                              title="Tambah Variant Baru"
-                            >
-                              <Plus className="w-4 h-4" />
-                            </button>
-                          )}
+                          <div className="space-y-2">
+                            {itemGroups.slice(0, 3).map((_, index) => {
+                              const parts = formData.item_code.split("-");
+                              const prefix = parts.slice(0, -1).join("-");
+                              const startNumber =
+                                parseInt(parts[parts.length - 1]) || 1;
+                              const number = startNumber + index;
+                              const paddedNumber = number
+                                .toString()
+                                .padStart(3, "0");
+                              const code = `${prefix}-${paddedNumber}`;
+                              return (
+                                <div
+                                  key={index}
+                                  className="flex justify-between items-center bg-background px-3 py-2 rounded border-2 border-info/30"
+                                >
+                                  <span className="text-sm text-info-container-foreground">
+                                    Item {index + 1}:
+                                  </span>
+                                  <Badge variant="info" size="md">
+                                    {code}
+                                  </Badge>
+                                </div>
+                              );
+                            })}
+                            {itemGroups.length > 3 && (
+                              <div className="text-sm text-info-container-foreground text-center py-2">
+                                ... dan {itemGroups.length - 3} lainnya
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
+                  )}
+              </div>
 
-                    {/* Units */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Unit Dasar *
-                        </label>
-                        <select
-                          value={group.unit}
-                          onChange={(e) =>
-                            handleItemGroupChange(index, "unit", e.target.value)
-                          }
-                          className={`
-                            form-select w-full px-4 py-3 rounded-lg transition-all duration-200
-                            text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700
-                            ${
-                              errors[`group_${index}_unit`]
-                                ? "border-danger-300 dark:border-danger-600 focus:ring-danger-500 bg-danger-50 dark:bg-danger-900/20"
-                                : "border-gray-300 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"
-                            }
-                          `}
-                          disabled={isSubmitting}
-                        >
-                          {commonUnits.map((unit) => (
-                            <option
-                              key={unit}
-                              value={unit}
-                              className="text-gray-900 dark:text-gray-100"
-                            >
-                              {unit}
-                            </option>
-                          ))}
-                        </select>
-                        {errors[`group_${index}_unit`] && (
-                          <p className="text-xs text-danger-700 dark:text-danger-300 animate-slide-down">
-                            {errors[`group_${index}_unit`]}
-                          </p>
-                        )}
-                      </div>
+              {/* Category with Add Button */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-foreground">
+                  Kategori *
+                </label>
+                <div className="flex space-x-3">
+                  <Select
+                    options={masterOptions}
+                    value={formData.item_master_id}
+                    onValueChange={(value) =>
+                      handleInputChange("item_master_id", value as string)
+                    }
+                    placeholder="Pilih kategori"
+                    disabled={isSubmitting}
+                    error={errors.item_master_id}
+                    size="lg"
+                    className="flex-1"
+                  />
+                  {onCreateMaster && (
+                    <Button
+                      type="button"
+                      onClick={onCreateMaster}
+                      disabled={isSubmitting}
+                      variant="success"
+                      size="lg"
+                      leftIcon={<Plus className="w-4 h-4" />}
+                      className="whitespace-nowrap"
+                    >
+                      <span className="hidden sm:inline">Kategori</span>
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
 
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Unit Alternatif
-                        </label>
-                        <input
-                          type="text"
-                          value={group.alt_unit}
-                          onChange={(e) =>
+          {/* Item Groups Section */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-foreground">
+                Detail Barang ({itemGroups.length} item)
+              </h3>
+              {mode === "create" && (
+                <Button
+                  type="button"
+                  onClick={addItemGroup}
+                  disabled={isSubmitting}
+                  variant="primary"
+                  size="md"
+                  leftIcon={<Plus className="w-4 h-4" />}
+                >
+                  Tambah Item
+                </Button>
+              )}
+            </div>
+
+            {itemGroups.map((group, index) => (
+              <div
+                key={index}
+                className="border-2 border-outline rounded-lg bg-surface shadow-elevation-2 animate-fade-in"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                {/* Item Header */}
+                <div className="bg-surface-variant px-6 py-4 rounded-t-lg border-b-2 border-outline flex items-center justify-between">
+                  <h4 className="text-base font-semibold text-foreground">
+                    Item {index + 1}
+                  </h4>
+                  {mode === "create" && itemGroups.length > 1 && (
+                    <Button
+                      type="button"
+                      onClick={() => removeItemGroup(index)}
+                      disabled={isSubmitting}
+                      variant="danger"
+                      size="sm"
+                      leftIcon={<Minus className="w-4 h-4" />}
+                    >
+                      Hapus
+                    </Button>
+                  )}
+                </div>
+
+                <div className="p-6 space-y-6">
+                  {/* Item Name and Variant */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Input
+                      label="Nama Barang *"
+                      value={group.item_name}
+                      onChange={(e) =>
+                        handleItemGroupChange(
+                          index,
+                          "item_name",
+                          e.target.value
+                        )
+                      }
+                      placeholder="Masukkan nama barang"
+                      disabled={isSubmitting}
+                      error={errors[`group_${index}_item_name`]}
+                      inputSize="lg"
+                    />
+
+                    <div className="space-y-2">
+                      <label className="block text-sm font-semibold text-foreground">
+                        Variant
+                      </label>
+                      <div className="flex space-x-2">
+                        <Select
+                          options={variantOptions}
+                          value={group.variant_id}
+                          onValueChange={(value) =>
                             handleItemGroupChange(
                               index,
-                              "alt_unit",
-                              e.target.value
+                              "variant_id",
+                              value as string
                             )
                           }
-                          className="form-input w-full px-4 py-3 rounded-lg border-gray-300 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 bg-white dark:bg-gray-700 transition-all duration-200"
-                          placeholder="contoh: box, lusin"
+                          placeholder="Pilih variant"
                           disabled={isSubmitting}
+                          size="lg"
+                          className="flex-1"
                         />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Rasio Konversi
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={group.conversion_to_base}
-                          onChange={(e) =>
-                            handleItemGroupChange(
-                              index,
-                              "conversion_to_base",
-                              e.target.value
-                            )
-                          }
-                          className={`
-                            form-input w-full px-4 py-3 rounded-lg transition-all duration-200
-                            text-gray-900 dark:text-gray-100 
-                            placeholder-gray-500 dark:placeholder-gray-400
-                            bg-white dark:bg-gray-700
-                            ${
-                              errors[`group_${index}_conversion_to_base`]
-                                ? "border-danger-300 dark:border-danger-600 focus:ring-danger-500 bg-danger-50 dark:bg-danger-900/20"
-                                : "border-gray-300 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"
-                            }
-                          `}
-                          placeholder="contoh: 12"
-                          disabled={isSubmitting}
-                        />
-                        {errors[`group_${index}_conversion_to_base`] && (
-                          <p className="text-xs text-danger-700 dark:text-danger-300 animate-slide-down">
-                            {errors[`group_${index}_conversion_to_base`]}
-                          </p>
-                        )}
-                        {group.alt_unit && group.conversion_to_base && (
-                          <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 px-3 py-2 rounded-lg animate-fade-in">
-                            <p className="text-xs text-primary-800 dark:text-primary-200 font-medium">
-                              1 {group.alt_unit} = {group.conversion_to_base}{" "}
-                              {group.unit}
-                            </p>
-                          </div>
+                        {onCreateVariant && (
+                          <Button
+                            type="button"
+                            onClick={onCreateVariant}
+                            disabled={isSubmitting}
+                            variant="warning"
+                            size="lg"
+                            leftIcon={<Plus className="w-4 h-4" />}
+                          />
                         )}
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </form>
-        </div>
 
-        {/* Fixed Footer */}
-        <div className="flex justify-end space-x-4 p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/20 rounded-b-xl">
-          <button
-            type="button"
-            onClick={handleClose}
-            disabled={isSubmitting}
-            className="px-6 py-3 text-gray-700 dark:text-gray-200 font-medium bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 disabled:opacity-50 transition-all duration-200 shadow-card hover:shadow-card-hover"
-          >
-            Batal
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={isSubmitting || codeExists}
-            className="px-6 py-3 bg-primary-600 dark:bg-primary-500 text-white font-medium rounded-lg hover:bg-primary-700 dark:hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 flex items-center space-x-2 transition-all duration-200 shadow-lg hover:shadow-card-hover"
-          >
-            {isSubmitting ? (
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Save className="w-5 h-5" />
-            )}
-            <span>{isSubmitting ? "Menyimpan..." : "Simpan"}</span>
-          </button>
-        </div>
-      </div>
-    </div>
+                  {/* Units */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <Select
+                      label="Unit Dasar *"
+                      options={commonUnits}
+                      value={group.unit}
+                      onValueChange={(value) =>
+                        handleItemGroupChange(index, "unit", value as string)
+                      }
+                      disabled={isSubmitting}
+                      error={errors[`group_${index}_unit`]}
+                      size="lg"
+                    />
+
+                    <Input
+                      label="Unit Alternatif"
+                      value={group.alt_unit}
+                      onChange={(e) =>
+                        handleItemGroupChange(index, "alt_unit", e.target.value)
+                      }
+                      placeholder="contoh: box, lusin"
+                      disabled={isSubmitting}
+                      inputSize="lg"
+                    />
+
+                    <div className="space-y-2">
+                      <Input
+                        label="Rasio Konversi"
+                        type="number"
+                        step="0.01"
+                        value={group.conversion_to_base}
+                        onChange={(e) =>
+                          handleItemGroupChange(
+                            index,
+                            "conversion_to_base",
+                            e.target.value
+                          )
+                        }
+                        placeholder="contoh: 12"
+                        disabled={isSubmitting}
+                        error={errors[`group_${index}_conversion_to_base`]}
+                        inputSize="lg"
+                      />
+                      {group.alt_unit && group.conversion_to_base && (
+                        <div className="bg-primary-container border-2 border-primary/40 px-3 py-2 rounded-lg animate-fade-in">
+                          <p className="text-xs text-primary-container-foreground font-medium">
+                            1 {group.alt_unit} = {group.conversion_to_base}{" "}
+                            {group.unit}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </form>
+      </ModalContent>
+
+      <ModalFooter>
+        <Button
+          variant="outline"
+          onClick={handleClose}
+          disabled={isSubmitting}
+          size="md"
+        >
+          Batal
+        </Button>
+        <Button
+          variant="primary"
+          onClick={handleSubmit}
+          disabled={isSubmitting || codeExists}
+          isLoading={isSubmitting}
+          leftIcon={!isSubmitting && <Save className="w-5 h-5" />}
+          size="md"
+        >
+          {isSubmitting ? "Menyimpan..." : "Simpan"}
+        </Button>
+      </ModalFooter>
+    </Modal>
   );
 };

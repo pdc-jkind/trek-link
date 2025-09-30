@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/fe/lib/utils";
 import { ChevronDown, Check, X } from "lucide-react";
 
@@ -44,7 +45,14 @@ export const Select: React.FC<SelectProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [dropdownPosition, setDropdownPosition] = useState({
+    top: 0,
+    left: 0,
+    width: 0,
+  });
   const selectRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const sizeClasses = {
     sm: "h-9 px-3 text-sm",
@@ -52,11 +60,49 @@ export const Select: React.FC<SelectProps> = ({
     lg: "h-12 px-4 text-base",
   };
 
+  // Update dropdown position when opened
+  useEffect(() => {
+    if (isOpen && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY + 8,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+  }, [isOpen]);
+
+  // Handle scroll and resize to update position
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const updatePosition = () => {
+      if (triggerRef.current) {
+        const rect = triggerRef.current.getBoundingClientRect();
+        setDropdownPosition({
+          top: rect.bottom + window.scrollY + 8,
+          left: rect.left + window.scrollX,
+          width: rect.width,
+        });
+      }
+    };
+
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [isOpen]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
         selectRef.current &&
-        !selectRef.current.contains(event.target as Node)
+        !selectRef.current.contains(event.target as Node) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
       ) {
         setIsOpen(false);
       }
@@ -109,10 +155,85 @@ export const Select: React.FC<SelectProps> = ({
     return placeholder;
   };
 
+  const renderDropdown = () => {
+    if (!isOpen) return null;
+
+    const dropdown = (
+      <div
+        ref={dropdownRef}
+        style={{
+          position: "absolute",
+          top: `${dropdownPosition.top}px`,
+          left: `${dropdownPosition.left}px`,
+          width: `${dropdownPosition.width}px`,
+          zIndex: 9999,
+        }}
+        className="max-h-60 overflow-hidden surface rounded-lg shadow-elevation-3 border border-outline"
+      >
+        {/* Search Box */}
+        {searchable && (
+          <div className="p-2 border-b-2 border-border bg-background-subtle">
+            <input
+              type="text"
+              placeholder="Search options..."
+              className="input w-full text-sm py-2"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        )}
+
+        {/* Options List */}
+        <div className="max-h-48 overflow-y-auto scrollbar-thin">
+          {filteredOptions.length === 0 ? (
+            <div className="px-4 py-6 text-sm text-center text-muted-foreground">
+              No options found
+            </div>
+          ) : (
+            filteredOptions.map((option) => {
+              const isSelected = multiple
+                ? (value as string[])?.includes(option.value)
+                : value === option.value;
+
+              return (
+                <div
+                  key={option.value}
+                  className={cn(
+                    "flex items-center justify-between px-4 py-2.5 cursor-pointer text-sm transition-colors",
+                    "border-b border-border-muted last:border-b-0",
+                    "text-foreground",
+                    option.disabled && "opacity-50 cursor-not-allowed",
+                    !option.disabled && !isSelected && "hover:bg-muted",
+                    isSelected && "bg-primary/10 font-semibold"
+                  )}
+                  onClick={() =>
+                    !option.disabled && handleOptionClick(option.value)
+                  }
+                >
+                  <span className="truncate">{option.label}</span>
+                  {isSelected && (
+                    <Check className="h-4 w-4 flex-shrink-0 ml-2 text-primary" />
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    );
+
+    // Use portal to render outside the modal
+    return typeof document !== "undefined"
+      ? createPortal(dropdown, document.body)
+      : null;
+  };
+
   const renderSelect = () => (
     <div ref={selectRef} className="relative">
       {/* Select Trigger */}
       <div
+        ref={triggerRef}
         className={cn(
           "flex items-center justify-between cursor-pointer rounded-lg border-2 transition-all duration-200",
           "surface",
@@ -155,61 +276,8 @@ export const Select: React.FC<SelectProps> = ({
         </div>
       </div>
 
-      {/* Dropdown */}
-      {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-2 z-50 max-h-60 overflow-hidden surface rounded-lg shadow-elevation-3">
-          {/* Search Box */}
-          {searchable && (
-            <div className="p-2 border-b-2 border-border bg-background-subtle">
-              <input
-                type="text"
-                placeholder="Search options..."
-                className="input w-full text-sm py-2"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onClick={(e) => e.stopPropagation()}
-              />
-            </div>
-          )}
-
-          {/* Options List */}
-          <div className="max-h-48 overflow-y-auto scrollbar-thin">
-            {filteredOptions.length === 0 ? (
-              <div className="px-4 py-6 text-sm text-center text-muted-foreground">
-                No options found
-              </div>
-            ) : (
-              filteredOptions.map((option) => {
-                const isSelected = multiple
-                  ? (value as string[])?.includes(option.value)
-                  : value === option.value;
-
-                return (
-                  <div
-                    key={option.value}
-                    className={cn(
-                      "flex items-center justify-between px-4 py-2.5 cursor-pointer text-sm transition-colors",
-                      "border-b border-border-muted last:border-b-0",
-                      "text-foreground",
-                      option.disabled && "opacity-50 cursor-not-allowed",
-                      !option.disabled && !isSelected && "hover:bg-muted",
-                      isSelected && "bg-primary/10 font-semibold"
-                    )}
-                    onClick={() =>
-                      !option.disabled && handleOptionClick(option.value)
-                    }
-                  >
-                    <span className="truncate">{option.label}</span>
-                    {isSelected && (
-                      <Check className="h-4 w-4 flex-shrink-0 ml-2 text-primary" />
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-      )}
+      {/* Dropdown rendered via Portal */}
+      {renderDropdown()}
     </div>
   );
 

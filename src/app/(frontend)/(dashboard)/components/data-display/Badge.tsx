@@ -9,9 +9,11 @@ interface BadgeProps {
     | "default"
     | "primary"
     | "secondary"
+    | "tertiary"
     | "success"
     | "warning"
     | "danger"
+    | "info"
     | "outline";
   size?: "sm" | "md" | "lg";
   className?: string;
@@ -25,33 +27,40 @@ export const Badge: React.FC<BadgeProps> = ({
   className,
   dot = false,
 }) => {
-  const variantClasses = {
-    // Default menggunakan variabel muted yang sudah didefinisikan
-    default: "bg-muted text-muted-foreground border border-border",
+  // Get dynamic colors from CSS variables
+  const getColor = (variable: string) => {
+    if (typeof window === "undefined") return "";
+    const style = getComputedStyle(document.documentElement);
+    return `rgb(${style.getPropertyValue(variable).trim()})`;
+  };
 
-    // Primary menggunakan warna primary dari CSS variables dengan kontras yang baik
-    primary:
-      "bg-primary/10 text-primary border border-primary/20 dark:bg-primary/20 dark:text-primary dark:border-primary/30",
+  const variantClasses = {
+    // Default menggunakan surface-variant dari CSS variables
+    default: "border-2",
+
+    // Primary menggunakan warna primary dari CSS variables
+    primary: "border-2",
 
     // Secondary menggunakan warna secondary dari CSS variables
-    secondary:
-      "bg-secondary/10 text-secondary border border-secondary/20 dark:bg-secondary/20 dark:text-secondary dark:border-secondary/30",
+    secondary: "border-2",
+
+    // Tertiary menggunakan warna tertiary dari CSS variables
+    tertiary: "border-2",
 
     // Success menggunakan warna success dari CSS variables
-    success:
-      "bg-success/10 text-success border border-success/20 dark:bg-success/20 dark:text-success dark:border-success/30",
+    success: "border-2",
 
-    // Warning menggunakan warna accent (amber/warm) dari tailwind config
-    warning:
-      "bg-accent/10 text-accent border border-accent/20 dark:bg-accent/20 dark:text-accent dark:border-accent/30",
+    // Warning menggunakan warna warning dari CSS variables
+    warning: "border-2",
 
-    // Danger menggunakan destructive dari CSS variables
-    danger:
-      "bg-destructive/10 text-destructive border border-destructive/20 dark:bg-destructive/20 dark:text-destructive dark:border-destructive/30",
+    // Info menggunakan warna info dari CSS variables
+    info: "border-2",
+
+    // Danger menggunakan warna error dari CSS variables
+    danger: "border-2",
 
     // Outline menggunakan border dan foreground variables
-    outline:
-      "border-2 border-border text-foreground bg-transparent hover:bg-muted/50 dark:border-border dark:text-foreground dark:hover:bg-muted/50",
+    outline: "border-2 bg-transparent",
   };
 
   const sizeClasses = {
@@ -60,18 +69,75 @@ export const Badge: React.FC<BadgeProps> = ({
     lg: "px-3 py-1.5 text-sm",
   };
 
+  // Dynamic styles based on variant
+  const getDynamicStyles = () => {
+    const variantStyles: Record<string, React.CSSProperties> = {
+      default: {
+        backgroundColor: `${getColor("--surface-variant")}`,
+        color: getColor("--on-surface-variant"),
+        borderColor: getColor("--outline"),
+      },
+      primary: {
+        backgroundColor: `${getColor("--primary-container")}`,
+        color: getColor("--on-primary-container"),
+        borderColor: `${getColor("--primary")}40`,
+      },
+      secondary: {
+        backgroundColor: `${getColor("--secondary-container")}`,
+        color: getColor("--on-secondary-container"),
+        borderColor: `${getColor("--secondary")}40`,
+      },
+      tertiary: {
+        backgroundColor: `${getColor("--tertiary-container")}`,
+        color: getColor("--on-tertiary-container"),
+        borderColor: `${getColor("--tertiary")}40`,
+      },
+      success: {
+        backgroundColor: `${getColor("--success-container")}`,
+        color: getColor("--on-success-container"),
+        borderColor: `${getColor("--success")}40`,
+      },
+      warning: {
+        backgroundColor: `${getColor("--warning-container")}`,
+        color: getColor("--on-warning-container"),
+        borderColor: `${getColor("--warning")}40`,
+      },
+      info: {
+        backgroundColor: `${getColor("--info-container")}`,
+        color: getColor("--on-info-container"),
+        borderColor: `${getColor("--info")}40`,
+      },
+      danger: {
+        backgroundColor: `${getColor("--error-container")}`,
+        color: getColor("--on-error-container"),
+        borderColor: `${getColor("--error")}40`,
+      },
+      outline: {
+        backgroundColor: "transparent",
+        color: getColor("--on-surface"),
+        borderColor: getColor("--outline"),
+      },
+    };
+
+    return variantStyles[variant] || variantStyles.default;
+  };
+
   if (dot) {
     return (
       <span
         className={cn(
           "inline-flex items-center gap-1.5",
           sizeClasses[size],
-          "rounded-full font-semibold transition-colors",
+          "rounded-full font-semibold transition-all duration-200",
           variantClasses[variant],
           className
         )}
+        style={getDynamicStyles()}
       >
-        <span className="w-2 h-2 rounded-full bg-current animate-pulse"></span>
+        <span
+          className="w-2 h-2 rounded-full animate-pulse"
+          style={{ backgroundColor: getDynamicStyles().color }}
+        />
         {children}
       </span>
     );
@@ -80,11 +146,12 @@ export const Badge: React.FC<BadgeProps> = ({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full font-semibold transition-colors",
+        "inline-flex items-center rounded-full font-semibold transition-all duration-200",
         sizeClasses[size],
         variantClasses[variant],
         className
       )}
+      style={getDynamicStyles()}
     >
       {children}
     </span>

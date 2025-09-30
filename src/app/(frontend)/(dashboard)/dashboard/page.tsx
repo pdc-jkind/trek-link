@@ -1,7 +1,7 @@
 // src/app/(frontend)/(dashboard)/dashboard/page.tsx
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import {
   Users,
   BarChart3,
@@ -28,6 +28,7 @@ import {
   Badge,
   Button,
   LineChart,
+  PageHeader,
 } from "@/fe/components/index";
 
 // Mock data for dashboard
@@ -60,17 +61,17 @@ const metricsData = [
     trend: { value: 2.1, direction: "up" as const },
     icon: Users,
     change: "+2 user baru",
-    color: "accent" as const,
+    color: "tertiary" as const,
   },
   {
     id: "4",
     title: "Laporan Pending",
     value: "7",
     subtitle: "Awaiting review",
-    trend: { value: -1.2, direction: "down" as const },
+    trend: { value: 1.2, direction: "down" as const },
     icon: FileText,
     change: "-2 dari kemarin",
-    color: "secondary" as const,
+    color: "warning" as const,
   },
 ];
 
@@ -97,7 +98,7 @@ const recentActivities = [
     description: "Andi Prasetyo telah ditambahkan sebagai Staff Gudang",
     time: "4 jam yang lalu",
     type: "user",
-    status: "primary" as const,
+    status: "info" as const,
     user: "Super Admin",
   },
   {
@@ -135,28 +136,36 @@ const quickActions = [
     title: "Tambah Barang",
     description: "Tambah item baru ke inventory",
     icon: Plus,
-    variant: "primary" as const,
+    colorClass: "from-primary to-primary/80",
+    bgClass: "bg-primary-container",
+    textClass: "text-on-primary-container",
   },
   {
     id: 2,
     title: "Buat Laporan",
     description: "Generate laporan inventory",
     icon: FileText,
-    variant: "success" as const,
+    colorClass: "from-success to-success/80",
+    bgClass: "bg-success-container",
+    textClass: "text-on-success-container",
   },
   {
     id: 3,
     title: "Kelola User",
     description: "Manajemen user dan permissions",
     icon: Users,
-    variant: "accent" as const,
+    colorClass: "from-tertiary to-tertiary/80",
+    bgClass: "bg-tertiary-container",
+    textClass: "text-on-tertiary-container",
   },
   {
     id: 4,
     title: "Lihat Analytics",
     description: "Dashboard analytics lengkap",
     icon: BarChart3,
-    variant: "secondary" as const,
+    colorClass: "from-secondary to-secondary/80",
+    bgClass: "bg-secondary-container",
+    textClass: "text-on-secondary-container",
   },
 ];
 
@@ -178,7 +187,7 @@ const ActivityItem: React.FC<{
     switch (activity.status) {
       case "success":
         return CheckCircle;
-      case "primary":
+      case "info":
         return Info;
       case "warning":
         return AlertCircle;
@@ -191,27 +200,42 @@ const ActivityItem: React.FC<{
 
   const StatusIcon = getStatusIcon();
 
+  const getStatusColors = () => {
+    switch (activity.status) {
+      case "success":
+        return "bg-success-container text-on-success-container";
+      case "info":
+        return "bg-info-container text-on-info-container";
+      case "warning":
+        return "bg-warning-container text-on-warning-container";
+      case "secondary":
+        return "bg-secondary-container text-on-secondary-container";
+      default:
+        return "bg-primary-container text-on-primary-container";
+    }
+  };
+
   return (
-    <div className="group p-4 rounded-xl hover:bg-primary-50/50 transition-all duration-300 border border-transparent hover:border-primary-200/50">
+    <div className="group p-4 rounded-xl hover:bg-surface-variant/30 transition-all duration-300 border border-transparent hover:border-outline-variant">
       <div className="flex items-start space-x-4">
         <div className="flex-shrink-0">
-          <Badge variant={activity.status} size="lg" className="p-2">
+          <div className={`p-2.5 rounded-xl ${getStatusColors()}`}>
             <StatusIcon className="w-5 h-5" />
-          </Badge>
+          </div>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-foreground group-hover:text-primary-600 transition-colors duration-300">
+          <p className="text-sm font-semibold text-on-surface group-hover:text-primary transition-colors duration-300">
             {activity.title}
           </p>
-          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+          <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
             {activity.description}
           </p>
           <div className="flex items-center mt-2 space-x-3">
-            <div className="flex items-center text-xs text-muted-foreground">
+            <div className="flex items-center text-xs text-on-surface-variant">
               <Clock className="w-3 h-3 mr-1" />
               {activity.time}
             </div>
-            <div className="flex items-center text-xs text-muted-foreground">
+            <div className="flex items-center text-xs text-on-surface-variant">
               <UserCheck className="w-3 h-3 mr-1" />
               {activity.user}
             </div>
@@ -236,14 +260,16 @@ const QuickActionCard: React.FC<{
       className="border-2 border-dashed hover:shadow-elevation-2"
     >
       <div className="text-center space-y-3">
-        <div className="mx-auto w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-primary-100 to-primary-200">
-          <IconComponent className="w-6 h-6 text-primary-600" />
+        <div
+          className={`mx-auto w-12 h-12 rounded-xl flex items-center justify-center ${action.bgClass}`}
+        >
+          <IconComponent className={`w-6 h-6 ${action.textClass}`} />
         </div>
         <div>
-          <p className="font-semibold text-sm text-foreground">
+          <p className="font-semibold text-sm text-on-surface">
             {action.title}
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-on-surface-variant mt-1">
             {action.description}
           </p>
         </div>
@@ -256,31 +282,14 @@ const QuickActionCard: React.FC<{
 export default function DashboardPage() {
   return (
     <ContentWrapper maxWidth="full" padding="md">
-      <div className="space-y-8">
+      <div className="space-y-6">
         {/* Welcome Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary-600 via-primary-700 to-accent-600 bg-clip-text text-transparent mb-3">
-              Dashboard Overview
-            </h1>
-            <p className="text-muted-foreground text-lg">
-              Selamat datang kembali! Berikut adalah ringkasan aktivitas dan
-              metrics terbaru.
-            </p>
-          </div>
-          <div className="mt-4 lg:mt-0 flex items-center space-x-2 text-sm text-muted-foreground">
-            <Calendar className="w-4 h-4" />
-            <span>
-              Last updated:{" "}
-              {new Date().toLocaleDateString("id-ID", {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </span>
-          </div>
-        </div>
+        <PageHeader
+          title="Dashboard Overview"
+          subtitle="Selamat datang kembali! Berikut adalah ringkasan aktivitas dan metrics terbaru."
+          showLastUpdated={true}
+          breadcrumbs={[{ label: "Home", href: "/" }, { label: "Dashboard" }]}
+        />
 
         {/* Metrics Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -299,17 +308,17 @@ export default function DashboardPage() {
         </div>
 
         {/* User Info Card */}
-        <Card variant="glass" className="border border-primary-200/50">
+        <Card variant="default" className="border-2 border-outline">
           <CardHeader>
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-gradient-to-br from-primary-100 to-accent-100 rounded-xl">
-                <Building className="w-6 h-6 text-primary-600" />
+              <div className="p-2 bg-primary-container rounded-xl">
+                <Building className="w-6 h-6 text-on-primary-container" />
               </div>
               <div>
-                <h3 className="text-xl font-semibold text-foreground">
+                <h3 className="text-xl font-semibold text-on-surface">
                   Informasi Pengguna
                 </h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-on-surface-variant">
                   Detail kantor dan role saat ini
                 </p>
               </div>
@@ -318,38 +327,38 @@ export default function DashboardPage() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="space-y-2">
-                <dt className="text-sm font-medium text-muted-foreground">
+                <dt className="text-sm font-medium text-on-surface-variant">
                   Kantor
                 </dt>
-                <dd className="text-lg font-semibold text-foreground">
+                <dd className="text-lg font-semibold text-on-surface">
                   {userInfo.office_name}
                 </dd>
               </div>
               <div className="space-y-2">
-                <dt className="text-sm font-medium text-muted-foreground">
+                <dt className="text-sm font-medium text-on-surface-variant">
                   Tipe Kantor
                 </dt>
-                <dd className="text-lg font-semibold text-foreground">
+                <dd className="text-lg font-semibold text-on-surface">
                   {userInfo.office_type}
                 </dd>
               </div>
               <div className="space-y-2">
-                <dt className="text-sm font-medium text-muted-foreground">
+                <dt className="text-sm font-medium text-on-surface-variant">
                   Lokasi
                 </dt>
-                <dd className="text-lg font-semibold text-foreground">
+                <dd className="text-lg font-semibold text-on-surface">
                   {userInfo.office_location}
                 </dd>
               </div>
               <div className="space-y-2">
-                <dt className="text-sm font-medium text-muted-foreground">
+                <dt className="text-sm font-medium text-on-surface-variant">
                   Role
                 </dt>
                 <dd>
-                  <Badge variant="success" size="md">
+                  <div className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold bg-success-container text-on-success-container">
                     <UserCheck className="w-4 h-4 mr-2" />
                     {userInfo.role_name}
-                  </Badge>
+                  </div>
                 </dd>
               </div>
             </div>
@@ -360,18 +369,18 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Recent Activities */}
           <div className="lg:col-span-2">
-            <Card variant="glass" className="border border-primary-200/50">
-              <CardHeader className="border-b border-primary-200/50 bg-gradient-to-r from-primary-50/50 to-accent-50/50">
+            <Card variant="default" className="border-2 border-outline">
+              <CardHeader className="border-b border-outline bg-surface-variant/20">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-gradient-to-br from-primary-100 to-primary-200 rounded-xl">
-                      <Activity className="w-5 h-5 text-primary-600" />
+                    <div className="p-2 bg-primary-container rounded-xl">
+                      <Activity className="w-5 h-5 text-on-primary-container" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-semibold text-foreground">
+                      <h3 className="text-xl font-semibold text-on-surface">
                         Aktivitas Terbaru
                       </h3>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-on-surface-variant">
                         5 aktivitas terakhir dari sistem
                       </p>
                     </div>
@@ -382,7 +391,7 @@ export default function DashboardPage() {
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="divide-y divide-primary-100/50">
+                <div className="divide-y divide-outline">
                   {recentActivities.map((activity) => (
                     <ActivityItem key={activity.id} activity={activity} />
                   ))}
@@ -393,17 +402,17 @@ export default function DashboardPage() {
 
           {/* Quick Actions */}
           <div>
-            <Card variant="glass" className="border border-primary-200/50">
+            <Card variant="default" className="border-2 border-outline">
               <CardHeader>
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-gradient-to-br from-accent-100 to-secondary-100 rounded-xl">
-                    <Plus className="w-5 h-5 text-accent-600" />
+                  <div className="p-2 bg-tertiary-container rounded-xl">
+                    <Plus className="w-5 h-5 text-on-tertiary-container" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-semibold text-foreground">
+                    <h3 className="text-xl font-semibold text-on-surface">
                       Aksi Cepat
                     </h3>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-on-surface-variant">
                       Shortcut untuk tugas umum
                     </p>
                   </div>
@@ -421,18 +430,18 @@ export default function DashboardPage() {
         </div>
 
         {/* Chart Section */}
-        <Card variant="glass" className="border border-primary-200/50">
+        <Card variant="default" className="border-2 border-outline">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-gradient-to-br from-primary-100 to-primary-200 rounded-xl">
-                  <BarChart3 className="w-5 h-5 text-primary-600" />
+                <div className="p-2 bg-info-container rounded-xl">
+                  <BarChart3 className="w-5 h-5 text-on-info-container" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground">
+                  <h3 className="text-lg font-semibold text-on-surface">
                     Analytics Overview
                   </h3>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-on-surface-variant">
                     Inventory trends 6 bulan terakhir
                   </p>
                 </div>
@@ -449,13 +458,13 @@ export default function DashboardPage() {
                 {
                   key: "barangMasuk",
                   name: "Barang Masuk",
-                  color: "#10b981",
+                  color: "rgb(var(--success))",
                   strokeWidth: 3,
                 },
                 {
                   key: "barangKeluar",
                   name: "Barang Keluar",
-                  color: "#ef4444",
+                  color: "rgb(var(--error))",
                   strokeWidth: 3,
                 },
               ]}

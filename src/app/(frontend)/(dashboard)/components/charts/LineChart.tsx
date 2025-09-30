@@ -39,17 +39,35 @@ export const LineChart: React.FC<LineChartProps> = ({
   showTooltip = true,
   className,
 }) => {
-  // Enhanced color palette with proper contrast and vibrant colors
-  const defaultColors = [
-    "#3b82f6", // Primary blue - highly visible
-    "#ec4899", // Secondary pink - eye-catching
-    "#22c55e", // Success green - clear signal
-    "#f59e0b", // Accent amber - warm and energetic
-    "#ef4444", // Destructive red - strong warning
-    "#8b5cf6", // Purple - additional variety
-    "#06b6d4", // Cyan - cool accent
-    "#84cc16", // Lime - fresh accent
-  ];
+  // Dynamic color palette using CSS variables from config
+  // Menggunakan warna dari theme dengan rasio yang seimbang
+  const getDynamicColors = () => {
+    const style = getComputedStyle(document.documentElement);
+
+    return [
+      `rgb(${style.getPropertyValue("--primary").trim()})`, // Primary - dominan
+      `rgb(${style.getPropertyValue("--secondary").trim()})`, // Secondary - aksen kuat
+      `rgb(${style.getPropertyValue("--success").trim()})`, // Success - positif
+      `rgb(${style.getPropertyValue("--tertiary").trim()})`, // Tertiary - warm accent
+      `rgb(${style.getPropertyValue("--info").trim()})`, // Info - cool accent
+      `rgb(${style.getPropertyValue("--warning").trim()})`, // Warning - perhatian
+      `rgb(${style.getPropertyValue("--error").trim()})`, // Error - critical
+      `rgb(${style.getPropertyValue("--inverse-primary").trim()})`, // Variant primary
+    ];
+  };
+
+  const [defaultColors, setDefaultColors] = React.useState<string[]>([]);
+
+  React.useEffect(() => {
+    setDefaultColors(getDynamicColors());
+  }, []);
+
+  // Get CSS variable colors for UI elements
+  const getColor = (variable: string) => {
+    if (typeof window === "undefined") return "transparent";
+    const style = getComputedStyle(document.documentElement);
+    return `rgb(${style.getPropertyValue(variable).trim()})`;
+  };
 
   return (
     <div className={cn("w-full", className)}>
@@ -61,28 +79,28 @@ export const LineChart: React.FC<LineChartProps> = ({
           {showGrid && (
             <CartesianGrid
               strokeDasharray="3 3"
-              className="stroke-border/30"
+              stroke={getColor("--outline-variant")}
+              opacity={0.4}
               vertical={false}
             />
           )}
           <XAxis
             dataKey={xAxisKey}
-            className="text-muted-foreground"
+            stroke={getColor("--on-surface-variant")}
             fontSize={12}
             tickLine={false}
             axisLine={false}
             dy={10}
-            tick={{ fill: "currentColor" }}
+            tick={{ fill: getColor("--on-surface-variant") }}
           />
           <YAxis
-            className="text-muted-foreground"
+            stroke={getColor("--on-surface-variant")}
             fontSize={12}
             tickLine={false}
             axisLine={false}
             dx={-10}
-            tick={{ fill: "currentColor" }}
+            tick={{ fill: getColor("--on-surface-variant") }}
             tickFormatter={(value) => {
-              // Format large numbers with K, M suffix
               if (value >= 1000000) {
                 return `${(value / 1000000).toFixed(1)}M`;
               }
@@ -95,33 +113,36 @@ export const LineChart: React.FC<LineChartProps> = ({
           {showTooltip && (
             <Tooltip
               contentStyle={{
-                backgroundColor: "hsl(var(--card))",
-                border: "1px solid hsl(var(--border))",
+                backgroundColor: getColor("--surface"),
+                border: `2px solid ${getColor("--outline")}`,
                 borderRadius: "0.75rem",
                 boxShadow:
                   "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
-                color: "hsl(var(--card-foreground))",
-                padding: "12px",
+                color: getColor("--on-surface"),
+                padding: "12px 16px",
                 fontSize: "13px",
                 fontWeight: "500",
               }}
               labelStyle={{
-                color: "hsl(var(--foreground))",
+                color: getColor("--on-surface"),
                 fontWeight: "600",
                 marginBottom: "8px",
                 fontSize: "14px",
+                borderBottom: `2px solid ${getColor("--outline-variant")}`,
+                paddingBottom: "8px",
               }}
               itemStyle={{
                 padding: "4px 0",
-                color: "hsl(var(--foreground-muted))",
+                color: getColor("--on-surface-variant"),
+                fontWeight: "500",
               }}
               cursor={{
-                stroke: "hsl(var(--border))",
-                strokeWidth: 1,
+                stroke: getColor("--primary"),
+                strokeWidth: 2,
+                strokeOpacity: 0.3,
                 strokeDasharray: "5 5",
               }}
               formatter={(value: any) => {
-                // Format numbers with commas
                 if (typeof value === "number") {
                   return value.toLocaleString();
                 }
@@ -135,39 +156,46 @@ export const LineChart: React.FC<LineChartProps> = ({
                 paddingTop: "20px",
                 fontSize: "13px",
                 fontWeight: "500",
+                color: getColor("--on-surface"),
               }}
               iconType="line"
               iconSize={16}
-              formatter={(value) => (
-                <span className="text-foreground-muted">{value}</span>
-              )}
             />
           )}
-          {lines.map((line, index) => (
-            <Line
-              key={line.key}
-              type="monotone"
-              dataKey={line.key}
-              name={line.name || line.key}
-              stroke={line.color || defaultColors[index % defaultColors.length]}
-              strokeWidth={line.strokeWidth || 2.5}
-              dot={{
-                r: 4,
-                strokeWidth: 2,
-                fill: "hsl(var(--card))",
-              }}
-              activeDot={{
-                r: 6,
-                strokeWidth: 0,
-                fill: line.color || defaultColors[index % defaultColors.length],
-                style: {
-                  filter: "drop-shadow(0 2px 4px rgb(0 0 0 / 0.2))",
-                },
-              }}
-              animationDuration={1000}
-              animationEasing="ease-in-out"
-            />
-          ))}
+          {lines.map((line, index) => {
+            const lineColor =
+              line.color ||
+              defaultColors[index % defaultColors.length] ||
+              getColor("--primary");
+
+            return (
+              <Line
+                key={line.key}
+                type="monotone"
+                dataKey={line.key}
+                name={line.name || line.key}
+                stroke={lineColor}
+                strokeWidth={line.strokeWidth || 3}
+                dot={{
+                  r: 4,
+                  strokeWidth: 2,
+                  fill: getColor("--surface"),
+                  stroke: lineColor,
+                }}
+                activeDot={{
+                  r: 7,
+                  strokeWidth: 3,
+                  fill: lineColor,
+                  stroke: getColor("--surface"),
+                  style: {
+                    filter: "drop-shadow(0 4px 6px rgb(0 0 0 / 0.3))",
+                  },
+                }}
+                animationDuration={1200}
+                animationEasing="ease-in-out"
+              />
+            );
+          })}
         </RechartsLineChart>
       </ResponsiveContainer>
     </div>
