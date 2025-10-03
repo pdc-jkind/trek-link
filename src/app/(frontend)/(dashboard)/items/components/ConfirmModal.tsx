@@ -6,6 +6,7 @@ import {
   ModalFooter,
   Button,
 } from "@/fe/components/index";
+import { AlertTriangle, Info, XCircle } from "lucide-react";
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -34,29 +35,30 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
     switch (variant) {
       case "danger":
         return {
-          icon: "⚠️",
-          iconBg: "bg-red-100",
-          iconColor: "text-red-600",
+          Icon: XCircle,
+          iconBg: "bg-error-container",
+          iconColor: "text-error",
           confirmVariant: "danger" as const,
         };
       case "warning":
         return {
-          icon: "⚠️",
-          iconBg: "bg-yellow-100",
-          iconColor: "text-yellow-600",
+          Icon: AlertTriangle,
+          iconBg: "bg-warning-container",
+          iconColor: "text-warning",
           confirmVariant: "warning" as const,
         };
       default:
         return {
-          icon: "ℹ️",
-          iconBg: "bg-blue-100",
-          iconColor: "text-blue-600",
+          Icon: Info,
+          iconBg: "bg-info-container",
+          iconColor: "text-info",
           confirmVariant: "primary" as const,
         };
     }
   };
 
   const styles = getVariantStyles();
+  const IconComponent = styles.Icon;
 
   const handleConfirm = () => {
     onConfirm();
@@ -66,39 +68,52 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      closable={false} // Disable built-in header with close button
+      size="sm"
+    >
       <ModalHeader>
         <div className="flex items-start gap-4">
           <div
-            className={`flex-shrink-0 w-12 h-12 rounded-full ${styles.iconBg} flex items-center justify-center`}
+            className={`flex-shrink-0 w-12 h-12 rounded-full ${
+              styles.iconBg
+            } border-2 ${styles.iconColor.replace(
+              "text-",
+              "border-"
+            )}/30 flex items-center justify-center`}
           >
-            <span className={`text-2xl ${styles.iconColor}`}>
-              {styles.icon}
-            </span>
+            <IconComponent className={`w-6 h-6 ${styles.iconColor}`} />
           </div>
           <div className="flex-1">
-            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+            <h3 className="text-lg font-semibold text-foreground">{title}</h3>
           </div>
         </div>
       </ModalHeader>
 
       <ModalContent>
-        <p className="text-gray-600 leading-relaxed">{message}</p>
+        <p className="text-foreground/80 leading-relaxed">{message}</p>
       </ModalContent>
 
       <ModalFooter>
-        <div className="flex gap-3 justify-end">
-          <Button variant="outline" onClick={onClose} disabled={isLoading}>
-            {cancelText}
-          </Button>
-          <Button
-            variant={styles.confirmVariant}
-            onClick={handleConfirm}
-            disabled={isLoading}
-          >
-            {isLoading ? "Memproses..." : confirmText}
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          onClick={onClose}
+          disabled={isLoading}
+          size="md"
+        >
+          {cancelText}
+        </Button>
+        <Button
+          variant={styles.confirmVariant}
+          onClick={handleConfirm}
+          disabled={isLoading}
+          isLoading={isLoading}
+          size="md"
+        >
+          {isLoading ? "Memproses..." : confirmText}
+        </Button>
       </ModalFooter>
     </Modal>
   );

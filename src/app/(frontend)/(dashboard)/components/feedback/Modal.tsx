@@ -67,13 +67,28 @@ export const Modal: React.FC<ModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      // Increment modal counter
+      const currentCount = parseInt(
+        document.body.getAttribute("data-modal-count") || "0"
+      );
+      document.body.setAttribute("data-modal-count", String(currentCount + 1));
       document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
     }
 
     return () => {
-      document.body.style.overflow = "unset";
+      if (isOpen) {
+        // Decrement modal counter
+        const currentCount = parseInt(
+          document.body.getAttribute("data-modal-count") || "0"
+        );
+        const newCount = Math.max(0, currentCount - 1);
+        document.body.setAttribute("data-modal-count", String(newCount));
+
+        // Only restore scroll if no modals are open
+        if (newCount === 0) {
+          document.body.style.overflow = "unset";
+        }
+      }
     };
   }, [isOpen]);
 
@@ -166,7 +181,7 @@ export const Modal: React.FC<ModalProps> = ({
                 }}
                 aria-label="Close modal"
               >
-                <X className="h-5 w-5" />
+                <X className="h-5 w-5 text-error" />
               </button>
             )}
           </div>
