@@ -633,47 +633,61 @@ const ItemsPage: React.FC = () => {
                       </div>
 
                       {expandedGroups.has(group.master.id) && (
-                        <div className="mt-4 space-y-2 border-t-2 border-outline pt-4">
+                        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 border-t-2 border-outline pt-4">
                           {group.items.map((item) => (
                             <div
                               key={item.item_id}
-                              className="flex items-center justify-between p-3 bg-surface-variant rounded-lg group hover:bg-surface-variant/80 transition-colors"
+                              className="p-3 bg-surface-variant rounded-lg group hover:bg-surface-variant/80 transition-colors"
                             >
-                              <div className="flex-1">
-                                <p className="font-medium text-foreground">
+                              {/* Row 1: Item Name + Variant Badge + Action Buttons */}
+                              <div className="flex items-center justify-between mb-2">
+                                <p className="font-medium text-on-primary">
                                   {item.item_name}
+                                  {item.item_name === "AL" ? (
+                                    <span> (Alingan)</span>
+                                  ) : item.item_name === "FD" ? (
+                                    <span> (Full Depan)</span>
+                                  ) : item.item_name === "BD" ? (
+                                    <span> (Backdoor)</span>
+                                  ) : (
+                                    <span> (Samping Kanan Kiri)</span>
+                                  )}
                                 </p>
-                                <p className="text-sm text-surface-variant-foreground">
-                                  {item.item_code} • {item.unit}
-                                </p>
-                              </div>
 
-                              <div className="flex items-center gap-2">
-                                {item.variant_name && (
-                                  <Badge variant="info" size="sm">
-                                    {item.variant_name}
-                                  </Badge>
-                                )}
+                                <div className="flex items-center gap-2 align-bottom">
+                                  {item.variant_name && (
+                                    <Badge variant="info" size="sm">
+                                      {item.variant_name}
+                                    </Badge>
+                                  )}
 
-                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={(e) => handleEditItem(item, e)}
-                                    className="h-8 w-8 p-0"
-                                  >
-                                    <Edit className="w-4 h-4 text-warning" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={(e) => handleDeleteItem(item, e)}
-                                    className="h-8 w-8 p-0"
-                                  >
-                                    <Trash2 className="w-4 h-4 text-error" />
-                                  </Button>
+                                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => handleEditItem(item, e)}
+                                      className="h-8 w-8 p-0"
+                                    >
+                                      <Edit className="w-4 h-4 text-warning" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => handleDeleteItem(item, e)}
+                                      className="h-8 w-8 p-0"
+                                    >
+                                      <Trash2 className="w-4 h-4 text-error" />
+                                    </Button>
+                                  </div>
                                 </div>
                               </div>
+
+                              {/* Row 2: Item Code + Unit */}
+                              <p className="text-sm text-surface-variant-foreground">
+                                {item.item_code} • {item.unit} •{" "}
+                                {item.conversion_to_base} {item.unit} on{" "}
+                                {item.alt_unit}
+                              </p>
                             </div>
                           ))}
                         </div>
