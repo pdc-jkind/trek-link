@@ -37,8 +37,8 @@ import {
   useItemVariants,
   useItems,
 } from "./useItems";
+import { useModalManager } from "./useModalManager";
 import type { Tables } from "@/types/database";
-import type { ItemMasterWithOffice } from "./useItems";
 
 // Type definitions
 type ViewItemsFull = Tables<"view_items_full">;
@@ -61,13 +61,6 @@ interface ItemGroup {
   };
 }
 
-interface DeleteState {
-  isOpen: boolean;
-  type: "item" | "master" | "variant" | null;
-  id: string | null;
-  name: string | null;
-}
-
 const ItemsPage: React.FC = () => {
   // State management
   const [searchTerm, setSearchTerm] = useState("");
@@ -75,26 +68,10 @@ const ItemsPage: React.FC = () => {
   const [selectedOffice, setSelectedOffice] = useState("");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<ViewMode>("items");
-
-  // Modal states
-  const [isItemModalOpen, setIsItemModalOpen] = useState(false);
-  const [isMasterModalOpen, setIsMasterModalOpen] = useState(false);
-  const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<ViewItemsFull | null>(null);
-  const [editingMaster, setEditingMaster] = useState<ItemMaster | null>(null);
-  const [editingVariant, setEditingVariant] = useState<ItemVariant | null>(
-    null
-  );
-  const [modalMode, setModalMode] = useState<"create" | "edit">("create");
-
-  // Delete confirmation state
-  const [deleteState, setDeleteState] = useState<DeleteState>({
-    isOpen: false,
-    type: null,
-    id: null,
-    name: null,
-  });
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Modal Manager Hook
+  const modalManager = useModalManager();
 
   // Memoize filters
   const filters = useMemo(
@@ -197,132 +174,137 @@ const ItemsPage: React.FC = () => {
     []
   );
 
+  // Modal open handlers - simplified using modal manager
   const handleAddItem = useCallback(() => {
-    setEditingItem(null);
-    setModalMode("create");
-    setIsItemModalOpen(true);
-  }, []);
+    modalManager.openItemModal("create");
+  }, [modalManager]);
 
   const handleAddMaster = useCallback(() => {
-    setEditingMaster(null);
-    setModalMode("create");
-    setIsMasterModalOpen(true);
-  }, []);
+    modalManager.openMasterModal("create");
+  }, [modalManager]);
 
   const handleAddVariant = useCallback(() => {
-    setEditingVariant(null);
-    setModalMode("create");
-    setIsVariantModalOpen(true);
-  }, []);
+    modalManager.openVariantModal("create");
+  }, [modalManager]);
 
-  // Edit handlers
+  // Handlers for opening master/variant from ItemModal (with parent tracking)
+  const handleAddMasterFromItemModal = useCallback(() => {
+    modalManager.openMasterModal("create", undefined, "item");
+  }, [modalManager]);
+
+  const handleAddVariantFromItemModal = useCallback(() => {
+    modalManager.openVariantModal("create", undefined, "item");
+  }, [modalManager]);
+
+  // Edit handlers - simplified
   const handleEditItem = useCallback(
     (item: ViewItemsFull, e: React.MouseEvent) => {
       e.stopPropagation();
-      setEditingItem(item);
-      setModalMode("edit");
-      setIsItemModalOpen(true);
+      modalManager.openItemModal("edit", item);
     },
-    []
+    [modalManager]
   );
 
   const handleEditMaster = useCallback(
     (master: ItemMaster, e: React.MouseEvent) => {
       e.stopPropagation();
-      setEditingMaster(master);
-      setModalMode("edit");
-      setIsMasterModalOpen(true);
+      modalManager.openMasterModal("edit", master);
     },
-    []
+    [modalManager]
   );
 
   const handleEditVariant = useCallback(
     (variant: ItemVariant, e: React.MouseEvent) => {
       e.stopPropagation();
-      setEditingVariant(variant);
-      setModalMode("edit");
-      setIsVariantModalOpen(true);
+      modalManager.openVariantModal("edit", variant);
     },
-    []
+    [modalManager]
   );
 
-  // Delete handlers
+  // Delete handlers - simplified
   const handleDeleteItem = useCallback(
     (item: ViewItemsFull, e: React.MouseEvent) => {
       e.stopPropagation();
-      setDeleteState({
-        isOpen: true,
+      modalManager.openDeleteModal({
         type: "item",
         id: item.item_id,
         name: item.item_name,
       });
     },
-    []
+    [modalManager]
   );
 
   const handleDeleteMaster = useCallback(
     (master: ItemMaster, e: React.MouseEvent) => {
       e.stopPropagation();
-      setDeleteState({
-        isOpen: true,
+      modalManager.openDeleteModal({
         type: "master",
         id: master.id,
         name: master.name,
       });
     },
-    []
+    [modalManager]
   );
 
   const handleDeleteVariant = useCallback(
     (variant: ItemVariant, e: React.MouseEvent) => {
       e.stopPropagation();
-      setDeleteState({
-        isOpen: true,
+      modalManager.openDeleteModal({
         type: "variant",
         id: variant.id,
         name: variant.name,
       });
     },
-    []
+    [modalManager]
   );
 
   const handleConfirmDelete = useCallback(async () => {
-    if (!deleteState.id || !deleteState.type) return;
+    if (!modalManager.deletePayload?.id) return;
 
+    const { type, id } = modalManager.deletePayload;
     setIsDeleting(true);
     try {
       let success = false;
 
-      switch (deleteState.type) {
+      switch (type) {
         case "item":
-          success = await itemsHook.deleteItem(deleteState.id);
+          success = await itemsHook.deleteItem(id);
           break;
         case "master":
-          success = await itemMastersHook.deleteItemMaster(deleteState.id);
+          success = await itemMastersHook.deleteItemMaster(id);
           break;
         case "variant":
-          success = await itemVariantsHook.deleteItemVariant(deleteState.id);
+          success = await itemVariantsHook.deleteItemVariant(id);
           break;
       }
 
       if (success) {
         refetchItems();
-        setDeleteState({ isOpen: false, type: null, id: null, name: null });
+        modalManager.closeModal();
       }
     } catch (error) {
       console.error("Delete error:", error);
     } finally {
       setIsDeleting(false);
     }
-  }, [deleteState, itemsHook, itemMastersHook, itemVariantsHook, refetchItems]);
+  }, [
+    modalManager,
+    itemsHook,
+    itemMastersHook,
+    itemVariantsHook,
+    refetchItems,
+  ]);
 
   const handleSaveItem = useCallback(
     async (data: any) => {
       try {
         let result;
-        if (modalMode === "edit" && editingItem?.item_id) {
+        if (
+          modalManager.modalMode === "edit" &&
+          modalManager.itemPayload?.item_id
+        ) {
           result = await itemsHook.updateItem({
-            id: editingItem.item_id,
+            id: modalManager.itemPayload.item_id,
             ...data,
           });
         } else {
@@ -351,7 +333,7 @@ const ItemsPage: React.FC = () => {
         }
 
         if (result) {
-          setIsItemModalOpen(false);
+          modalManager.closeModal();
           refetchItems();
           return { success: true };
         }
@@ -364,8 +346,7 @@ const ItemsPage: React.FC = () => {
       }
     },
     [
-      modalMode,
-      editingItem,
+      modalManager,
       itemsHook,
       generateItemCode,
       generateSequentialCodes,
@@ -377,12 +358,12 @@ const ItemsPage: React.FC = () => {
     async (data: any) => {
       try {
         const result =
-          modalMode === "edit" && editingMaster
+          modalManager.modalMode === "edit" && modalManager.masterPayload
             ? await itemMastersHook.updateItemMaster(data)
             : await itemMastersHook.createItemMaster(data);
 
         if (result) {
-          setIsMasterModalOpen(false);
+          modalManager.closeModal();
           refetchItems();
           return { success: true };
         }
@@ -394,19 +375,19 @@ const ItemsPage: React.FC = () => {
         };
       }
     },
-    [modalMode, editingMaster, itemMastersHook, refetchItems]
+    [modalManager, itemMastersHook, refetchItems]
   );
 
   const handleSaveVariant = useCallback(
     async (data: any) => {
       try {
         const result =
-          modalMode === "edit" && editingVariant
+          modalManager.modalMode === "edit" && modalManager.variantPayload
             ? await itemVariantsHook.updateItemVariant(data)
             : await itemVariantsHook.createItemVariant(data);
 
         if (result) {
-          setIsVariantModalOpen(false);
+          modalManager.closeModal();
           refetchItems();
           return { success: true };
         }
@@ -418,7 +399,7 @@ const ItemsPage: React.FC = () => {
         };
       }
     },
-    [modalMode, editingVariant, itemVariantsHook, refetchItems]
+    [modalManager, itemVariantsHook, refetchItems]
   );
 
   // Transform data for selects
@@ -448,7 +429,9 @@ const ItemsPage: React.FC = () => {
 
   // Get delete confirmation message
   const getDeleteMessage = () => {
-    const { type, name } = deleteState;
+    if (!modalManager.deletePayload) return "";
+    const { type, name } = modalManager.deletePayload;
+
     switch (type) {
       case "item":
         return `Item "${name}" akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.`;
@@ -496,7 +479,7 @@ const ItemsPage: React.FC = () => {
   }
 
   return (
-    <ContentWrapper maxWidth="7xl">
+    <ContentWrapper maxWidth="full">
       {/* Page Header */}
       <PageHeader
         title="Item Management"
@@ -856,46 +839,44 @@ const ItemsPage: React.FC = () => {
 
       {/* Modals */}
       <ItemModal
-        isOpen={isItemModalOpen}
-        onClose={() => setIsItemModalOpen(false)}
+        isOpen={modalManager.isItemModalOpen}
+        onClose={modalManager.closeModal}
         onSave={handleSaveItem}
-        onCreateMaster={handleAddMaster}
-        onCreateVariant={handleAddVariant}
-        item={editingItem}
+        onCreateMaster={handleAddMasterFromItemModal}
+        onCreateVariant={handleAddVariantFromItemModal}
+        item={modalManager.itemPayload}
         itemMasters={itemMastersForModal}
         itemVariants={itemVariantsHook.data}
-        mode={modalMode}
+        mode={modalManager.modalMode || "create"}
         checkItemCodeExists={itemsHook.checkItemCodeExists}
         generateItemCode={generateItemCode}
         generateSequentialCodes={generateSequentialCodes}
       />
 
       <ItemMasterModal
-        isOpen={isMasterModalOpen}
-        onClose={() => setIsMasterModalOpen(false)}
+        isOpen={modalManager.isMasterModalOpen}
+        onClose={modalManager.closeModal}
         onSave={handleSaveMaster}
-        itemMaster={editingMaster}
-        mode={modalMode}
+        itemMaster={modalManager.masterPayload}
+        mode={modalManager.modalMode || "create"}
         checkNameExists={itemMastersHook.checkNameExists}
         offices={offices}
         officesLoading={false}
       />
 
       <ItemVariantModal
-        isOpen={isVariantModalOpen}
-        onClose={() => setIsVariantModalOpen(false)}
+        isOpen={modalManager.isVariantModalOpen}
+        onClose={modalManager.closeModal}
         onSave={handleSaveVariant}
-        itemVariant={editingVariant}
-        mode={modalMode}
+        itemVariant={modalManager.variantPayload}
+        mode={modalManager.modalMode || "create"}
         checkNameExists={itemVariantsHook.checkNameExists}
       />
 
       {/* Delete Confirmation Modal */}
       <ConfirmModal
-        isOpen={deleteState.isOpen}
-        onClose={() =>
-          setDeleteState({ isOpen: false, type: null, id: null, name: null })
-        }
+        isOpen={modalManager.isDeleteModalOpen}
+        onClose={modalManager.closeModal}
         onConfirm={handleConfirmDelete}
         title="Hapus Data"
         message={getDeleteMessage()}
